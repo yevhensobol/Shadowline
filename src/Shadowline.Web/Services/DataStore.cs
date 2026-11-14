@@ -12,6 +12,8 @@ public sealed class DataStore(HttpClient http)
 
     public BodyEphemeris? Ephemeris { get; private set; }
 
+    public TourDocument? Tour { get; private set; }
+
     public CreditsDocument? Credits { get; private set; }
 
     public PhotosDocument? Photos { get; private set; }
@@ -166,6 +168,7 @@ public sealed class DataStore(HttpClient http)
         var ephemerisBytes = await http.GetByteArrayAsync("data/ephemeris.bin", cancellationToken);
         var ephemeris = EphemerisReader.Read(ephemerisBytes, manifest.Grid);
 
+        Tour = await TryLoadTourAsync(cancellationToken);
         Photos = await TryLoadPhotosAsync(cancellationToken);
         Artemis = await TryLoadArtemisAsync(cancellationToken);
         History = await TryLoadHistoryAsync(cancellationToken);
@@ -225,6 +228,19 @@ public sealed class DataStore(HttpClient http)
         {
             await using var stream = await http.GetStreamAsync("data/photos.json", cancellationToken);
             return await PhotosReader.ReadAsync(stream, cancellationToken);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or DataFormatException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<TourDocument?> TryLoadTourAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var stream = await http.GetStreamAsync("data/tour.json", cancellationToken);
+            return await TourReader.ReadAsync(stream, cancellationToken);
         }
         catch (Exception exception) when (exception is HttpRequestException or DataFormatException)
         {
