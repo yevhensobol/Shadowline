@@ -368,7 +368,6 @@ class MoonScene {
             const sdem = new module.Sdem({ base: this.options.base + "../../data/sdem/", radius: R, scene: this.scene, poleHalf: this.poleGrid.half, albedo: this.pole ? this.pole.material.map : null, count: this.layerUniforms.sdemCount, rects: this.layerUniforms.sdemRects.value, anisotropy: Math.min(8, this.renderer.capabilities.getMaxAnisotropy()), onChange: () => { this.dirty = true; } });
             await sdem.init();
             if (this.disposed) { sdem.dispose(); return; }
-            sdem.setMode(this.poleMode || "relief");
             this.sdem = sdem;
             this.dirty = true;
         } catch (error) {
@@ -1139,7 +1138,7 @@ if (gridOn > 0.5) {
             this.layerUniforms.detailOn.value = this.poleDetail.maskOn ? 1 : 0;
         }
         if (this.sdem) {
-            const active = !this.surface && (!this.layerMode || this.layerMode === "none") && !this.gridOn;
+            const active = !this.surface && (!this.layerMode || this.layerMode === "none") && !this.gridOn && this.poleMode !== "photo";
             if (this.sdem.update(this.camera, this.height || 800, v.lat, v.lon, target, active)) this.dirty = true;
         }
         const shrink = reliefOn ? (R - 10) / R : 1;
@@ -1519,7 +1518,8 @@ if (gridOn > 0.5) {
         this.sdemEl.style.display = show ? "" : "none";
         if (!show) return;
         const u = this.units || {};
-        const key = this.sdem.mode + "|" + (u.sdemPhoto || "");
+        const mode = this.poleMode || "relief";
+        const key = mode + "|" + (u.sdemPhoto || "");
         if (key === this.sdemKey) return;
         this.sdemKey = key;
         this.sdemEl.setAttribute("aria-label", u.sdemTitle || "SDEM");
@@ -1527,7 +1527,7 @@ if (gridOn > 0.5) {
             const photo = button.dataset.mode === "photo";
             button.textContent = photo ? (u.sdemPhoto || "Photo") : (u.sdemRelief || "Relief");
             button.title = photo ? (u.sdemPhotoHint || "") : (u.sdemReliefHint || "");
-            button.setAttribute("aria-pressed", String(button.dataset.mode === this.sdem.mode));
+            button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
         }
     }
 
@@ -1575,7 +1575,6 @@ if (gridOn > 0.5) {
 
     async setPoleMode(mode) {
         this.poleMode = mode === "photo" ? "photo" : "relief";
-        if (this.sdem) this.sdem.setMode(this.poleMode);
         this.photoUniform.value = this.poleMode === "photo" ? 1 : 0;
         if (this.pole && !this.poleAlbedo) this.poleAlbedo = this.pole.material.map;
         let map = this.poleAlbedo;

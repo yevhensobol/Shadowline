@@ -56,8 +56,8 @@
       "source": "https://doi.org/10.5281/zenodo.17954508",
       "license": "CC BY 4.0",
       "usedIn": {
-        "en": "5 m elevation and LROC NAC orthomosaics of the 13 Artemis III candidate regions in the 3D view, with 20 m and 80 m levels for distant views. Display only, not used in the calculations",
-        "uk": "Висоти з кроком 5 м і ортомозаїки LROC NAC для 13 кандидатних регіонів Artemis III у 3D-сцені, з рівнями 20 м і 80 м для дальніх видів. Лише відображення, у розрахунках не використовується"
+        "en": "5 m elevation of the 13 Artemis III candidate regions in the 3D relief view, with 20 m and 80 m levels for distant views, and LROC NAC orthomosaic crops in the site report. Display only, not used in the calculations",
+        "uk": "Висоти з кроком 5 м для 13 кандидатних регіонів Artemis III у режимі рельєфу 3D-сцени, з рівнями 20 м і 80 м для дальніх видів, і фрагменти ортомозаїк LROC NAC у звіті про місце. Лише відображення, у розрахунках не використовується"
       },
       "kind": "data"
     },

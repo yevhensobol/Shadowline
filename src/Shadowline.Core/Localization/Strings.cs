@@ -169,7 +169,7 @@ public static class Strings
         ["explore.sdemTitle"] = ("South pole surface view", "Вигляд поверхні полюса"),
         ["explore.sdemPhoto"] = ("Photo", "Фото"),
         ["explore.sdemRelief"] = ("Relief", "Рельєф"),
-        ["explore.sdemPhotoHint"] = ("LRO WAC mosaic of the south pole, about 270 m per pixel, and LROC NAC orthomosaics at 5 m in the 13 Artemis III candidate regions; lit as recorded, does not depend on the simulation time", "Мозаїка LRO WAC південного полюса, близько 270 м на піксель, і ортомозаїки LROC NAC 5 м у 13 кандидатних регіонах Artemis III; освітлення як на знімках, не залежить від часу симуляції"),
+        ["explore.sdemPhotoHint"] = ("LRO WAC mosaic of the south polar region, about 300 m per pixel; lit as recorded, does not depend on the simulation time", "Мозаїка LRO WAC південної полярної області, близько 300 м на піксель; освітлення як на знімках, не залежить від часу симуляції"),
         ["explore.sdemReliefHint"] = ("LOLA terrain, 5 m SDEM in the Artemis III regions, lit by the Sun at the simulation time, with shadows", "Рельєф LOLA, у регіонах Artemis III SDEM 5 м, з освітленням Сонцем на час симуляції, з тінями"),
         ["explore.nothing"] = ("No sites match", "Нічого не знайдено"),
         ["explore.sun"] = ("Sun", "Сонце"),
