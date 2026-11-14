@@ -1500,7 +1500,7 @@ if (gridOn > 0.5) {
             this.overlay.appendChild(el);
             this.sdemEl = el;
         }
-        const show = !this.surface && this.poleReady && this.view.lat < -78 && this.view.range < 400;
+        const show = !this.surface && this.poleReady && this.view.lat < -60 && this.view.range < 6000;
         this.sdemEl.style.display = show ? "" : "none";
         if (!show) return;
         const u = this.units || {};

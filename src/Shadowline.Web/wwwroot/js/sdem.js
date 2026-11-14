@@ -6,7 +6,7 @@ const MAX_LOADS = 6;
 const RETRY_MS = 8000;
 const SKIRT_KM = 0.12;
 const LEVELS = [[5, 2.5], [20, 10], [80, 40]];
-const PHOTO_FAR = 130;
+const PHOTO_FAR = Infinity;
 const HOLD = 1.25;
 
 async function readHeights(url) {
