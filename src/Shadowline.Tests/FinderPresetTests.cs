@@ -70,4 +70,43 @@ public class FinderPresetTests
         Assert.Equal(FinderPreset.Relay.Weights, profile.Weights);
         Assert.Equal(mission.Lander, profile.Lander);
     }
+
+    [Fact]
+    public void Custom_mission_keeps_its_lander_with_water_weights()
+    {
+        var mission = Mission.Default with { PanelW = 250, LoadW = 90, BatteryWh = 4000, DurationDays = 90, MinEarthShare = 0.3 };
+
+        var profile = FinderPreset.Profile(mission, null, Day);
+
+        Assert.Equal(60, profile.DurationDays);
+        Assert.Equal(new LanderSpec(250, 90, 4000), profile.Lander);
+        Assert.Equal(0.3, profile.MinEarthShare);
+        Assert.Equal(TargetKind.ColdTrap, profile.Target);
+        Assert.Equal(FinderPreset.Water.Weights, profile.Weights);
+    }
+
+    [Fact]
+    public void Shipped_grid_gives_ranked_zones_that_pass_the_filters()
+    {
+        var grid = FinderReader.ReadGzip(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "data", "finder.bin.gz")));
+        var day = grid.StartUtc.AddDays(120);
+
+        foreach (var preset in FinderPreset.All)
+        {
+            var result = SiteFinder.Evaluate(grid, FinderPreset.Profile(preset.Apply(Mission.Default), preset, day), FinderPreset.MinZoneCells);
+
+            if (preset == FinderPreset.Water || preset == FinderPreset.Clps)
+            {
+                Assert.NotEmpty(result.Zones);
+            }
+
+            Assert.Equal(Enumerable.Range(1, result.Zones.Count), result.Zones.Select(zone => zone.Rank));
+            foreach (var zone in result.Zones.Take(3))
+            {
+                Assert.True(result.Passes(zone.BestCell));
+                Assert.True(zone.MaxScore >= SiteFinder.ZoneScore);
+                Assert.True(zone.LatitudeDeg <= grid.DomainLatitudeDeg);
+            }
+        }
+    }
 }

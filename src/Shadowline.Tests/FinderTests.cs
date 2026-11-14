@@ -83,4 +83,94 @@ public class FinderTests
         Assert.Equal(76.0, lander.MaxDarkHours, 6);
         Assert.Equal(0.25, lander.RequiredSunShare, 6);
     }
+
+    [Fact]
+    public void Steep_cells_fail_the_slope_filter()
+    {
+        var grid = Grid((_, _) => true, slopeHigh: 60);
+
+        var result = SiteFinder.Evaluate(grid, Profile(maxSlope: 8), 1);
+
+        Assert.All(result.Fail, fail => Assert.True(fail.HasFlag(FinderFail.Slope)));
+        Assert.Empty(result.Zones);
+    }
+
+    [Fact]
+    public void Long_night_fails_the_darkness_filter()
+    {
+        var grid = Grid((_, step) => step == 0);
+
+        var result = SiteFinder.Evaluate(grid, Profile(durationDays: 4, batteryKWh: 1), 1);
+
+        Assert.True(result.Fail[0].HasFlag(FinderFail.Darkness));
+    }
+
+    [Fact]
+    public void Connected_passing_cells_form_one_zone()
+    {
+        var grid = Grid((_, _) => true);
+
+        var result = SiteFinder.Evaluate(grid, Profile(), 1);
+
+        Assert.Single(result.Zones);
+        Assert.Equal(Size * Size, result.Zones[0].Cells.Count);
+        Assert.Equal(Size * Size * 4.0, result.Zones[0].AreaKm2, 6);
+    }
+
+    [Fact]
+    public void Gzip_file_round_trips()
+    {
+        var grid = Grid((cell, step) => (cell + step) % 3 == 0);
+        var bytes = new List<byte>();
+        bytes.AddRange("SLFD"u8.ToArray());
+        bytes.AddRange(BitConverter.GetBytes(1));
+        bytes.AddRange(BitConverter.GetBytes(Size));
+        bytes.AddRange(BitConverter.GetBytes(2000f));
+        bytes.AddRange(BitConverter.GetBytes(4000f));
+        bytes.AddRange(BitConverter.GetBytes(Steps));
+        bytes.AddRange(BitConverter.GetBytes(360));
+        bytes.AddRange(BitConverter.GetBytes(0L));
+        bytes.AddRange(BitConverter.GetBytes(-84f));
+        foreach (var plane in new[] { grid.Domain, grid.SlopeMedian, grid.SlopeHigh, grid.WaterKm, grid.SunYear, grid.EarthYear })
+        {
+            bytes.AddRange(plane);
+        }
+
+        for (var cell = 0; cell < grid.Count; cell++)
+        {
+            var row = new byte[grid.BytesPerCell];
+            for (var step = 0; step < Steps; step++)
+            {
+                if (grid.Sun(cell, step))
+                {
+                    row[step / 8] |= (byte)(1 << (step % 8));
+                }
+            }
+
+            bytes.AddRange(row);
+        }
+
+        bytes.AddRange(new byte[grid.Count * grid.BytesPerCell]);
+        using var output = new MemoryStream();
+        using (var gzip = new GZipStream(output, CompressionLevel.Optimal, true))
+        {
+            gzip.Write(bytes.ToArray());
+        }
+
+        var read = FinderReader.ReadGzip(output.ToArray());
+
+        Assert.Equal(Size, read.Size);
+        Assert.Equal(grid.Sun(5, 1), read.Sun(5, 1));
+        Assert.False(read.Earth(5, 1));
+    }
+
+    [Fact]
+    public void Polar_coordinates_round_trip()
+    {
+        var (x, y) = FinderGrid.ToXY(-86.5, 120);
+        var (lat, lon) = FinderGrid.ToLatLon(x, y);
+
+        Assert.Equal(-86.5, lat, 9);
+        Assert.Equal(120, lon, 9);
+    }
 }
