@@ -1,0 +1,92 @@
+﻿@using System.Globalization
+@inherits LocalizedComponent
+
+<figure class="inc-hist">
+    <figcaption>
+        <span class="series-title">@Title</span>
+        <span class="series-key prior">@PriorLabel</span>
+        <span class="series-key post">@PosteriorLabel</span>
+    </figcaption>
+    <svg viewBox="-18 0 318 110" role="img" aria-label="@Title">
+        <rect x="0" y="0" width="300" height="80" class="series-bg" />
+        @for (var k = 0; k < Bins; k++)
+        {
+            var w = 300.0 / Bins;
+            <rect x="@F(k * w + 0.5)" y="@F(80 - prior[k] * 78)" width="@F(w - 1)" height="@F(prior[k] * 78)" class="hist-prior" />
+            <rect x="@F(k * w + w * 0.2)" y="@F(80 - post[k] * 78)" width="@F(w * 0.6)" height="@F(post[k] * 78)" class="hist-post" />
+        }
+        <text x="0" y="94" class="series-axis">@Label(Min)</text>
+        <text x="150" y="94" text-anchor="middle" class="series-axis">@Label((Min + Max) / 2)</text>
+        <text x="300" y="94" text-anchor="end" class="series-axis">@Label(Max)</text>
+        @if (XLabel is { Length: > 0 })
+        {
+            <g><text x="150" y="108" text-anchor="middle" class="axis-title">@XLabel</text></g>
+        }
+        <text transform="translate(-7 40) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.density"]</text>
+    </svg>
+</figure>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<double> Prior { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<double> Posterior { get; set; } = [];
+
+    [Parameter]
+    public double Min { get; set; }
+
+    [Parameter]
+    public double Max { get; set; } = 1;
+
+    [Parameter]
+    public int Bins { get; set; } = 20;
+
+    [Parameter]
+    public string Unit { get; set; } = "";
+
+    [Parameter]
+    public string PriorLabel { get; set; } = "";
+
+    [Parameter]
+    public string PosteriorLabel { get; set; } = "";
+
+    [Parameter]
+    public string? XLabel { get; set; }
+
+    private double[] prior = [];
+    private double[] post = [];
+
+    protected override void OnParametersSet()
+    {
+        prior = Density(Prior);
+        post = Density(Posterior);
+        var top = Math.Max(1e-9, Math.Max(prior.DefaultIfEmpty().Max(), post.DefaultIfEmpty().Max()));
+        prior = prior.Select(v => v / top).ToArray();
+        post = post.Select(v => v / top).ToArray();
+    }
+
+    private double[] Density(IReadOnlyList<double> values)
+    {
+        var counts = new double[Bins];
+        if (values.Count == 0)
+        {
+            return counts;
+        }
+
+        foreach (var v in values)
+        {
+            var k = (int)Math.Floor((v - Min) / (Max - Min) * Bins);
+            counts[Math.Clamp(k, 0, Bins - 1)]++;
+        }
+
+        return counts.Select(c => c / values.Count).ToArray();
+    }
+
+    private string Label(double v) => v.ToString("F0", CultureInfo.InvariantCulture) + Unit;
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+}
