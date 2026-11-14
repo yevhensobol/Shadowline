@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Geometry;
+namespace Shadowline.Core.Geometry;
 
 public readonly record struct SkyPosition(double AzimuthDeg, double ElevationDeg, double RangeKm)
 {

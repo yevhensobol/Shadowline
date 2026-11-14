@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Finder;
+namespace Shadowline.Core.Finder;
 
 [Flags]
 public enum FinderFail

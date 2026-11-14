@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Ml;
+namespace Shadowline.Core.Ml;
 
 public sealed class PolarScoreMap
 {

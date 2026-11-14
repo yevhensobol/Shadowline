@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Sites;
+namespace Shadowline.Core.Sites;
 
 public sealed record Site(
     string Id,

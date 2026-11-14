@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Tracks;
+using Shadowline.Core.Tracks;
 
 namespace Shadowline.Core.Windows;
 

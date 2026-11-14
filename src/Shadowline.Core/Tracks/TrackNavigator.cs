@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Tracks;
+namespace Shadowline.Core.Tracks;
 
 public static class TrackNavigator
 {

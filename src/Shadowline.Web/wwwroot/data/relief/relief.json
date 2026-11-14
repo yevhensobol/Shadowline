@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "source": "LOLA LDEM_64 (GDR, 64 px/deg, 473.8 m/px), simple cylindrical, heights above 1737.4 km",
+  "samples": 256,
+  "border": 1,
+  "unitM": 2.0,
+  "origin": "lat 90 N, lon 0 E, rows southward, columns eastward, pixel-registered",
+  "encoding": "int16 second difference along rows and columns, gzip",
+  "levels": [
+    {
+      "level": 0,
+      "tileDeg": 4.0,
+      "ppd": 64.0,
+      "rows": 45,
+      "cols": 90,
+      "bytes": 205770111
+    },
+    {
+      "level": 1,
+      "tileDeg": 8.0,
+      "ppd": 32.0,
+      "rows": 23,
+      "cols": 45,
+      "bytes": 62036478
+    },
+    {
+      "level": 2,
+      "tileDeg": 16.0,
+      "ppd": 16.0,
+      "rows": 12,
+      "cols": 23,
+      "bytes": 19146117
+    },
+    {
+      "level": 3,
+      "tileDeg": 32.0,
+      "ppd": 8.0,
+      "rows": 6,
+      "cols": 12,
+      "bytes": 5679033
+    }
+  ]
+}

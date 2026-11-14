@@ -1,4 +1,4 @@
-﻿@page "/tiprisk"
+@page "/tiprisk"
 @page "/tipover"
 @page "/plan/tipover"
 @using System.Globalization
@@ -58,8 +58,7 @@
             <div class="inc-sim">
                 <fieldset>
                     <legend>@L["tip.where"]</legend>
-                    <label class="tip-field">
-                        @L["tip.site"]
+                    <label class="tip-field">@L["tip.site"]
                         <select value="@view.Site.Id" @onchange="OnSite">
                             @foreach (var site in Store.Catalog!.Sites)
                             {
@@ -67,8 +66,7 @@
                             }
                         </select>
                     </label>
-                    <label class="tip-field">
-                        @L["tip.start"]
+                    <label class="tip-field">@L["tip.start"]
                         <input type="date" value="@StartDate()" min="@GridDate(0)" max="@GridDate(Grid.Count - 1)" @onchange="OnStart" />
                     </label>
                     <label>@L["tip.days"] <b>@days</b><input type="range" min="3" max="30" step="1" @bind="days" @bind:event="oninput" @bind:after="Schedule" /></label>
@@ -142,17 +140,11 @@
                 <h3 class="method-sub">@L["tip.history"]</h3>
                 <p class="muted small">@L["tip.historyLede"]</p>
                 <table class="report-table">
-                    <thead><tr><th>@L["tip.col.case"]</th>@foreach (var layout in Layouts) {
-                        <th>@L["tip.layout." + layout.Id]</th>
-                    }
-                    <th>@L["tip.col.outcome"]</th></tr></thead>
+                    <thead><tr><th>@L["tip.col.case"]</th>@foreach (var layout in Layouts) { <th>@L["tip.layout." + layout.Id]</th> }<th>@L["tip.col.outcome"]</th></tr></thead>
                     <tbody>
                         @foreach (var h in history)
                         {
-                            <tr><td><a href="science/landings?case=@h.Id">@L["inc." + h.Id + ".name"]</a></td>@foreach (var p in h.Survive) {
-                                <td>@Pct(p)</td>
-                            }
-                            <td>@L["tip.outcome." + h.Id]</td></tr>
+                            <tr><td><a href="science/landings?case=@h.Id">@L["inc." + h.Id + ".name"]</a></td>@foreach (var p in h.Survive) { <td>@Pct(p)</td> }<td>@L["tip.outcome." + h.Id]</td></tr>
                         }
                     </tbody>
                 </table>

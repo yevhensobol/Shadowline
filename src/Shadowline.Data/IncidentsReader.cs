@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Incidents;
+using Shadowline.Core.Incidents;
 
 namespace Shadowline.Data;
 

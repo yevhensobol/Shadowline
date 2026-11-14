@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Data;
+namespace Shadowline.Data;
 
 public sealed record YearEntry(string Id, DateTimeOffset GridStartUtc, int GridStepMinutes, int GridCount, string File)
 {

@@ -1,4 +1,4 @@
-﻿@using System.Globalization
+@using System.Globalization
 @using Shadowline.Core.Geometry
 @using Shadowline.Core.Incidents
 @using Shadowline.Core.Missions
@@ -68,12 +68,10 @@
                 else
                 {
                     <b class="@Tone(miss.PassShare)">@Pct(miss.PassShare)</b> <span>@L.Format("robust.miss.share", Distance(radius))</span>
-                    <span class="robust-records small">
-                        @L["robust.records"] @foreach (var record in LandingRecords.Misses)
+                    <span class="robust-records small">@L["robust.records"] @foreach (var record in LandingRecords.Misses)
                         {
                             <span class="@(record.DistanceM <= radius ? "in" : "out")" title="@(Shadowline.Core.Reports.References.Find(record.ReferenceId)?.Citation)">@record.Name @(record.UpperBound ? "<" : "")@Distance(record.DistanceM)</span>
-                        }
-                    </span>
+                        }</span>
                     @if (miss.Worst is { } worst)
                     {
                         <span class="muted small">@L.Format("robust.miss.worst", Pct(worst.Metrics.SunFraction), Pct(worst.Metrics.EarthFraction), worst.SlopeDeg.ToString("0.#", CultureInfo.InvariantCulture))</span>

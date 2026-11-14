@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Geometry;
 using Shadowline.Core.Tracks;
 

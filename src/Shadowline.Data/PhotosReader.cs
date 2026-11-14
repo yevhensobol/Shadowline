@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Data;
+namespace Shadowline.Data;
 
 public sealed record SitePhoto(string Site, string File, string Source, string Credit, IReadOnlyDictionary<string, string>? Caption);
 

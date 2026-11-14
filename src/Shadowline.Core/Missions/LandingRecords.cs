@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Missions;
+namespace Shadowline.Core.Missions;
 
 public sealed record LandingMiss(string Key, string Name, double DistanceM, bool UpperBound, string ReferenceId);
 

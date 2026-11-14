@@ -1,4 +1,4 @@
-﻿@page "/credits"
+@page "/credits"
 @page "/science/sources"
 @page "/sources"
 @using Shadowline.Core.Reports
@@ -30,8 +30,7 @@
                 <p class="credits-use">
                     @foreach (var id in resource.Refs)
                     {
-                        <a href="#ref-@id">[@id]</a>
-                        @(" ")
+                        <a href="#ref-@id">[@id]</a>@(" ")
                     }
                 </p>
             }
@@ -72,11 +71,9 @@ else
     <ol class="credits-refs">
         @foreach (var reference in References.All)
         {
-            <li id="ref-@reference.Id">
-                @reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
+            <li id="ref-@reference.Id">@reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
                 {
-                    @(" ")
-                    <a href="@link" rel="noopener" target="_blank">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
+                    @(" ")<a href="@link" rel="noopener" target="_blank">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
                 }
             </li>
         }

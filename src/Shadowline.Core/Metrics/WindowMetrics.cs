@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Metrics;
+namespace Shadowline.Core.Metrics;
 
 public sealed record WindowMetrics(
     double SunFraction,

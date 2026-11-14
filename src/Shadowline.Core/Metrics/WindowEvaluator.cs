@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Time;
+using Shadowline.Core.Time;
 using Shadowline.Core.Tracks;
 
 namespace Shadowline.Core.Metrics;

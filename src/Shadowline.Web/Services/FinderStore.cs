@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Finder;
+using Shadowline.Core.Finder;
 using Shadowline.Data;
 
 namespace Shadowline.Web.Services;

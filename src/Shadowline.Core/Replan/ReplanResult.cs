@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Metrics;
+using Shadowline.Core.Metrics;
 using Shadowline.Core.Sites;
 
 namespace Shadowline.Core.Replan;

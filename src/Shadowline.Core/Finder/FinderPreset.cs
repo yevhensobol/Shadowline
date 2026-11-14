@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Missions;
+using Shadowline.Core.Missions;
 
 namespace Shadowline.Core.Finder;
 

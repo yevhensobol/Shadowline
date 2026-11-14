@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Routes;
+using Shadowline.Core.Routes;
 using Shadowline.Web.Components;
 
 namespace Shadowline.Web.Services;

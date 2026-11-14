@@ -1,4 +1,4 @@
-﻿@using System.Globalization
+@using System.Globalization
 @using Shadowline.Core.Comms
 @using Shadowline.Core.Ephemeris
 @using Shadowline.Core.Tracks
@@ -6,9 +6,7 @@
 
 <section class="dsn @Class">
     <h3>@L["dsn.title"]</h3>
-    @{
-        var elevations = DeepSpaceNetwork.Elevations(Ephemeris, Cursor);
-    }
+    @{ var elevations = DeepSpaceNetwork.Elevations(Ephemeris, Cursor); }
     <ul class="dsn-stations">
         @for (var i = 0; i < DeepSpaceNetwork.Stations.Count; i++)
         {

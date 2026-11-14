@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Missions;
+namespace Shadowline.Core.Missions;
 
 public sealed record NacSlopeCheck(
     string Key,

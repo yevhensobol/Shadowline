@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Thermal;
+namespace Shadowline.Core.Thermal;
 
 public sealed record DivinerCell(double AnnualAverage2cmK, double AnnualMaxK, double? IceDepthM);
 

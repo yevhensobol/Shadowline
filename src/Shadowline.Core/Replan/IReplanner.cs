@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Replan;
+namespace Shadowline.Core.Replan;
 
 public interface IReplanner
 {

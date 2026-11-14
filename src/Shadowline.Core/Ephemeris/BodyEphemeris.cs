@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Geometry;
+using Shadowline.Core.Geometry;
 using Shadowline.Core.Time;
 
 namespace Shadowline.Core.Ephemeris;

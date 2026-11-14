@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Validation;
+using Shadowline.Core.Validation;
 
 namespace Shadowline.Data;
 

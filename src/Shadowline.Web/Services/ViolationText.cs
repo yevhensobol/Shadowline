@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Shadowline.Core.Replan;
 
 namespace Shadowline.Web.Services;

@@ -1,0 +1,301 @@
+{
+ "formatVersion": 1,
+ "retrieved": "2026-11-10",
+ "source": {
+  "products": [
+   "avgvisib_65s_240m_201608",
+   "avgvisib_65s_240m_201608_earth",
+   "avgvisib_85s_060m_201608",
+   "avgvisib_85s_060m_201608_earth"
+  ],
+  "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/extras/illumination/img/",
+  "citation": "Mazarico, E., Neumann, G. A., Smith, D. E., Zuber, M. T., Torrence, M. H. (2011). Illumination conditions of the lunar polar regions using LOLA topography. Icarus 211, 1066-1081. doi:10.1016/j.icarus.2010.10.030",
+  "definition": "Share of time steps with any part of the Sun or Earth disc visible, LOLA topography, polar stereographic, 1737.4 km sphere"
+ },
+ "ours": {
+  "map": "img/scene/pole_light.png, 608 x 608, 1 km, one year from the manifest start",
+  "sites": "site horizons, ephemeris years 2026, 2027, 2028, 2029"
+ },
+ "orientation": {
+  "rot0": 0.9847,
+  "rot0+flip": 0.2269,
+  "rot90": 0.1516,
+  "rot90+flip": 0.1939,
+  "rot180": 0.0598,
+  "rot180+flip": 0.1447,
+  "rot270": 0.1657,
+  "rot270+flip": 0.1996
+ },
+ "map": {
+  "sun": {
+   "cells": 369664,
+   "meanDiff": 0.0105,
+   "medianDiff": 0.0083,
+   "mae": 0.0179,
+   "rmse": 0.0279,
+   "r": 0.9847,
+   "within005": 0.9361,
+   "within010": 0.9885,
+   "p05": -0.0189,
+   "p95": 0.0499,
+   "histogram": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    4,
+    2,
+    10,
+    24,
+    31,
+    62,
+    116,
+    183,
+    343,
+    599,
+    1185,
+    2639,
+    8394,
+    89975,
+    199249,
+    48426,
+    11464,
+    4091,
+    1684,
+    627,
+    260,
+    122,
+    60,
+    40,
+    17,
+    11,
+    9,
+    10,
+    10,
+    7,
+    5,
+    1,
+    2,
+    0
+   ]
+  },
+  "sunLit": {
+   "cells": 335294,
+   "meanDiff": 0.0116,
+   "medianDiff": 0.0103,
+   "mae": 0.0193,
+   "rmse": 0.029,
+   "r": 0.9741,
+   "within005": 0.93,
+   "within010": 0.9875,
+   "p05": -0.0192,
+   "p95": 0.0521,
+   "histogram": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    4,
+    2,
+    10,
+    24,
+    31,
+    62,
+    116,
+    183,
+    343,
+    599,
+    1185,
+    2639,
+    7518,
+    78729,
+    177433,
+    48141,
+    11399,
+    4068,
+    1673,
+    616,
+    251,
+    118,
+    57,
+    38,
+    16,
+    9,
+    8,
+    5,
+    5,
+    6,
+    4,
+    0,
+    0,
+    0
+   ]
+  },
+  "earthCentreVsAny": {
+   "cells": 369664,
+   "meanDiff": -0.0403,
+   "medianDiff": -0.0301,
+   "mae": 0.0462,
+   "rmse": 0.0691,
+   "r": 0.9837,
+   "within005": 0.5727,
+   "within010": 0.8681,
+   "p05": -0.1446,
+   "p95": 0.0111,
+   "histogram": [
+    5,
+    4,
+    9,
+    7,
+    18,
+    45,
+    60,
+    107,
+    224,
+    416,
+    989,
+    2442,
+    4162,
+    7891,
+    11254,
+    18634,
+    35569,
+    69006,
+    40586,
+    40382,
+    124732,
+    6021,
+    3069,
+    1542,
+    801,
+    480,
+    322,
+    244,
+    175,
+    135,
+    98,
+    70,
+    45,
+    22,
+    27,
+    9,
+    13,
+    9,
+    6,
+    9
+   ]
+  },
+  "psrCells": {
+   "bothShadow": 14579,
+   "oursOnly": 4397,
+   "lolaOnly": 443,
+   "bothLit": 350245
+  }
+ },
+ "sites": [
+  {
+   "id": "im2-athena",
+   "latitudeDeg": -84.7906,
+   "longitudeEastDeg": 29.195699999999988,
+   "lolaResolutionM": 240,
+   "ours": {
+    "sunAny": 0.4676,
+    "sunCentre": 0.4501,
+    "earthAny": 0.9398,
+    "earthCentre": 0.8185
+   },
+   "lola": {
+    "sun": 0.4558,
+    "sunMin": 0.4349,
+    "sunMax": 0.4667,
+    "earth": 0.9228,
+    "earthMin": 0.8638,
+    "earthMax": 0.9384
+   }
+  },
+  {
+   "id": "im1-odysseus",
+   "latitudeDeg": -80.13,
+   "longitudeEastDeg": 1.4399999999999977,
+   "lolaResolutionM": 240,
+   "ours": {
+    "sunAny": 0.3968,
+    "sunCentre": 0.3904,
+    "earthAny": 1.0,
+    "earthCentre": 1.0
+   },
+   "lola": {
+    "sun": 0.4054,
+    "sunMin": 0.3601,
+    "sunMax": 0.4245,
+    "earth": 1.0,
+    "earthMin": 0.9771,
+    "earthMax": 1.0
+   }
+  },
+  {
+   "id": "chandrayaan3-vikram",
+   "latitudeDeg": -69.3741,
+   "longitudeEastDeg": 32.31999999999999,
+   "lolaResolutionM": 240,
+   "ours": {
+    "sunAny": 0.4869,
+    "sunCentre": 0.4825,
+    "earthAny": 1.0,
+    "earthCentre": 1.0
+   },
+   "lola": {
+    "sun": 0.4829,
+    "sunMin": 0.4762,
+    "sunMax": 0.4847,
+    "earth": 1.0,
+    "earthMin": 1.0,
+    "earthMax": 1.0
+   }
+  },
+  {
+   "id": "plan-change7",
+   "latitudeDeg": -88.8,
+   "longitudeEastDeg": 123.39999999999998,
+   "lolaResolutionM": 60,
+   "ours": {
+    "sunAny": 0.5777,
+    "sunCentre": 0.5571,
+    "earthAny": 0.6219,
+    "earthCentre": 0.5752
+   },
+   "lola": {
+    "sun": 0.4899,
+    "sunMin": 0.445,
+    "sunMax": 0.4964,
+    "earth": 0.5505,
+    "earthMin": 0.4291,
+    "earthMax": 0.5987
+   }
+  },
+  {
+   "id": "plan-bluemoon1",
+   "latitudeDeg": -89.45,
+   "longitudeEastDeg": -137.3,
+   "lolaResolutionM": 60,
+   "ours": {
+    "sunAny": 0.8416,
+    "sunCentre": 0.7935,
+    "earthAny": 0.5472,
+    "earthCentre": 0.5015
+   },
+   "lola": {
+    "sun": 0.1908,
+    "sunMin": 0.1908,
+    "sunMax": 0.8231,
+    "earth": 0.1288,
+    "earthMin": 0.1288,
+    "earthMax": 0.5781
+   }
+  }
+ ]
+}

@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Horizon;
+using Shadowline.Core.Horizon;
 
 namespace Shadowline.Core.Terrain;
 

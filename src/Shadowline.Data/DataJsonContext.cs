@@ -1,17 +1,17 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Shadowline.Data;
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
-[JsonSerializable(typeof(ArtemisDocument))]
-[JsonSerializable(typeof(PhotosDocument))]
-[JsonSerializable(typeof(CreditsDocument))]
-[JsonSerializable(typeof(SiteCatalogDocument))]
-[JsonSerializable(typeof(YearsDocument))]
 [JsonSerializable(typeof(DataManifest))]
-[JsonSerializable(typeof(HistoryDocument))]
-[JsonSerializable(typeof(TourDocument))]
-[JsonSerializable(typeof(IncidentsDocument))]
+[JsonSerializable(typeof(SiteCatalogDocument))]
 [JsonSerializable(typeof(ValidationDocument))]
+[JsonSerializable(typeof(TourDocument))]
+[JsonSerializable(typeof(CreditsDocument))]
+[JsonSerializable(typeof(PhotosDocument))]
+[JsonSerializable(typeof(ArtemisDocument))]
+[JsonSerializable(typeof(HistoryDocument))]
+[JsonSerializable(typeof(YearsDocument))]
+[JsonSerializable(typeof(IncidentsDocument))]
 internal sealed partial class DataJsonContext : JsonSerializerContext;

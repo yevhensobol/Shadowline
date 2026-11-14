@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Terrain;
+namespace Shadowline.Core.Terrain;
 
 public sealed record PoleTileKey(int Row, int Col)
 {

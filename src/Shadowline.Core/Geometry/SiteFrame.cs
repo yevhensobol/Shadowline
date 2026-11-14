@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Sites;
+using Shadowline.Core.Sites;
 
 namespace Shadowline.Core.Geometry;
 

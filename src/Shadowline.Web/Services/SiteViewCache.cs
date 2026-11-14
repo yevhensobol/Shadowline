@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Text.Json;
 using Shadowline.Core.Horizon;
 using Shadowline.Core.Radio;

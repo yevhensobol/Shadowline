@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Time;
+using Shadowline.Core.Time;
 
 namespace Shadowline.Core.Geometry;
 

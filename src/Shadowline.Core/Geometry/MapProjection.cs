@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Geometry;
+namespace Shadowline.Core.Geometry;
 
 public readonly record struct MapPoint(double X, double Y);
 

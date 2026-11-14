@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Horizon;
 using Shadowline.Core.Incidents;
 using Shadowline.Core.Metrics;

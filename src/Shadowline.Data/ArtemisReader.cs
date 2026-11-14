@@ -1,5 +1,3 @@
-﻿using System.Formats.Asn1;
-
 namespace Shadowline.Data;
 
 public sealed record ArtemisSite(string Name, double Lat, double Lon);

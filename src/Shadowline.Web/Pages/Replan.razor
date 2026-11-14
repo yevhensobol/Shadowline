@@ -1,10 +1,9 @@
-﻿@page "/replan"
+@page "/replan"
 @page "/plan/when/slip"
 @inherits LocalizedComponent
 @using Shadowline.Core.Sites
 @using Shadowline.Core.Replan
 @using Shadowline.Core.Time
-@using Shadowline.Data
 @inject DataStore Store
 @inject NavigationManager Navigation
 @inject MissionStore Missions
@@ -160,9 +159,7 @@ else
                                 @Meter(L["metric.earth"], variant.Metrics.EarthFraction, 1.0, Missions.Current.MinEarthShare, true, Percent(variant.Metrics.EarthFraction), "earth")
                                 @Meter(L["metric.gap"], variant.Metrics.LongestEarthGap.TotalHours, Math.Max(1, durationHours), maxEarthGapHours, false, L.Duration(variant.Metrics.LongestEarthGap), "earth")
                             </div>
-                            @{
-                                var power = Views.Get(variant.Site.Id).Power(Store.Manifest.Grid, startIndex, Math.Max(1, (int)(TimeSpan.FromHours(durationHours) / Store.Manifest.Grid.Step)));
-                            }
+                            @{ var power = Views.Get(variant.Site.Id).Power(Store.Manifest.Grid, startIndex, Math.Max(1, (int)(TimeSpan.FromHours(durationHours) / Store.Manifest.Grid.Step))); }
                             <p class="option-power">@L.Format("power.short", power.VerticalKWhPerDay.ToString("F1", System.Globalization.CultureInfo.InvariantCulture), power.BatteryKWh.ToString("F0", System.Globalization.CultureInfo.InvariantCulture))</p>
                             <div class="row">
                                 <a class="button primary" href="@ExploreLink(variant.Site.Id, startIndex)">@L["replan.explore"]</a>

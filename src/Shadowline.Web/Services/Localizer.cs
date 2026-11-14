@@ -1,13 +1,11 @@
-﻿using Microsoft.JSInterop;
-using Microsoft.VisualBasic;
+using System.Globalization;
+using Microsoft.JSInterop;
 using Shadowline.Core.Finder;
 using Shadowline.Core.Localization;
 using Shadowline.Core.Reports;
 using Shadowline.Core.Sites;
-using System.Globalization;
-using Strings = Shadowline.Core.Localization.Strings;
-namespace Shadowline.Web.Services;
 
+namespace Shadowline.Web.Services;
 
 public sealed class Localizer(IJSRuntime js)
 {

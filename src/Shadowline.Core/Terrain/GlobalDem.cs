@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Terrain;
+namespace Shadowline.Core.Terrain;
 
 public readonly record struct DemTileKey(int Row, int Col)
 {

@@ -1,4 +1,4 @@
-﻿@page "/finder"
+@page "/finder"
 @page "/plan"
 @page "/plan/where"
 @using System.Globalization
@@ -92,8 +92,7 @@
                 <div class="frow">
                     @if (targetKey == "site")
                     {
-                        <label class="ffield">
-                            <span>@L["finder.targetSite"]</span>
+                        <label class="ffield"><span>@L["finder.targetSite"]</span>
                             <select @bind="targetSiteId">
                                 @foreach (var site in PolarSites())
                                 {
@@ -366,87 +365,54 @@
                     <SectionHeader Title="@L["finder.criteria"]" />
                     <table class="ftable">
                         <thead>
-                            <tr><th></th>@foreach (var pin in pins) {
-                                <th class="@(pin == pins[0] ? "lead" : null)">@pin.Label</th>
+                            <tr><th></th>@foreach (var pin in pins) { <th class="@(pin == pins[0] ? "lead" : null)">@pin.Label</th> }</tr>
+                        </thead>
+                        <tbody>
+                            <tr><th>@L["finder.score"]</th>@foreach (var pin in pins) { <td><span class="badge">@F2(result.Score[pin.Cell])</span></td> }</tr>
+                            <tr><th>@L["finder.row.sun"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Sun)">@Pct(result.Windows[pin.Cell].SunShare)</td> }</tr>
+                            <tr><th>@L["finder.row.dark"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Darkness)">@Hours(result.Windows[pin.Cell].LongestDarkHours)</td> }</tr>
+                            <tr><th>@L["finder.row.earth"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Earth)">@Pct(result.Windows[pin.Cell].EarthShare)</td> }</tr>
+                            <tr><th>@L["finder.row.slope"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Slope)">@grid.SlopeMedianDeg(pin.Cell).ToString("F1", CultureInfo.InvariantCulture)° / @grid.SlopeHighDeg(pin.Cell).ToString("F1", CultureInfo.InvariantCulture)°</td> }</tr>
+                            <tr><th>@L["finder.row.water"]</th>@foreach (var pin in pins) { <td>@grid.WaterDistanceKm(pin.Cell).ToString("F0", CultureInfo.InvariantCulture) @L["finder.km"]</td> }</tr>
+                            <tr><th>@L["finder.row.area"]</th>@foreach (var pin in pins) { <td>@(result.ZoneOf[pin.Cell] >= 0 ? result.Zones[result.ZoneOf[pin.Cell]].AreaKm2.ToString("F0", CultureInfo.InvariantCulture) + " км²" : "—")</td> }</tr>
+                            <tr><th>@L["finder.row.rank"]</th>@foreach (var pin in pins) { <td>@(result.ZoneOf[pin.Cell] >= 0 ? L.Format("finder.rank", result.ZoneOf[pin.Cell] + 1, result.Zones.Count) : L["finder.notPass"])</td> }</tr>
+                            <tr><th>@L["finder.row.start"]</th>@foreach (var pin in pins) { <td>@L.ShortDate(grid.At(result.Windows[pin.Cell].StartStep))</td> }</tr>
+                            <tr><th></th>@foreach (var pin in pins) { <td><a class="button" href="@ReportLink(pin.Cell)">@L["finder.fullReport"] ›</a></td> }</tr>
+                        </tbody>
+                    </table>
+                    <p class="muted small">@L["finder.failNote"]</p>
+                    <label class="ffield">
+                        <span>@L["finder.reference"]</span>
+                        <select value="" @onchange="AddReference" disabled="@(pins.Count >= MaxPins)">
+                            <option value="">—</option>
+                            @foreach (var site in PolarSites())
+                            {
+                                <option value="@site.Id">@L.Name(site)</option>
                             }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><th>@L["finder.score"]</th>@foreach (var pin in pins) {
-                            <td><span class="badge">@F2(result.Score[pin.Cell])</span></td>
+                        </select>
+                    </label>
+                    <SectionHeader Title="@L["finder.stabilityChart"]" />
+                    <div class="fbars">
+                        @foreach (var pin in pins)
+                        {
+                            var zoneIndex = result.ZoneOf[pin.Cell];
+                            var share = zoneIndex >= 0 && stability is not null && stability.TryGetValue(zoneIndex, out var s) ? s : 0;
+                            <div class="fbar"><span>@pin.Label</span><i><b style="width: @F(share * 100)%"></b></i><em>@(zoneIndex >= 0 ? Pct(share) : "—")</em></div>
                         }
-                    </tr>
-                    <tr><th>@L["finder.row.sun"]</th>@foreach (var pin in pins) {
-                        <td class="@Bad(pin.Cell, FinderFail.Sun)">@Pct(result.Windows[pin.Cell].SunShare)</td>
-                    }
-                </tr>
-                <tr><th>@L["finder.row.dark"]</th>@foreach (var pin in pins) {
-                    <td class="@Bad(pin.Cell, FinderFail.Darkness)">@Hours(result.Windows[pin.Cell].LongestDarkHours)</td>
-                }
-            </tr>
-            <tr><th>@L["finder.row.earth"]</th>@foreach (var pin in pins) {
-                <td class="@Bad(pin.Cell, FinderFail.Earth)">@Pct(result.Windows[pin.Cell].EarthShare)</td>
-            }
-        </tr>
-        <tr><th>@L["finder.row.slope"]</th>@foreach (var pin in pins) {
-            <td class="@Bad(pin.Cell, FinderFail.Slope)">@grid.SlopeMedianDeg(pin.Cell).ToString("F1", CultureInfo.InvariantCulture)° / @grid.SlopeHighDeg(pin.Cell).ToString("F1", CultureInfo.InvariantCulture)°</td>
-        }
-    </tr>
-    <tr><th>@L["finder.row.water"]</th>@foreach (var pin in pins) {
-        <td>@grid.WaterDistanceKm(pin.Cell).ToString("F0", CultureInfo.InvariantCulture) @L["finder.km"]</td>
-    }
-</tr>
-<tr><th>@L["finder.row.area"]</th>@foreach (var pin in pins) {
-    <td>@(result.ZoneOf[pin.Cell] >= 0 ? result.Zones[result.ZoneOf[pin.Cell]].AreaKm2.ToString("F0", CultureInfo.InvariantCulture) + " км²" : "—")</td>
-}
-</tr>
-<tr><th>@L["finder.row.rank"]</th>@foreach (var pin in pins) {
-    <td>@(result.ZoneOf[pin.Cell] >= 0 ? L.Format("finder.rank", result.ZoneOf[pin.Cell] + 1, result.Zones.Count) : L["finder.notPass"])</td>
-}
-</tr>
-<tr><th>@L["finder.row.start"]</th>@foreach (var pin in pins) {
-    <td>@L.ShortDate(grid.At(result.Windows[pin.Cell].StartStep))</td>
-}
-</tr>
-<tr><th></th>@foreach (var pin in pins) {
-    <td><a class="button" href="@ReportLink(pin.Cell)">@L["finder.fullReport"] ›</a></td>
-}
-</tr>
-</tbody>
-</table>
-<p class="muted small">@L["finder.failNote"]</p>
-<label class="ffield">
-    <span>@L["finder.reference"]</span>
-    <select value="" @onchange="AddReference" disabled="@(pins.Count >= MaxPins)">
-        <option value="">—</option>
-        @foreach (var site in PolarSites())
-        {
-            <option value="@site.Id">@L.Name(site)</option>
-        }
-    </select>
-</label>
-<SectionHeader Title="@L["finder.stabilityChart"]" />
-<div class="fbars">
-    @foreach (var pin in pins)
-    {
-        var zoneIndex = result.ZoneOf[pin.Cell];
-        var share = zoneIndex >= 0 && stability is not null && stability.TryGetValue(zoneIndex, out var s) ? s : 0;
-        <div class="fbar"><span>@pin.Label</span><i><b style="width: @F(share * 100)%"></b></i><em>@(zoneIndex >= 0 ? Pct(share) : "—")</em></div>
-    }
-</div>
-<p class="muted small">@L["finder.stabilityNote"]</p>
-</section>
-<section>
-    <SectionHeader Title="@L["finder.dateChart"]" />
-    <FinderChart Title="@L["finder.dateChart"]" XLabel="@L["axis.landingDate"]" YLabel="@L["axis.score"]" Series="DateSeries()" XMin="0" XMax="@((grid.EndUtc - grid.StartUtc).TotalDays)" YMin="0" YMax="1" XTicks="MonthTicks()" YTicks="ScoreTicks" Band="WindowBand()" />
-    <p class="muted small">@L.Format("finder.dateNote", durationDays)</p>
-    <SectionHeader Title="@L["finder.missChart"]" />
-    <FinderChart Title="@L["finder.missChart"]" XLabel="@L["axis.missKm"]" YLabel="@L["axis.passShare"]" Series="MissSeries()" XMin="0" XMax="10" YMin="0" YMax="1" XTicks="MissTicks" YTicks="ShareTicks" Marks="MissMarks" />
-    <p class="muted small">@L["finder.missNote"]</p>
-</section>
-</div>
-<p class="muted small">@L["finder.limitNote"]</p>
-</div>
+                    </div>
+                    <p class="muted small">@L["finder.stabilityNote"]</p>
+                </section>
+                <section>
+                    <SectionHeader Title="@L["finder.dateChart"]" />
+                    <FinderChart Title="@L["finder.dateChart"]" XLabel="@L["axis.landingDate"]" YLabel="@L["axis.score"]" Series="DateSeries()" XMin="0" XMax="@((grid.EndUtc - grid.StartUtc).TotalDays)" YMin="0" YMax="1" XTicks="MonthTicks()" YTicks="ScoreTicks" Band="WindowBand()" />
+                    <p class="muted small">@L.Format("finder.dateNote", durationDays)</p>
+                    <SectionHeader Title="@L["finder.missChart"]" />
+                    <FinderChart Title="@L["finder.missChart"]" XLabel="@L["axis.missKm"]" YLabel="@L["axis.passShare"]" Series="MissSeries()" XMin="0" XMax="10" YMin="0" YMax="1" XTicks="MissTicks" YTicks="ShareTicks" Marks="MissMarks" />
+                    <p class="muted small">@L["finder.missNote"]</p>
+                </section>
+            </div>
+            <p class="muted small">@L["finder.limitNote"]</p>
+        </div>
     }
 </div>
 

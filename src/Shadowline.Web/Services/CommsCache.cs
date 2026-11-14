@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using Shadowline.Core.Comms;
 using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Tracks;

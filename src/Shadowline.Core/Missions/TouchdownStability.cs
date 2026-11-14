@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Missions;
+namespace Shadowline.Core.Missions;
 
 public sealed record LanderStance(string Id, string Name, int Legs, double PadRadiusM, double CgHeightM, double GyrationM2)
 {

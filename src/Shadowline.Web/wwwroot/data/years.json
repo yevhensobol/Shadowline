@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "frame": "All years: NAIF SPICE MOON_ME_DE440_ME421, DE440, LT+S",
+  "years": [
+    {
+      "id": "2026",
+      "gridStartUtc": "2026-11-01T00:00:00Z",
+      "gridStepMinutes": 30,
+      "gridCount": 17520,
+      "file": "ephemeris.bin"
+    },
+    {
+      "id": "2027",
+      "gridStartUtc": "2027-11-01T00:00:00Z",
+      "gridStepMinutes": 30,
+      "gridCount": 17568,
+      "file": "years/2027.bin"
+    },
+    {
+      "id": "2028",
+      "gridStartUtc": "2028-11-01T00:00:00Z",
+      "gridStepMinutes": 30,
+      "gridCount": 17520,
+      "file": "years/2028.bin"
+    },
+    {
+      "id": "2029",
+      "gridStartUtc": "2029-11-01T00:00:00Z",
+      "gridStepMinutes": 30,
+      "gridCount": 17520,
+      "file": "years/2029.bin"
+    }
+  ]
+}

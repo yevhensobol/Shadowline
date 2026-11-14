@@ -1,4 +1,4 @@
-﻿@page "/about"
+@page "/about"
 @page "/science/about"
 @using System.Globalization
 @using Shadowline.Core.Reports
@@ -6,8 +6,6 @@
 @inherits LocalizedComponent
 @inject DataStore Store
 @inject HttpClient Http
-@using Shadowline.Data
-@using Shadowline.Data
 
 <PageTitle>@L["about.title"] - Shadowline</PageTitle>
 
@@ -118,13 +116,10 @@
         <ol class="report-refs">
             @foreach (var reference in References.All)
             {
-                <li>
-                    @reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
-                    {
-                        @(" ")
-                        <a href="@link" target="_blank" rel="noopener">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
-                    }
-                </li>
+                <li>@reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
+                {
+                    @(" ")<a href="@link" target="_blank" rel="noopener">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
+                }</li>
             }
         </ol>
     </section>

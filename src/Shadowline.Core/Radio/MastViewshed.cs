@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Terrain;
+using Shadowline.Core.Terrain;
 
 namespace Shadowline.Core.Radio;
 

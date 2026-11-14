@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Horizon;
+namespace Shadowline.Core.Horizon;
 
 public sealed class HorizonProfile
 {

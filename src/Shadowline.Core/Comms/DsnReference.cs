@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Comms;
+namespace Shadowline.Core.Comms;
 
 public sealed record DsnReferenceCase(DateTimeOffset TimeUtc, string StationId, double ElevationDeg);
 

@@ -1,0 +1,168 @@
+{
+  "formatVersion": 1,
+  "steps": [
+    {
+      "id": "lunar-day",
+      "site": "apollo17-lm",
+      "time": "2026-11-01T00:00:00Z",
+      "windowHours": 336,
+      "focus": "timeline",
+      "title": {
+        "en": "Lunar solar day",
+        "uk": "Сонячна доба на Місяці"
+      },
+      "text": {
+        "en": "A solar day on the Moon, from one sunrise to the next, lasts about 29.5 Earth days; the sidereal rotation period is 27.3 days. At the Apollo 17 site the Sun is above the horizon for about half of the solar day. Yellow bars on the timeline mark daylight, gaps mark night.",
+        "uk": "Сонячна доба на Місяці, від одного сходу Сонця до наступного, триває приблизно 29.5 земної доби; сидеричний період обертання становить 27.3 доби. На місці Apollo 17 Сонце над горизонтом приблизно половину сонячної доби. Жовті смуги на часовій шкалі позначають день, проміжки ніч."
+      },
+      "scene": "orbit"
+    },
+    {
+      "id": "earth-fixed",
+      "site": "apollo17-lm",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "sky",
+      "title": {
+        "en": "Earth near a fixed position in the sky",
+        "uk": "Земля поблизу сталого положення на небі"
+      },
+      "text": {
+        "en": "The Moon rotates synchronously, so Earth stays near a fixed position in the sky and moves only by libration. From this near-side site Earth is above the horizon continuously, and a direct link to Earth is always geometrically available. The blue bar has no gaps.",
+        "uk": "Місяць обертається синхронно, тож Земля лишається поблизу сталого положення на небі і зміщується лише через лібрацію. З цього місця на видимому боці Земля постійно над горизонтом, і прямий зв'язок із Землею геометрично доступний завжди. Синя смуга без розривів."
+      },
+      "scene": "earth"
+    },
+    {
+      "id": "far-side",
+      "site": "geo:0,180",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "timeline",
+      "title": {
+        "en": "Far side: no line of sight to Earth",
+        "uk": "Зворотний бік: немає прямої видимості Землі"
+      },
+      "text": {
+        "en": "At longitude 180° Earth does not rise above the horizon in this data. A direct link is not possible; a lander requires a relay satellite.",
+        "uk": "На довготі 180° Земля в цих даних не піднімається над горизонтом. Прямий зв'язок неможливий; апарату потрібен супутник-ретранслятор."
+      },
+      "scene": "orbit"
+    },
+    {
+      "id": "pole-sun",
+      "site": "geo:-89.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "sky",
+      "title": {
+        "en": "Low Sun elevation near the pole",
+        "uk": "Низька висота Сонця біля полюса"
+      },
+      "text": {
+        "en": "At this point, 0.5° from the south pole, the Sun does not rise above about 2°; across the Artemis regions, 84° to 89° S, the maximum is about 6° to 7°. Illumination is controlled by terrain: a ridge can keep the Sun in view while a crater rim blocks it for weeks. With the LOLA terrain horizon the Sun is in view about 13% of the year, against 57% for a flat horizon. With no atmosphere there is no twilight or refraction: the horizon is defined by terrain and lunar curvature, and the sky remains black in daylight.",
+        "uk": "У цій точці, за 0.5° від південного полюса, Сонце не піднімається вище приблизно 2°; у регіонах Artemis, 84°-89° пд. ш., максимум становить приблизно 6°-7°. Освітлення визначає рельєф: хребет може тримати Сонце в полі зору, тоді як вал кратера закриває його на тижні. З горизонтом рельєфу LOLA Сонце в полі зору приблизно 13% року, проти 57% для плаского горизонту. Атмосфери немає, тож немає сутінків і рефракції: горизонт задають лише рельєф і кривизна Місяця, а небо вдень лишається чорним."
+      },
+      "scene": "sun"
+    },
+    {
+      "id": "pole-earth",
+      "site": "geo:-89.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "metrics",
+      "title": {
+        "en": "Intermittent Earth visibility near the pole",
+        "uk": "Періодична видимість Землі біля полюса"
+      },
+      "text": {
+        "en": "Near the pole Earth is close to the horizon and rises and sets with libration. With the terrain horizon it is in view slightly less than half of the year. See the Earth share and the longest gap.",
+        "uk": "Біля полюса Земля поблизу горизонту і через лібрацію то сходить, то заходить. З урахуванням рельєфу вона в полі зору трохи менше половини року. Див. частку видимості Землі і найдовшу перерву."
+      },
+      "scene": "earth"
+    },
+    {
+      "id": "pole-map",
+      "site": "geo:-89.45,-137.3",
+      "time": "2026-11-10T00:00:00Z",
+      "scene": "orbit",
+      "layer": "sun",
+      "title": {
+        "en": "Annual illumination map",
+        "uk": "Карта річного освітлення"
+      },
+      "text": {
+        "en": "Colours show the share of the year in which at least part of the Sun is visible from each point, computed from LOLA terrain. The ridge between Shackleton and de Gerlache is lit for 90% to 92% of the year, against 92% over 19 years in Gläser et al. (2014). Blue crater floors receive no direct sunlight in the modelled year; these cold traps may contain water ice. Hover over the map to read a value, or switch the layer to Earth link or slope.",
+        "uk": "Кольори показують частку року, коли з кожної точки видно хоча б частину Сонця, за рельєфом LOLA. Хребет між Шеклтоном і де Жерлашем освітлений 90-92% року, проти 92% за 19 років у Gläser et al. (2014). Сині дна кратерів не отримують прямого сонячного світла за модельний рік; ці холодні пастки можуть містити водяний лід. Наведіть курсор на карту, щоб побачити значення, або перемкніть шар на зв'язок чи схили."
+      },
+      "windowHours": 336,
+      "focus": "map"
+    },
+    {
+      "id": "stand-here",
+      "site": "im2-athena",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 168,
+      "focus": "view3d",
+      "title": {
+        "en": "Surface view",
+        "uk": "Вид з поверхні"
+      },
+      "text": {
+        "en": "Terrain around the IM-2 landing site from LOLA elevation data. Drag to rotate the view, then switch to the top view. Start the time playback to follow the motion of shadows.",
+        "uk": "Рельєф навколо місця посадки IM-2 за даними висот LOLA. Перетягування повертає вид; далі перемкніться на вигляд зверху. Запустіть відтворення часу, щоб простежити рух тіней."
+      },
+      "scene": "stand"
+    },
+    {
+      "id": "eclipse",
+      "site": "geo:0,0",
+      "time": "2027-02-20T23:00:00Z",
+      "windowHours": 24,
+      "focus": "sky",
+      "title": {
+        "en": "Solar eclipse by Earth",
+        "uk": "Затемнення Сонця Землею"
+      },
+      "text": {
+        "en": "On 20 February 2027 Earth partly covers the Sun as seen from the Moon; from Earth this is a penumbral lunar eclipse. For the centre of the Moon it lasts about 2.5 hours, and power is reduced by the fraction of the solar disc covered by Earth.",
+        "uk": "20 лютого 2027 Земля частково закриває Сонце для спостерігача на Місяці; із Землі це півтіньове місячне затемнення. Для центра Місяця воно триває близько 2.5 години, а енергія зменшується на частку сонячного диска, закриту Землею."
+      },
+      "scene": "eclipse"
+    },
+    {
+      "id": "sensitivity",
+      "site": "geo:-89.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 168,
+      "focus": "sensitivity",
+      "title": {
+        "en": "Sensitivity to small shifts",
+        "uk": "Чутливість до малих зсувів"
+      },
+      "text": {
+        "en": "Compute shows the change in the sunlit share when the start moves by days or the site by kilometres. A slipped date or a small change of site can determine whether a mission has power.",
+        "uk": "«Розрахувати» показує зміну частки освітлення при зсуві старту на кілька діб або місця на кілька кілометрів. Перенесена дата чи невелика зміна місця може визначити, чи матиме місія живлення."
+      },
+      "scene": "orbit",
+      "link": "plan/sky?site=geo%3A-89.5%2C0&t=432&w=336"
+    },
+    {
+      "id": "replan",
+      "site": "geo:-89.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 168,
+      "focus": "compare",
+      "link": "plan/when/slip",
+      "title": {
+        "en": "Replanning",
+        "uk": "Перепланування"
+      },
+      "text": {
+        "en": "When the date or site must change, the Replan page searches sites and start delays against the set requirements and lists the alternatives that still meet them.",
+        "uk": "Коли дату чи місце потрібно змінити, сторінка «Перепланування» перебирає місця і затримки старту за заданими вимогами та показує варіанти, що їм ще відповідають."
+      },
+      "scene": "orbit"
+    }
+  ]
+}

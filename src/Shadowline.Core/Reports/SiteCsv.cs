@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Geometry;

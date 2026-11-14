@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Web.Services;
+namespace Shadowline.Web.Services;
 
 public static class IndexedBitmap
 {

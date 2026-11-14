@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Localization;
+namespace Shadowline.Core.Localization;
 
 public static class Strings
 {

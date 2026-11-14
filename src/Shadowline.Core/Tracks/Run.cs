@@ -1,3 +1,3 @@
-﻿namespace Shadowline.Core.Tracks;
+namespace Shadowline.Core.Tracks;
 
 public readonly record struct Run(int Start, int Length);

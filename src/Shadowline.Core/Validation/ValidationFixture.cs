@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Validation;
+namespace Shadowline.Core.Validation;
 
 public sealed record ValidationFixture(
     string SiteId,

@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Data;
+namespace Shadowline.Data;
 
 public static class SiteCatalogReader
 {

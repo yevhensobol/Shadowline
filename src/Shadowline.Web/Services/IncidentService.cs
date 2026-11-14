@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Geometry;
+using Shadowline.Core.Geometry;
 using Shadowline.Core.Horizon;
 using Shadowline.Core.Incidents;
 using Shadowline.Core.Sites;

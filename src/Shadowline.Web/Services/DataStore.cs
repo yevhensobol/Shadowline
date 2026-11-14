@@ -1,6 +1,5 @@
-﻿using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Ephemeris;
 using Shadowline.Data;
-using System.Formats.Tar;
 
 namespace Shadowline.Web.Services;
 

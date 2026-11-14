@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using Shadowline.Core.Time;
 
 namespace Shadowline.Data;

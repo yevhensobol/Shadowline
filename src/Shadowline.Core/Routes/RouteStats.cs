@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Routes;
+namespace Shadowline.Core.Routes;
 
 public sealed record RouteSample(double DistanceKm, double ElevationM, double SlopeDeg, double Sun, double Earth, bool Dark);
 

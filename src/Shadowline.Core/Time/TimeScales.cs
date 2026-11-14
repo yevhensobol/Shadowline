@@ -1,4 +1,4 @@
-﻿namespace Shadowline.Core.Time;
+namespace Shadowline.Core.Time;
 
 public static class TimeScales
 {
