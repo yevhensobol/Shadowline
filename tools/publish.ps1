@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Output = "publish",
+    [string]$Output = "deploy\publish",
     [string]$Configuration = "Release",
     [switch]$SkipTests
 )
@@ -16,15 +16,16 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 $target = if ([System.IO.Path]::IsPathRooted($Output)) { $Output } else { Join-Path $root $Output }
 $target = [System.IO.Path]::GetFullPath($target)
 
+$deploy = [System.IO.Path]::GetFullPath((Join-Path $root "deploy"))
+$inDeploy = $target.StartsWith($deploy + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 if (Test-Path -LiteralPath $target) {
     $entries = @(Get-ChildItem -LiteralPath $target -Force)
-    if ($entries.Count -gt 0) {
-        if (-not (Test-Path -LiteralPath (Join-Path $target "wwwroot\_framework"))) {
-            throw "$target is not empty and is not a previous publish output"
-        }
-        Remove-Item -LiteralPath $target -Recurse -Force
+    if (-not $inDeploy -and $entries.Count -gt 0 -and -not (Test-Path -LiteralPath (Join-Path $target "wwwroot\_framework"))) {
+        throw "$target is not empty and is not a previous publish output"
     }
+    Remove-Item -LiteralPath $target -Recurse -Force
 }
+New-Item -ItemType Directory -Path $target -Force | Out-Null
 
 if (-not $SkipTests) {
     dotnet test src/Shadowline.Tests -c $Configuration

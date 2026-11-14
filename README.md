@@ -24,7 +24,7 @@ dotnet run --project src/Shadowline.Web
 publish.cmd
 ```
 
-Runs the tests, publishes the site to `publish/wwwroot` and prints the upload command. Options: `tools/publish.ps1 -SkipTests`, `-Output <dir>`.
+Runs the tests, publishes the site to `deploy/publish/wwwroot` (old output is removed first) and prints the upload command. Options: `tools/publish.ps1 -SkipTests`, `-Output <dir>`.
 
 ## Models and data
 
