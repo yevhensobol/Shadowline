@@ -1,4 +1,7 @@
-﻿using System.Text;
+using System.Text;
+using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Geometry;
+using Shadowline.Core.Horizon;
 using Shadowline.Core.Incidents;
 using Shadowline.Data;
 
@@ -32,5 +35,51 @@ public class IncidentsReaderTests
         await Assert.ThrowsAsync<DataFormatException>(() => IncidentsReader.ReadAsync(Json(Doc.Replace("[\"a\"]", "[\"b\"]"))).AsTask());
         await Assert.ThrowsAsync<DataFormatException>(() => IncidentsReader.ReadAsync(Json(Doc.Replace("\"use\":\"fit\"", "\"use\":\"maybe\""))).AsTask());
         await Assert.ThrowsAsync<DataFormatException>(() => IncidentsReader.ReadAsync(Json(Doc.Replace("2024-01-19T15:20:00Z\",\"gridStartUtc", "2024-03-19T15:20:00Z\",\"gridStartUtc"))).AsTask());
+    }
+
+    [Fact]
+    public async Task Shipped_slim_case_points_the_panel_west_and_predicts_held_out_contacts()
+    {
+        var data = Path.Combine(AppContext.BaseDirectory, "data");
+        await using var stream = File.OpenRead(Path.Combine(data, "incidents.json"));
+        var document = await IncidentsReader.ReadAsync(stream);
+        await using var catalogStream = File.OpenRead(Path.Combine(data, "catalog.json"));
+        var catalog = await SiteCatalogReader.ReadAsync(catalogStream);
+        var slim = document.Incidents!.Single(i => i.Id == "slim");
+        foreach (var item in document.Incidents!)
+        {
+            Assert.True(catalog.Find(item.Site) is not null);
+            Assert.Equal(item.GridCount * 24, new FileInfo(Path.Combine(data, "incidents", item.Id + ".bin")).Length);
+        }
+
+        var ephemeris = EphemerisReader.Read(await File.ReadAllBytesAsync(Path.Combine(data, "incidents", "slim.bin")), slim.Grid);
+        var horizon = HorizonReader.Read(await File.ReadAllBytesAsync(Path.Combine(data, "horizon", "slim.bin")));
+        var track = SunTrack.Build(new SiteFrame(catalog.Find("slim")!), ephemeris, horizon);
+        var result = AttitudeInference.Run(track, slim.Observations!.Select(o => o.ToCore()).ToList(), InferencePrior.Sphere, 6000);
+
+        Assert.True(result.Azimuth!.Median >= 250 && result.Azimuth!.Median <= 300);
+        var march = result.Scores.Single(s => s.Observation.Kind == ObservationKind.Power && s.Observation.FromUtc.Month == 3);
+        Assert.True(march.Share > 0.9);
+        Assert.True(slim.Observations!.All(o => o.Use != "check" || o.Type != "operations"));
+        Assert.True(slim.Observations!.Count(o => o.Use == "fit") == 2);
+    }
+
+    [Fact]
+    public async Task Slim_contacts_fall_when_the_moon_is_over_a_jaxa_station()
+    {
+        var data = Path.Combine(AppContext.BaseDirectory, "data");
+        await using var stream = File.OpenRead(Path.Combine(data, "incidents.json"));
+        var document = await IncidentsReader.ReadAsync(stream);
+        await using var catalogStream = File.OpenRead(Path.Combine(data, "catalog.json"));
+        var catalog = await SiteCatalogReader.ReadAsync(catalogStream);
+        var slim = document.Incidents!.Single(i => i.Id == "slim");
+        var ephemeris = EphemerisReader.Read(await File.ReadAllBytesAsync(Path.Combine(data, "incidents", "slim.bin")), slim.Grid);
+        var horizon = HorizonReader.Read(await File.ReadAllBytesAsync(Path.Combine(data, "horizon", "slim.bin")));
+        var observations = slim.Observations!.Select(o => o.ToCore()).Where(o => o.Fit || o.Check).ToList();
+        var result = IncidentComms.Analyze(new SiteFrame(catalog.Find("slim")!), ephemeris, horizon, IncidentComms.Jaxa, observations, slim.LandingUtc, observations.Max(o => o.ToUtc));
+
+        Assert.Equal(4, result.Contacts.Count);
+        Assert.True(result.Contacts.All(c => c.MaxElevationDeg >= 10));
+        Assert.True(result.BaseRate > 0.3 && result.BaseRate < 0.6);
     }
 }
