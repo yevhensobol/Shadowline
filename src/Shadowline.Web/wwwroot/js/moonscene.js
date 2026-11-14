@@ -316,7 +316,7 @@ class MoonScene {
                 .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObj = position;");
             shader.fragmentShader = shader.fragmentShader
                 .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform float poleHalf;\nuniform vec3 holeDir;\nuniform float holeCos;\nuniform float photoOn;\nuniform sampler2D photoMap;")
-                .replace("#include <opaque_fragment>", "vec3 pu = normalize(vec3(vObj.x, -vObj.z, vObj.y));\nfloat photoMix = photoOn * smoothstep(-0.87, -0.9, pu.z);\nif (photoMix > 0.0) {\n    float pk = 3474800.0 / (1.0 - pu.z);\n    vec3 pc = texture2D(photoMap, vec2(pk * pu.y, pk * pu.x) / 1862000.0 + 0.5).rgb;\n    outgoingLight = mix(outgoingLight, pc, photoMix);\n}\n#include <opaque_fragment>")
+                .replace("#include <opaque_fragment>", "vec3 pu = normalize(vec3(vObj.x, -vObj.z, vObj.y));\nfloat photoMix = photoOn * smoothstep(-0.87, -0.9, pu.z);\nif (photoMix > 0.0) {\n    float pk = 3474800.0 / (1.0 - pu.z);\n    vec3 pc = texture2D(photoMap, vec2(pk * pu.y, pk * pu.x) / 1862000.0 + 0.5).rgb;\n    outgoingLight = mix(outgoingLight, pc * 0.62, photoMix);\n}\n#include <opaque_fragment>")
                 .replace("void main() {", `void main() {
     if (dot(normalize(vObj), holeDir) > holeCos) discard;
     if (poleHalf > 0.0) {
@@ -588,7 +588,7 @@ if (gridOn > 0.5) {
     totalEmissiveRadiance += vec3(0.3, 0.5, 0.68) * a * 0.45;
     diffuseColor.rgb *= 1.0 - 0.3 * a;
 }`)
-                .replace("#include <opaque_fragment>", "if (photoOn > 0.5 && layerMode < 0.5) outgoingLight = diffuseColor.rgb + totalEmissiveRadiance;\n#include <opaque_fragment>");
+                .replace("#include <opaque_fragment>", "if (photoOn > 0.5 && layerMode < 0.5) outgoingLight = diffuseColor.rgb * 0.62 + totalEmissiveRadiance;\n#include <opaque_fragment>");
         };
     }
 
@@ -1575,7 +1575,7 @@ if (gridOn > 0.5) {
 
     async setPoleMode(mode) {
         this.poleMode = mode === "photo" ? "photo" : "relief";
-        this.photoUniform.value = this.poleMode === "photo" ? 1 : 0;
+        if (this.poleMode !== "photo") this.photoUniform.value = 0;
         if (this.pole && !this.poleAlbedo) this.poleAlbedo = this.pole.material.map;
         let map = this.poleAlbedo;
         this.dirty = true;
@@ -1591,6 +1591,7 @@ if (gridOn > 0.5) {
         for (const material of [this.pole && this.pole.material, this.poleDetail && this.poleDetail.material]) {
             if (material && map) material.map = map;
         }
+        this.photoUniform.value = this.poleMode === "photo" && map !== this.poleAlbedo ? 1 : 0;
         this.dirty = true;
     }
 

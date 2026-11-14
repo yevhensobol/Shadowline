@@ -272,7 +272,7 @@ export class Relief {
                             .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObj = position;");
                         shader.fragmentShader = shader.fragmentShader
                             .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform float poleHalf;\nuniform float photoOn;\nuniform sampler2D photoMap;")
-                            .replace("#include <opaque_fragment>", "vec3 pu = normalize(vec3(vObj.x, -vObj.z, vObj.y));\nfloat photoMix = photoOn * smoothstep(-0.87, -0.9, pu.z);\nif (photoMix > 0.0) {\n    float pk = 3474800.0 / (1.0 - pu.z);\n    vec3 pc = texture2D(photoMap, vec2(pk * pu.y, pk * pu.x) / 1862000.0 + 0.5).rgb;\n    outgoingLight = mix(outgoingLight, pc, photoMix);\n}\n#include <opaque_fragment>")
+                            .replace("#include <opaque_fragment>", "vec3 pu = normalize(vec3(vObj.x, -vObj.z, vObj.y));\nfloat photoMix = photoOn * smoothstep(-0.87, -0.9, pu.z);\nif (photoMix > 0.0) {\n    float pk = 3474800.0 / (1.0 - pu.z);\n    vec3 pc = texture2D(photoMap, vec2(pk * pu.y, pk * pu.x) / 1862000.0 + 0.5).rgb;\n    outgoingLight = mix(outgoingLight, pc * 0.62, photoMix);\n}\n#include <opaque_fragment>")
                             .replace("void main() {", `void main() {
     if (poleHalf > 0.0) {
         vec3 u = normalize(vec3(vObj.x, -vObj.z, vObj.y));
