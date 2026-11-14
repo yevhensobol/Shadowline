@@ -1,0 +1,693 @@
+﻿@page "/planner"
+@page "/plan/sky"
+@using Shadowline.Core.Metrics
+@using Shadowline.Core.Permalink
+@using Shadowline.Core.Power
+@using Shadowline.Core.Reports
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Tracks
+@using System.Globalization
+@using Shadowline.Web.Components
+@using Shadowline.Data
+@inherits LocalizedComponent
+@inject DataStore Store
+@inject SiteViewCache Views
+@inject NavigationManager Navigation
+@inject MissionStore Missions
+@inject IJSRuntime Js
+@inject CommsCache Comms
+
+<PageTitle>@(view is null ? L["planner.title"] : L.Name(view.Site)) - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.PlanTabs Tab="sky" />
+
+@if (error is not null)
+{
+    <p class="error page-note">@error</p>
+}
+else if (view is null || Store.Catalog is null || Store.Manifest is null)
+{
+    <p class="muted page-note">@L["common.loading"]</p>
+}
+else
+{
+    <div class="planner">
+        <aside class="side">
+            <div id="tour-map" class="@Focus("map")">
+                <MoonMap Sites="Store.Catalog.Sites"
+                         SelectedId="siteId"
+                         Selected="@(new SubPoint(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg))"
+                         Sun="SubPoint.Of(Store.Ephemeris!.Sun(cursor))"
+                         Earth="SubPoint.Of(Store.Ephemeris!.Earth(cursor))"
+                         SiteSelected="OnMapSite"
+                         PointSelected="OnMapPoint" />
+            </div>
+
+            <div class="fields">
+                <label>
+                    <span>@L["planner.site"]</span>
+                    <select value="@siteId" @onchange="OnSiteChanged">
+                        @foreach (var site in Store.Catalog.Sites)
+                        {
+                            <option value="@site.Id">@L.Name(site)</option>
+                        }
+                        @if (view.Site.Id.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+                        {
+                            <option value="@view.Site.Id">@L.Name(view.Site)</option>
+                        }
+                    </select>
+                </label>
+                @if (Store.Years?.Years is { Count: > 1 } years)
+                {
+                    <label>
+                        <span>@L["explore.year"]</span>
+                        <select value="@Store.Year" @onchange="OnYear">
+                            @foreach (var entry in years)
+                            {
+                                <option value="@entry.Id">@DataStore.YearLabel(entry.Id)</option>
+                            }
+                        </select>
+                    </label>
+                }
+                <label>
+                    <span>@L["planner.window"]</span>
+                    <select value="@windowHours" @onchange="OnWindowChanged">
+                        @foreach (var hours in WindowOptions)
+                        {
+                            <option value="@hours">@hours @L["common.unit.h"]</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    <span>@L["planner.lat"]</span>
+                    <input type="text" inputmode="decimal" @bind="latText" />
+                </label>
+                <label>
+                    <span>@L["planner.lon"]</span>
+                    <input type="text" inputmode="decimal" @bind="lonText" />
+                </label>
+                <button type="button" class="wide" @onclick="UseCustom">@L["planner.use"]</button>
+                @if (coordsError)
+                {
+                    <p class="error wide">@L["planner.invalidCoords"]</p>
+                }
+            </div>
+
+            <section class="glance">
+                <h2>@L.Format("planner.glance", L.Span(Store.Manifest.Grid.Step * windowLength))</h2>
+                <ul class="verdicts">
+                    @foreach (var verdict in verdicts)
+                    {
+                        <li class="verdict @verdict.Level">
+                            <span class="verdict-topic">@L["report.verdict." + verdict.Topic]</span>
+                            <strong>@L["report.level." + verdict.Level]</strong>
+                            <span class="verdict-why">@VerdictWhy(verdict)</span>
+                        </li>
+                    }
+                </ul>
+                <div class="row">
+                    <a class="button" href="@ReportLink()">@L["report.open"]</a>
+                    <a class="button" href="@WindowsLink()">@L["planner.findWindows"]</a>
+                </div>
+            </section>
+
+            <RobustnessCard SiteId="@siteId" Start="windowStart" Compact="true" />
+
+            @if (Store.Manifest.Kind == "synthetic")
+            {
+                <p class="notice">@L["common.synthetic"]</p>
+            }
+            else if (Store.Catalog.IsSynthetic)
+            {
+                <p class="notice">@L["common.demoSites"]</p>
+            }
+
+            @if (!view.HasTerrain)
+            {
+                <p class="notice">@L["planner.flatHorizon"]</p>
+            }
+        </aside>
+
+        <div class="main">
+            <header class="site-head">
+                <div>
+                    <h1>@L.Name(view.Site)</h1>
+                    <p class="coords">@FormatLat(view.Site.LatitudeDeg), @FormatLon(view.Site.LongitudeEastDeg)</p>
+                </div>
+                <div class="row head-actions">
+                    <a class="button primary" href="@ReportLink()">@L["report.open"]</a>
+                    @if (Store.Tour is not null && tourIndex is null)
+                    {
+                        <button type="button" class="ghost" @onclick="StartTour">@L["tour.start"]</button>
+                    }
+                </div>
+            </header>
+
+            @if (Store.Tour is { Steps: { Count: > 0 } tourSteps } && tourIndex is { } currentStep)
+            {
+                <TourPanel Steps="tourSteps" Index="currentStep" IndexChanged="OnTourStep" Closed="CloseTour" />
+            }
+
+            <div class="now">
+                <p class="now-line sun">@CountdownText("planner.sun", view.Tracks.SunVisible)</p>
+                <p class="now-line earth">@CountdownText("planner.earth", view.Tracks.EarthVisible)</p>
+            </div>
+
+            <div id="tour-view3d" class="planner-view @Focus("view3d")">
+                <MoonGlobe Sites="NoSites"
+                           Embedded="true"
+                           StandAt="view.Site"
+                           Labels="SurfaceLabels()"
+                           Cursor="cursor"
+                           Ephemeris="Store.Ephemeris!"
+                           Grid="Store.Manifest.Grid" />
+            </div>
+
+            <div id="tour-sky" class="@Focus("sky")">
+                <SkyChart Snapshot="snapshot" Horizon="view.Horizon" Pan="true" />
+            </div>
+            <p class="legend">
+                <span class="sun">@L.Format("planner.sun", snapshot.Sun.AzimuthDeg.ToString("F1"), snapshot.Sun.ElevationDeg.ToString("F1"))</span>
+                <span class="earth">@L.Format("planner.earth", snapshot.Earth.AzimuthDeg.ToString("F1"), snapshot.Earth.ElevationDeg.ToString("F1"))</span>
+            </p>
+
+            <div class="transport">
+                <button type="button" class="primary" @onclick="TogglePlay">@L[playing ? "planner.pause" : "planner.play"]</button>
+                <time class="stamp">@Store.Manifest.Grid.At(cursor).ToString("yyyy-MM-dd HH:mm") UTC</time>
+                <label class="inline">
+                    <span>@L["planner.speed"]</span>
+                    <select value="@speedIndex" @onchange="OnSpeedChanged">
+                        @for (var i = 0; i < Speeds.Length; i++)
+                        {
+                            <option value="@i">@(Speeds[i] * HoursPerStepTick) @L["common.unit.h"]/@L["common.unit.s"]</option>
+                        }
+                    </select>
+                </label>
+            </div>
+
+            <div class="jumps">
+                <button type="button" title="@L["jump.sunrise"]" @onclick="() => Jump(view.Tracks.SunVisible, false, true)">&lsaquo; @L["jump.sunrise"]</button>
+                <button type="button" title="@L["jump.sunrise"]" @onclick="() => Jump(view.Tracks.SunVisible, true, true)">@L["jump.sunrise"] &rsaquo;</button>
+                <button type="button" title="@L["jump.sunset"]" @onclick="() => Jump(view.Tracks.SunVisible, false, false)">&lsaquo; @L["jump.sunset"]</button>
+                <button type="button" title="@L["jump.sunset"]" @onclick="() => Jump(view.Tracks.SunVisible, true, false)">@L["jump.sunset"] &rsaquo;</button>
+                <button type="button" title="@L["jump.eclipse"]" @onclick="() => Jump(view.Tracks.EarthOverSun, true, true)">@L["jump.eclipse"] &rsaquo;</button>
+            </div>
+
+            <div id="tour-timeline" class="@Focus("timeline")">
+                <Timeline Tracks="view.Tracks"
+                          Grid="Store.Manifest.Grid"
+                          Cursor="cursor"
+                          CursorChanged="OnCursorChanged"
+                          WindowStart="windowStart"
+                          WindowLength="windowLength" />
+            </div>
+
+            <section class="block">
+                <h2>@L["planner.metrics"]</h2>
+                <div id="tour-metrics" class="report-figures planner-figures @Focus("metrics")">
+                    <div><strong>@Pct(metrics.SunFraction)</strong><span>@L["metric.sun"]</span></div>
+                    <div><strong>@L.Duration(metrics.LongestDarkness)</strong><span>@L["metric.darkness"]</span></div>
+                    <div><strong>@power.VerticalKWhPerDay.ToString("F1", CultureInfo.InvariantCulture)</strong><span>@L["report.fig.kwh"]</span></div>
+                    <div><strong>@Pct(metrics.EarthFraction)</strong><span>@L["metric.earth"]</span></div>
+                    <div><strong>@L.Duration(metrics.LongestEarthGap)</strong><span>@L["metric.gap"]</span></div>
+                    <div><strong>@Pct(link.Fraction)</strong><span>@L["report.fig.link"]</span></div>
+                    <div><strong>@L.Duration(metrics.EarthOverSun)</strong><span>@L["metric.eclipse"]</span></div>
+                    <div><strong>@power.BatteryKWh.ToString("F0", CultureInfo.InvariantCulture)</strong><span>@L["report.fig.battery"]</span></div>
+                    <div><strong>@L.Duration(link.LongestGap)</strong><span>@L["dsn.gap"]</span></div>
+                </div>
+            </section>
+
+            <section class="block">
+                <h2>@L["sens.title"]</h2>
+                <div id="tour-sensitivity" class="@Focus("sensitivity")">
+                    <SensitivityPanel View="view" Ephemeris="Store.Ephemeris!" Start="windowStart" Length="windowLength" />
+                </div>
+            </section>
+
+            <section class="block">
+                <h2 id="tour-compare" class="@Focus("compare")">@L["planner.compare"]</h2>
+                <p class="row">
+                    <button type="button" @onclick="AddScenario" disabled="@(scenarios.Count >= MaxScenarios)">@L["planner.add"]</button>
+                    <span class="muted">@L.Format("planner.limit", MaxScenarios)</span>
+                </p>
+                @if (scenarios.Count > 0)
+                {
+                    <ScenarioTable Rows="ComparisonRows()" Remove="RemoveScenario" />
+
+                    <h3>@L["planner.snapshots"]</h3>
+                    <div class="compare-grid">
+                        @foreach (var scenario in scenarios)
+                        {
+                            var scenarioView = ViewFor(scenario.SiteId);
+                            <figure>
+                                <figcaption>@L.Name(scenarioView.Site)</figcaption>
+                                <SkyChart Snapshot="scenarioView.At(cursor)" Horizon="scenarioView.Horizon" />
+                            </figure>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private const int MaxScenarios = 3;
+
+    private static readonly int[] Speeds = [1, 4, 16, 48];
+
+    private const int HoursPerStepTick = 5;
+
+    private static readonly int[] WindowOptions = [24, 72, 168, 336];
+
+    private readonly List<(string SiteId, int Start, int Hours)> scenarios = [];
+
+    private string? error;
+    private SiteView? view;
+    private SkySnapshot snapshot;
+    private WindowMetrics metrics = default!;
+    private PowerEstimate power = new(0, 0, 0, 0, 0, 0);
+    private DsnPanel.LinkSummary link;
+    private IReadOnlyList<ReportVerdict> verdicts = [];
+    private string siteId = string.Empty;
+    private int cursor;
+    private int windowHours = 168;
+    private int windowStart;
+    private int windowLength = 1;
+    private int? tourIndex;
+    private string? tourFocus;
+    private Timer? timer;
+    private bool playing;
+    private int speedIndex = 1;
+    private string latText = string.Empty;
+    private string lonText = string.Empty;
+    private bool coordsError;
+
+    private static readonly IReadOnlyList<MoonGlobe.SceneSite> NoSites = [];
+
+    private object SurfaceLabels() => new
+    {
+        sun = L["explore.sun"],
+        earth = L["explore.earth"],
+        directions = L["explore.dirs"].Split(','),
+    };
+
+    private string FormatLat(double value) => L.Lat(value, 2);
+
+    private string FormatLon(double value) => L.Lon(value, 2);
+
+    private string CountdownText(string prefix, BitTrack track)
+    {
+        var countdown = Countdown.At(track, cursor);
+        if (countdown.StepsToChange is not { } steps)
+        {
+            return L[prefix + (countdown.Active ? ".up" : ".down")];
+        }
+
+        return L.Format(prefix + (countdown.Active ? ".sets" : ".rises"), FormatDuration(Store.Manifest!.Grid.Step * steps));
+    }
+
+    private string FormatDuration(TimeSpan span)
+    {
+        var minutes = (int)Math.Round(span.TotalMinutes);
+        var days = minutes / 1440;
+        var hours = minutes % 1440 / 60;
+        var rest = minutes % 60;
+        var parts = new List<string>();
+        if (days > 0)
+        {
+            parts.Add(days + " " + L["common.unit.d"]);
+        }
+
+        if (hours > 0)
+        {
+            parts.Add(hours + " " + L["common.unit.h"]);
+        }
+
+        if (rest > 0 && days == 0)
+        {
+            parts.Add(rest + " " + L["common.unit.min"]);
+        }
+
+        return string.Join(' ', parts);
+    }
+
+    private void Jump(BitTrack track, bool forward, bool rising)
+    {
+        if (TrackNavigator.Find(track, cursor, forward, rising) is { } target)
+        {
+            if (playing)
+            {
+                StopPlayback();
+            }
+
+            cursor = target;
+            Refresh();
+        }
+    }
+
+    private string Focus(string name) => tourFocus == name ? "tour-focus" : string.Empty;
+
+    private async Task StartTour()
+    {
+        tourIndex = 0;
+        await ApplyTourStep();
+    }
+
+    private async Task OnTourStep(int index)
+    {
+        tourIndex = index;
+        await ApplyTourStep();
+    }
+
+    private void CloseTour()
+    {
+        tourIndex = null;
+        tourFocus = null;
+    }
+
+    private async Task ApplyTourStep()
+    {
+        var steps = Store.Tour?.Steps;
+        if (steps is null || tourIndex is not { } index || index < 0 || index >= steps.Count)
+        {
+            return;
+        }
+
+        if (playing)
+        {
+            StopPlayback();
+        }
+
+        var step = steps[index];
+        if (Views.Resolve(step.Site) is not null)
+        {
+            siteId = step.Site;
+        }
+
+        if (step.Time is { } time)
+        {
+            cursor = Math.Max(0, Store.Manifest!.Grid.IndexOf(time));
+        }
+
+        if (step.WindowHours is { } hours && WindowOptions.Contains(hours))
+        {
+            windowHours = hours;
+        }
+
+        tourFocus = step.Focus;
+        BuildView();
+        StateHasChanged();
+        if (step.Focus is { Length: > 0 } focus)
+        {
+            await Task.Yield();
+            await Js.InvokeVoidAsync("shadowlineTour.scrollTo", "tour-" + focus);
+        }
+    }
+
+    private void OnMapSite(string id)
+    {
+        siteId = id;
+        BuildView();
+    }
+
+    private void OnMapPoint(SubPoint point)
+    {
+        siteId = CustomSite.Create(point.LatitudeDeg, point.LongitudeEastDeg).Id;
+        BuildView();
+    }
+
+    private void TogglePlay()
+    {
+        if (playing)
+        {
+            StopPlayback();
+            return;
+        }
+
+        if (cursor >= Store.Manifest!.Grid.Count - 1)
+        {
+            cursor = 0;
+        }
+
+        playing = true;
+        timer = new Timer(_ => _ = InvokeAsync(Tick), null, 100, 100);
+    }
+
+    private void StopPlayback()
+    {
+        timer?.Dispose();
+        timer = null;
+        playing = false;
+        SyncUrl();
+    }
+
+    private void Tick()
+    {
+        if (!playing)
+        {
+            return;
+        }
+
+        var last = Store.Manifest!.Grid.Count - 1;
+        cursor = Math.Min(cursor + Speeds[speedIndex], last);
+        Refresh(false);
+        if (cursor >= last)
+        {
+            StopPlayback();
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnSpeedChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var index) && index >= 0 && index < Speeds.Length)
+        {
+            speedIndex = index;
+        }
+    }
+
+    public override void Dispose()
+    {
+        timer?.Dispose();
+        base.Dispose();
+    }
+
+    private void UseCustom()
+    {
+        var latitudeOk = double.TryParse(latText.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude);
+        var longitudeOk = double.TryParse(lonText.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var longitude);
+        coordsError = !(latitudeOk && longitudeOk && CustomSite.IsValid(latitude, longitude));
+        if (coordsError)
+        {
+            return;
+        }
+
+        siteId = CustomSite.Create(latitude, longitude).Id;
+        BuildView();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Store.ApplyYearAsync(new Uri(Navigation.Uri));
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        await Views.EnsureLoadedAsync();
+
+        siteId = Store.Catalog!.Sites[0].Id;
+        cursor = Math.Clamp(Store.Manifest!.Grid.IndexOf(DateTimeOffset.UtcNow), 0, Store.Manifest.Grid.Count - 1);
+        ApplyState(PlannerState.Parse(new Uri(Navigation.Uri).Query));
+        BuildView();
+    }
+
+    private void ApplyState(PlannerState? state)
+    {
+        if (state is null)
+        {
+            return;
+        }
+
+        var catalog = Store.Catalog!;
+        if (Views.Resolve(state.SiteId) is not null)
+        {
+            siteId = state.SiteId;
+        }
+
+        if (new Uri(Navigation.Uri).Query.TrimStart('?').Split('&').Any(pair => pair.StartsWith("t=", StringComparison.Ordinal)))
+        {
+            cursor = state.Cursor;
+        }
+
+        if (WindowOptions.Contains(state.WindowHours))
+        {
+            windowHours = state.WindowHours;
+        }
+
+        foreach (var pin in state.Pins)
+        {
+            if (Views.Resolve(pin.SiteId) is not null && WindowOptions.Contains(pin.WindowHours) && scenarios.Count < MaxScenarios)
+            {
+                scenarios.Add((pin.SiteId, pin.Start, pin.WindowHours));
+            }
+        }
+    }
+
+    private void SyncUrl()
+    {
+        var state = new PlannerState(
+            siteId,
+            cursor,
+            windowHours,
+            scenarios.Select(scenario => new ScenarioPin(scenario.SiteId, scenario.Start, scenario.Hours)).ToArray());
+        var path = new Uri(Navigation.Uri).GetLeftPart(UriPartial.Path);
+        Navigation.NavigateTo(path + state.ToQuery() + Store.YearQuery + Missions.QuerySuffix, replace: true);
+    }
+
+    private SiteView ViewFor(string id) => Views.Get(id);
+
+    private async Task OnYear(ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() is not { } id)
+        {
+            return;
+        }
+
+        var grid = Store.Manifest!.Grid;
+        var offset = grid.At(cursor) - grid.Start;
+        if (!await Store.SetYearAsync(id))
+        {
+            return;
+        }
+
+        grid = Store.Manifest!.Grid;
+        cursor = Math.Clamp(grid.IndexOf(grid.Start + offset), 0, grid.Count - 1);
+        BuildView();
+        SyncUrl();
+    }
+
+    private string? preparingId;
+
+    private void BuildView()
+    {
+        view = ViewFor(siteId);
+        Refresh();
+        if (siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) && Views.TerrainFor(siteId) is null && preparingId != siteId)
+        {
+            preparingId = siteId;
+            _ = PrepareCustomAsync(siteId);
+        }
+    }
+
+    private async Task PrepareCustomAsync(string id)
+    {
+        if (await Views.PrepareAsync(id) && siteId == id)
+        {
+            view = ViewFor(siteId);
+            Refresh();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private int LengthFor(int hours)
+    {
+        var grid = Store.Manifest!.Grid;
+        return (int)Math.Clamp(TimeSpan.FromHours(hours) / grid.Step, 1, grid.Count);
+    }
+
+    private void AddScenario()
+    {
+        if (scenarios.Count < MaxScenarios)
+        {
+            scenarios.Add((siteId, windowStart, windowHours));
+            SyncUrl();
+        }
+    }
+
+    private void RemoveScenario(int index)
+    {
+        if ((uint)index < (uint)scenarios.Count)
+        {
+            scenarios.RemoveAt(index);
+            SyncUrl();
+        }
+    }
+
+    private List<ScenarioRow> ComparisonRows()
+    {
+        var grid = Store.Manifest!.Grid;
+        return scenarios
+            .Select(scenario =>
+            {
+                var scenarioView = ViewFor(scenario.SiteId);
+                var length = LengthFor(scenario.Hours);
+                var start = Math.Min(scenario.Start, grid.Count - length);
+                return new ScenarioRow(
+                    scenarioView.Site,
+                    grid.At(start),
+                    scenario.Hours,
+                    WindowEvaluator.Evaluate(scenarioView.Tracks, grid, start, length));
+            })
+            .ToList();
+    }
+
+    private void Refresh(bool sync = true)
+    {
+        var grid = Store.Manifest!.Grid;
+        cursor = Math.Clamp(cursor, 0, grid.Count - 1);
+        windowLength = LengthFor(windowHours);
+        windowStart = Math.Min(cursor, grid.Count - windowLength);
+        snapshot = view!.At(cursor);
+        metrics = WindowEvaluator.Evaluate(view.Tracks, grid, windowStart, windowLength);
+        power = view.Power(grid, windowStart, windowLength);
+        link = DsnPanel.Summarize(view.Tracks.EarthVisible, Comms.Dsn(Store.Ephemeris!), grid.Step, windowStart, windowLength);
+        verdicts = SiteReportBuilder.Verdicts(metrics, link.Fraction, power);
+        if (sync)
+        {
+            SyncUrl();
+        }
+    }
+
+    private static string Pct(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private string VerdictWhy(ReportVerdict verdict) => verdict.Topic switch
+    {
+        "power" => L.Format("report.why.power", Pct(verdict.Value)),
+        "night" => L.Format("report.why.night", L.Duration(TimeSpan.FromHours(verdict.Value))),
+        _ => L.Format("report.why.link", Pct(verdict.Value)),
+    };
+
+    private string ReportLink() => $"report?site={Uri.EscapeDataString(siteId)}&t={windowStart}&w={windowHours}{Store.YearQuery}";
+
+    private string WindowsLink() => $"plan/when?site={Uri.EscapeDataString(siteId)}";
+
+    private void OnSiteChanged(ChangeEventArgs args)
+    {
+        siteId = args.Value?.ToString() ?? siteId;
+        BuildView();
+    }
+
+    private void OnWindowChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var hours))
+        {
+            windowHours = hours;
+            Refresh();
+        }
+    }
+
+    private void OnCursorChanged(int value)
+    {
+        cursor = value;
+        Refresh();
+    }
+}

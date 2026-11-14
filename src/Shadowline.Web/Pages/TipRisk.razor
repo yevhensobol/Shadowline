@@ -1,0 +1,481 @@
+﻿@page "/tiprisk"
+@page "/tipover"
+@page "/plan/tipover"
+@using System.Globalization
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Incidents
+@using Shadowline.Core.Missions
+@using Shadowline.Core.Permalink
+@using Shadowline.Core.Sites
+@using Shadowline.Data
+@using Shadowline.Web.Components
+@inherits LocalizedComponent
+@inject DataStore Store
+@inject SiteViewCache Views
+@inject IncidentService Incidents
+@inject NavigationManager Navigation
+@inject MissionStore Missions
+
+<PageTitle>@L["tip.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.PlanTabs Tab="tipover" />
+
+<article class="method incidents">
+    <header>
+        <h1 class="page-title">@L["tip.title"]</h1>
+        <p class="lede">@L["tip.lede"]</p>
+        <p class="tip-links"><a href="plan/sky">‹ @L["tip.back"]</a> <a href="science/landings">@L["tip.cases"] ›</a></p>
+    </header>
+
+    @if (error is not null)
+    {
+        <p class="muted">@error</p>
+    }
+    else if (view is null)
+    {
+        <p class="muted">@L["common.loading"]</p>
+    }
+    else
+    {
+        <section class="inc-answer">
+            <h2>@L["inc.answer.title"]</h2>
+            @if (result is null)
+            {
+                <p>@L.Format("tip.running", (progress * 100).ToString("F0", CultureInfo.InvariantCulture))</p>
+            }
+            else
+            {
+                @foreach (var line in AnswerLines())
+                {
+                    <p>@line</p>
+                }
+            }
+        </section>
+
+        <section>
+            <h2><span class="inc-num">1</span>@L["tip.step.inputs"]</h2>
+            <Shadowline.Web.Components.MissionPanel />
+            <div class="inc-sim">
+                <fieldset>
+                    <legend>@L["tip.where"]</legend>
+                    <label class="tip-field">
+                        @L["tip.site"]
+                        <select value="@view.Site.Id" @onchange="OnSite">
+                            @foreach (var site in Store.Catalog!.Sites)
+                            {
+                                <option value="@site.Id">@L.Name(site)</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="tip-field">
+                        @L["tip.start"]
+                        <input type="date" value="@StartDate()" min="@GridDate(0)" max="@GridDate(Grid.Count - 1)" @onchange="OnStart" />
+                    </label>
+                    <label>@L["tip.days"] <b>@days</b><input type="range" min="3" max="30" step="1" @bind="days" @bind:event="oninput" @bind:after="Schedule" /></label>
+                    <div class="inc-presets" role="group" aria-label="@L["tip.prior"]">
+                        <button type="button" aria-pressed="@(prior == TipPrior.Uniform ? "true" : "false")" @onclick="() => SetPrior(TipPrior.Uniform)">@L["tip.prior.Uniform"]</button>
+                        <button type="button" aria-pressed="@(prior == TipPrior.OnSide ? "true" : "false")" @onclick="() => SetPrior(TipPrior.OnSide)">@L["tip.prior.OnSide"]</button>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>@L["tip.lander"]</legend>
+                    <p class="small muted">@L.Format("tip.batteryHours", Options.BatteryHours.ToString("F1", CultureInfo.InvariantCulture))</p>
+                    <p class="small muted">@L["tip.defaults"]</p>
+                </fieldset>
+            </div>
+            <div class="tip-layouts">
+                @foreach (var layout in Layouts)
+                {
+                    <figure class="tip-layout">
+                        <svg viewBox="-50 -44 100 88" role="img" aria-label="@L["tip.layout." + layout.Id]">
+                            <polygon points="-22,-8 0,-20 22,-8 0,4" class="tip-face @(Has(layout, "top") ? "lit" : null)" />
+                            <polygon points="-22,-8 0,4 0,30 -22,18" class="tip-face @(Has(layout, "w") ? "lit" : null)" />
+                            <polygon points="0,4 22,-8 22,18 0,30" class="tip-face @(Has(layout, "s") ? "lit" : null)" />
+                        </svg>
+                        <figcaption><span class="series-key @LayoutCss(layout.Id)">@L["tip.layout." + layout.Id]</span><br /><span class="muted small">@L["tip.layoutNote." + layout.Id]</span></figcaption>
+                    </figure>
+                }
+            </div>
+        </section>
+
+        <section>
+            <h2><span class="inc-num">2</span>@L["tip.step.result"]</h2>
+            @if (result is { } r)
+            {
+                <SeriesChart Title="@L["tip.chart"]" YLabel="@L["axis.survive"]" XLabel="@L["axis.landingDays"]" StepHours="r.LandingStepHours" Unit="%" Min="0" Max="100" Bands="nights"
+                             Lines="@(r.Curves.Select(c => new SeriesChart.Line(L["tip.layout." + c.LayoutId], c.Survive.Select(v => v * 100).ToList(), LayoutCss(c.LayoutId))).ToList())" />
+                <p class="muted small">@L.Format("tip.chartNote", Utc(r.FirstLandingUtc), r.Attitudes)</p>
+                <div class="inc-scroll">
+                    <table class="report-table">
+                        <thead><tr><th>@L["tip.col.layout"]</th><th>@L["tip.col.mean"]</th><th>@L["tip.col.best"]</th><th>@L["tip.col.worst"]</th><th>@L["tip.col.upright"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var c in r.Curves)
+                            {
+                                var day = DaylightIndices(r);
+                                var mean = day.Count == 0 ? 0 : day.Average(i => c.Survive[i]);
+                                var best = day.Count == 0 ? 0 : day.MaxBy(i => c.Survive[i]);
+                                var worst = day.Count == 0 ? 0 : day.MinBy(i => c.Survive[i]);
+                                <tr>
+                                    <td><span class="series-key @LayoutCss(c.LayoutId)">@L["tip.layout." + c.LayoutId]</span></td>
+                                    <td>@Pct(mean)</td>
+                                    <td>@Pct(c.Survive.ElementAtOrDefault(best)) <span class="muted">@Short(r.FirstLandingUtc.AddHours(best * r.LandingStepHours))</span></td>
+                                    <td>@Pct(c.Survive.ElementAtOrDefault(worst)) <span class="muted">@Short(r.FirstLandingUtc.AddHours(worst * r.LandingStepHours))</span></td>
+                                    <td>@Pct(day.Count == 0 ? 0 : day.Count(i => c.UprightSurvives[i]) / (double)day.Count)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="muted small">@L["tip.tableNote"]</p>
+            }
+        </section>
+
+        <section>
+            <h2><span class="inc-num">3</span>@L["tip.step.method"]</h2>
+            <pre class="formula">@L["tip.formula"]</pre>
+            <dl class="report-facts method-defs">
+                <div><dt>@L["tip.method.why"]</dt><dd>@L["tip.method.whyText"]</dd></div>
+                <div><dt>@L["tip.method.limits"]</dt><dd>@L["tip.method.limitsText"]</dd></div>
+            </dl>
+            @if (history.Count > 0)
+            {
+                <h3 class="method-sub">@L["tip.history"]</h3>
+                <p class="muted small">@L["tip.historyLede"]</p>
+                <table class="report-table">
+                    <thead><tr><th>@L["tip.col.case"]</th>@foreach (var layout in Layouts) {
+                        <th>@L["tip.layout." + layout.Id]</th>
+                    }
+                    <th>@L["tip.col.outcome"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in history)
+                        {
+                            <tr><td><a href="science/landings?case=@h.Id">@L["inc." + h.Id + ".name"]</a></td>@foreach (var p in h.Survive) {
+                                <td>@Pct(p)</td>
+                            }
+                            <td>@L["tip.outcome." + h.Id]</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small">@L["tip.historyNote"]</p>
+            }
+            <h3 class="method-sub" id="touchdown">@L["tip.touch.title"]</h3>
+            <p>@L["tip.touch.lede"]</p>
+            <pre class="formula">@L["tip.touch.formula"]</pre>
+            <div class="inc-scroll">
+                <table class="report-table">
+                    <thead><tr><th>@L["tip.col.case"]</th><th>@L["tip.touch.col.lander"]</th><th>@L["tip.touch.col.slope"]</th><th>@L["tip.touch.col.speed"]</th><th>@L["tip.touch.col.limit"]</th><th>@L["tip.touch.col.model"]</th><th>@L["tip.col.outcome"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in TouchCases)
+                        {
+                            var limit = TouchdownStability.WorstTipSpeed(c.Stance, c.SlopeDeg);
+                            <tr>
+                                <td>@L["tip.touch." + c.Key]</td>
+                                <td>@c.Stance.Name</td>
+                                <td>@c.SlopeDeg.ToString("0", CultureInfo.InvariantCulture)°</td>
+                                <td>@Ms(c.LateralMs)</td>
+                                <td>@Ms(limit)</td>
+                                <td>@(limit > c.LateralMs ? L.Format("tip.touch.stays", Ms(limit - c.LateralMs)) : L["tip.touch.tips"])</td>
+                                <td>@L["tip.touch." + c.Key + ".outcome"]</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="muted small">@L["tip.touch.note"]</p>
+            <h3 class="method-sub" id="nac">@L["tip.nac.title"]</h3>
+            <p>@L["tip.nac.lede"]</p>
+            <div class="inc-scroll">
+                <table class="report-table">
+                    <thead><tr><th>@L["tip.col.case"]</th><th>@L["tip.nac.col.model"]</th><th>@L["tip.nac.col.fine"]</th><th>@L["tip.nac.col.wide"]</th><th>@L["tip.nac.col.product"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var n in NacSlopeChecks.All)
+                        {
+                            <tr>
+                                <td>@L["tip.nac." + n.Key]</td>
+                                <td>@L.Format("tip.nac.model", Deg1(n.ModelSlopeDeg), Num(n.ModelSpacingM), Deg1(n.ModelFootprintSlopeDeg))</td>
+                                <td>@L.Format("tip.nac.fine", Deg1(n.NacMedianDeg), Deg1(n.NacP10Deg), Deg1(n.NacP90Deg), Num(n.FineBaselineM))</td>
+                                <td>@L.Format("tip.nac.wide", Deg1(n.NacMedianWideDeg), Num(n.WideBaselineM))</td>
+                                <td><a href="@n.ProductUrl" target="_blank" rel="noopener">@n.Product</a>, @L.Format("tip.nac.scale", Num(n.DtmScaleM))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="muted small">@L["tip.nac.note"]</p>
+        </section>
+    }
+</article>
+
+@code {
+    private const int Attitudes = 400;
+
+    private static string Deg1(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "°";
+
+    private static string Num(double value) => value.ToString("0", CultureInfo.InvariantCulture);
+
+    private sealed record HistoryRow(string Id, IReadOnlyList<double> Survive);
+
+    private SiteView? view;
+    private SunTrack? track;
+    private TipRiskResult? result;
+    private IReadOnlyList<SeriesChart.Band> nights = [];
+    private List<HistoryRow> history = [];
+    private string? error;
+    private double progress;
+    private int start;
+    private int days = 30;
+    private TipPrior prior = TipPrior.Uniform;
+    private double area => Missions.Current.PanelAreaM2;
+    private static double eff => Mission.CellEfficiency;
+    private double load => Missions.Current.SafeLoadW;
+    private double battery => Missions.Current.BatteryWh;
+    private CancellationTokenSource? pending;
+
+    private Shadowline.Core.Time.TimeGrid Grid => Store.Manifest!.Grid;
+
+    private TipOptions Options => new(area, eff, Shadowline.Core.Power.PowerModel.SystemFactorFixedEfficiency, battery, 1.0, 0.2, load, 0.95, prior);
+
+    private IReadOnlyList<PanelLayout> Layouts => TipOverRisk.Layouts(area);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Store.ApplyYearAsync(new Uri(Navigation.Uri));
+            await Views.EnsureLoadedAsync();
+            await Missions.EnsureLoadedAsync();
+            Missions.Changed += OnMission;
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        var state = PlannerState.Parse(new Uri(Navigation.Uri).Query);
+        var siteId = state is not null && Views.Resolve(state.SiteId) is not null ? state.SiteId : Store.Catalog!.Find("im2-athena")?.Id ?? Store.Catalog!.Sites[0].Id;
+        start = Math.Clamp(state?.Cursor ?? 0, 0, Grid.Count - 1);
+        if (siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+        {
+            await Views.PrepareAsync(siteId);
+        }
+
+        SetSite(siteId);
+        await RunAsync(CancellationToken.None);
+        await HistoryAsync();
+    }
+
+    private void SetSite(string siteId)
+    {
+        view = Views.Get(siteId);
+        track = SunTrack.Build(new SiteFrame(view.Site), Store.Ephemeris!, view.Horizon);
+    }
+
+    private async Task OnSite(ChangeEventArgs e)
+    {
+        if (e.Value?.ToString() is { } id && Views.Resolve(id) is not null)
+        {
+            SetSite(id);
+            await Schedule();
+        }
+    }
+
+    private async Task OnStart(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var date))
+        {
+            start = Math.Clamp(Grid.IndexOf(new DateTimeOffset(date, TimeSpan.Zero)), 0, Grid.Count - 1);
+            await Schedule();
+        }
+    }
+
+    private async Task SetPrior(TipPrior value)
+    {
+        prior = value;
+        await Schedule();
+    }
+
+    private void OnMission() => _ = InvokeAsync(Schedule);
+
+    private async Task Schedule()
+    {
+        pending?.Cancel();
+        pending = new CancellationTokenSource();
+        var token = pending.Token;
+        try
+        {
+            await Task.Delay(250, token);
+            await RunAsync(token);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task RunAsync(CancellationToken token)
+    {
+        if (track is null)
+        {
+            return;
+        }
+
+        result = null;
+        progress = 0;
+        StateHasChanged();
+        await Task.Delay(1, token);
+        var last = Math.Min(track.Count - 1, start + days * 48);
+        var stride = 4;
+        var curves = new List<TipCurve>();
+        TipRiskResult? partial = null;
+        for (var k = 0; k < Layouts.Count; k++)
+        {
+            token.ThrowIfCancellationRequested();
+            partial = TipOverRisk.Analyze(track, start, last, stride, [Layouts[k]], Options, Attitudes);
+            curves.Add(partial.Curves[0]);
+            progress = (k + 1.0) / Layouts.Count;
+            StateHasChanged();
+            await Task.Delay(1, token);
+        }
+
+        result = partial! with { Curves = curves };
+        nights = Nights(result);
+    }
+
+    private async Task HistoryAsync()
+    {
+        var document = await Incidents.LoadAsync();
+        if (document?.Incidents is null)
+        {
+            return;
+        }
+
+        var rows = new List<HistoryRow>();
+        foreach (var incident in document.Incidents)
+        {
+            var c = await Incidents.CaseAsync(incident.Id);
+            if (c is null)
+            {
+                continue;
+            }
+
+            var landing = c.Track.IndexOf(incident.LandingUtc);
+            var options = new TipOptions(area, eff, Shadowline.Core.Power.PowerModel.SystemFactorFixedEfficiency, battery, 1.0, 0.2, load, 0.95, prior);
+            var survive = TipOverRisk.Layouts(area).Select(l => TipOverRisk.Analyze(c.Track, landing, landing, 1, [l], options, Attitudes).Curves[0].Survive[0]).ToList();
+            rows.Add(new HistoryRow(incident.Id, survive));
+            await Task.Delay(1);
+        }
+
+        history = rows;
+        StateHasChanged();
+    }
+
+    private IReadOnlyList<SeriesChart.Band> Nights(TipRiskResult r)
+    {
+        if (track is null)
+        {
+            return [];
+        }
+
+        var bands = new List<SeriesChart.Band>();
+        int? from = null;
+        var first = track.IndexOf(r.FirstLandingUtc);
+        var count = r.Curves[0].Survive.Length;
+        var stepsPer = (int)Math.Round(r.LandingStepHours / track.StepHours);
+        for (var j = 0; j <= count; j++)
+        {
+            var i = Math.Min(track.Count - 1, first + j * stepsPer);
+            var dark = j == count ? false : track.Irradiance[i] <= 0;
+            if (dark && from is null)
+            {
+                from = j;
+            }
+            else if (!dark && from is { } f)
+            {
+                bands.Add(new SeriesChart.Band(f * r.LandingStepHours, j * r.LandingStepHours));
+                from = null;
+            }
+        }
+
+        return bands;
+    }
+
+    private List<int> DaylightIndices(TipRiskResult r)
+    {
+        if (track is null)
+        {
+            return [];
+        }
+
+        var first = track.IndexOf(r.FirstLandingUtc);
+        var stepsPer = (int)Math.Round(r.LandingStepHours / track.StepHours);
+        return Enumerable.Range(0, r.Curves[0].Survive.Length).Where(j => track.Irradiance[Math.Min(track.Count - 1, first + j * stepsPer)] > 0).ToList();
+    }
+
+    private IEnumerable<string> AnswerLines()
+    {
+        if (result is not { } r || view is null)
+        {
+            yield break;
+        }
+
+        var day = DaylightIndices(r);
+        if (day.Count == 0)
+        {
+            yield return L["tip.answer.dark"];
+            yield break;
+        }
+
+        var top = r.Curves.First(c => c.LayoutId == "top");
+        var cube = r.Curves.First(c => c.LayoutId == "cube");
+        var sides = r.Curves.First(c => c.LayoutId == "sides4");
+        yield return L.Format("tip.answer.1", L.Name(view.Site), Pct(day.Average(i => top.Survive[i])), Pct(day.Average(i => sides.Survive[i])), Pct(day.Average(i => cube.Survive[i])));
+        var best = day.MaxBy(i => top.Survive[i]);
+        var worst = day.MinBy(i => top.Survive[i]);
+        yield return L.Format("tip.answer.2", Short(r.FirstLandingUtc.AddHours(best * r.LandingStepHours)), Pct(top.Survive[best]), Short(r.FirstLandingUtc.AddHours(worst * r.LandingStepHours)), Pct(top.Survive[worst]));
+        var uprightFails = day.Count(i => !top.UprightSurvives[i]) / (double)day.Count;
+        if (uprightFails > 0)
+        {
+            yield return L.Format("tip.answer.3", Pct(uprightFails));
+        }
+    }
+
+    private static bool Has(PanelLayout layout, string id) => layout.Panels.Any(p => p.Id == id || (id == "w" && p.Id == "e") || (id == "s" && p.Id == "n"));
+
+    private static string LayoutCss(string id) => id switch
+    {
+        "top" => "soc0",
+        "sides4" => "soc1",
+        "topSides" => "earth",
+        _ => "soc2",
+    };
+
+    private string StartDate() => Grid.At(start).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private string GridDate(int index) => Grid.At(index).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static string Utc(DateTimeOffset t) => t.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC";
+
+    private static string Short(DateTimeOffset t) => t.UtcDateTime.ToString("MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    private sealed record TouchCase(string Key, LanderStance Stance, double SlopeDeg, double LateralMs);
+
+    private static readonly TouchCase[] TouchCases =
+    [
+        new("apollo11", LanderStance.ApolloLm, 4, 0.82),
+        new("lmDesign", LanderStance.ApolloLm, 12, 1.22),
+        new("im1", LanderStance.NovaC, 12, 1.0),
+    ];
+
+    private string Ms(double v) => v.ToString("0.00", CultureInfo.InvariantCulture) + " " + L["mission.ms"];
+
+    private static string Pct(double? v) => v is { } d ? (d * 100).ToString("F0", CultureInfo.InvariantCulture) + "%" : "—";
+
+    public override void Dispose()
+    {
+        pending?.Cancel();
+        pending?.Dispose();
+        Missions.Changed -= OnMission;
+        base.Dispose();
+    }
+}

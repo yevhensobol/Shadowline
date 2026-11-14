@@ -1,0 +1,182 @@
+﻿@using System.Globalization
+@inherits LocalizedComponent
+
+<figure class="series-chart">
+    <figcaption>
+        <span class="series-title">@Title</span>
+        @foreach (var line in Lines)
+        {
+            <span class="series-key @line.Css">@line.Label</span>
+        }
+    </figcaption>
+    <svg viewBox="0 0 @Width @Height" role="img" aria-label="@Title">
+        <rect x="@Left" y="@Top" width="@(Width - Left - Right)" height="@(Height - Bottom - Top)" class="series-bg" />
+        @foreach (var band in Bands)
+        {
+            <rect x="@F(X(band.FromHours))" y="@Top" width="@F(Math.Max(0.5, X(band.ToHours) - X(band.FromHours)))" height="@(Height - Bottom - Top)" class="series-band" />
+        }
+        @foreach (var mark in Marks)
+        {
+            <g class="series-mark @mark.Css">
+                <title>@mark.Label</title>
+                <rect x="@F(X(mark.FromHours))" y="@Top" width="@F(Math.Max(2, X(mark.ToHours) - X(mark.FromHours)))" height="@(Height - Bottom - Top)" />
+            </g>
+        }
+        @foreach (var tick in YTicks())
+        {
+            <g>
+                <line x1="@Left" x2="@(Width - Right)" y1="@F(Y(tick))" y2="@F(Y(tick))" class="@(Math.Abs(tick) < 1e-9 && ZeroLine ? "series-grid zero" : "series-grid")" />
+                <text x="@(Left - 6)" y="@F(Y(tick) + 4)" text-anchor="end" class="series-axis">@Label(tick)</text>
+            </g>
+        }
+        @foreach (var reference in References.Where(r => r.Value >= lo && r.Value <= hi))
+        {
+            <g>
+                <line x1="@Left" x2="@(Width - Right)" y1="@F(Y(reference.Value))" y2="@F(Y(reference.Value))" class="series-ref" />
+                <text x="@(Width - Right - 4)" y="@F(Y(reference.Value) < Top + 14 ? Y(reference.Value) + 13 : Y(reference.Value) - 4)" text-anchor="end" class="series-axis">@reference.Label</text>
+            </g>
+        }
+        @foreach (var line in Lines)
+        {
+            <path d="@PathFor(line.Values)" class="series-line @line.Css" />
+        }
+        @for (var day = 0; day * 24 <= TotalHours + 1e-6; day += DayStep())
+        {
+            <g>
+                <line x1="@F(X(day * 24))" x2="@F(X(day * 24))" y1="@(Height - Bottom)" y2="@(Height - Bottom + 4)" class="series-tick" />
+                <text x="@F(X(day * 24))" y="@(Height - Bottom + 16)" text-anchor="middle" class="series-axis">@day</text>
+            </g>
+        }
+        <text x="@F(Left + (Width - Left - Right) / 2.0)" y="@(Height - 3)" text-anchor="middle" class="axis-title">@(XLabel ?? L["axis.daysFromStart"])</text>
+        @if (YLabel is { Length: > 0 })
+        {
+            <g><text transform="translate(13 @F(Top + (Height - Bottom - Top) / 2.0)) rotate(-90)" text-anchor="middle" class="axis-title">@YLabel</text></g>
+        }
+    </svg>
+</figure>
+
+@code {
+    public sealed record Line(string Label, IReadOnlyList<double> Values, string Css);
+
+    public sealed record Band(double FromHours, double ToHours);
+
+    public sealed record Reference(double Value, string Label, bool Fit = false);
+
+    public sealed record Mark(double FromHours, double ToHours, string Css, string Label);
+
+    private const int Width = 960;
+    private const int Left = 70;
+    private const int Right = 12;
+    private const int Bottom = 38;
+    private const int Top = 8;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Line> Lines { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Band> Bands { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Reference> References { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Mark> Marks { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public double StepHours { get; set; }
+
+    [Parameter]
+    public int Height { get; set; } = 200;
+
+    [Parameter]
+    public string Unit { get; set; } = "";
+
+    [Parameter]
+    public double? Min { get; set; }
+
+    [Parameter]
+    public double? Max { get; set; }
+
+    [Parameter]
+    public bool ZeroLine { get; set; }
+
+    [Parameter]
+    public int Decimals { get; set; }
+
+    [Parameter]
+    public string? XLabel { get; set; }
+
+    [Parameter]
+    public string? YLabel { get; set; }
+
+    private double lo;
+    private double hi;
+
+    private double TotalHours => Math.Max(1, (Lines.Count == 0 ? 1 : Lines.Max(l => l.Values.Count) - 1) * StepHours);
+
+    protected override void OnParametersSet()
+    {
+        var values = Lines.SelectMany(l => l.Values).Concat(References.Where(r => r.Fit).Select(r => r.Value)).Where(v => !double.IsNaN(v)).ToList();
+        lo = Min ?? (values.Count == 0 ? 0 : values.Min());
+        hi = Max ?? (values.Count == 0 ? 1 : values.Max());
+        if (hi - lo < 1e-6)
+        {
+            hi = lo + 1;
+        }
+
+        var pad = (hi - lo) * 0.06;
+        if (Min is null)
+        {
+            lo -= pad;
+        }
+
+        if (Max is null)
+        {
+            hi += pad;
+        }
+    }
+
+    private IEnumerable<double> YTicks()
+    {
+        var span = hi - lo;
+        var raw = span / 4;
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+        var step = new[] { 1, 2, 2.5, 5, 10 }.Select(m => m * magnitude).First(s => s >= raw);
+        for (var v = Math.Ceiling(lo / step) * step; v <= hi + 1e-9; v += step)
+        {
+            yield return Math.Abs(v) < step * 1e-6 ? 0 : Math.Round(v, 9);
+        }
+    }
+
+    private int DayStep() => TotalHours / 24 > 20 ? 5 : TotalHours / 24 > 8 ? 2 : 1;
+
+    private double X(double hours) => Left + hours / TotalHours * (Width - Left - Right);
+
+    private double Y(double value) => Top + (hi - value) / (hi - lo) * (Height - Bottom - Top);
+
+    private string PathFor(IReadOnlyList<double> values)
+    {
+        var sb = new System.Text.StringBuilder();
+        var pen = false;
+        for (var i = 0; i < values.Count; i++)
+        {
+            if (double.IsNaN(values[i]))
+            {
+                pen = false;
+                continue;
+            }
+
+            sb.Append(pen ? 'L' : 'M').Append(F(X(i * StepHours))).Append(' ').Append(F(Y(Math.Clamp(values[i], lo, hi)))).Append(' ');
+            pen = true;
+        }
+
+        return sb.ToString();
+    }
+
+    private string Label(double value) => (value == 0 ? 0.0 : value).ToString(Decimals == 0 ? "F0" : "F" + Decimals, CultureInfo.InvariantCulture) + Unit;
+
+    private static string F(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+}

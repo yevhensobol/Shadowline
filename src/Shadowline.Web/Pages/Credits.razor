@@ -1,0 +1,122 @@
+﻿@page "/credits"
+@page "/science/sources"
+@page "/sources"
+@using Shadowline.Core.Reports
+@inherits LocalizedComponent
+@inject DataStore Store
+
+<PageTitle>@L["credits.title"] - Shadowline</PageTitle>
+
+
+<h1 class="page-title">@L["credits.title"]</h1>
+<p class="lede credits-lede">@L["credits.intro"]</p>
+<p class="muted credits-note">@L["credits.disclaimer"]</p>
+
+<h2 class="credits-kind" id="challenge">@L["credits.challenge"]</h2>
+<p class="muted credits-note">@L["credits.challengeIntro"]</p>
+<ul class="credits">
+    @foreach (var resource in ChallengeResources)
+    {
+        <li id="res-@resource.Id">
+            <h3><a href="@resource.Url" rel="noopener" target="_blank">@L["credits.res." + resource.Id + ".title"]</a></h3>
+            <dl>
+                @foreach (var part in ResourceParts)
+                {
+                    <div><dt>@L["credits.res." + part]</dt><dd>@L["credits.res." + resource.Id + "." + part]</dd></div>
+                }
+            </dl>
+            @if (resource.Refs.Length > 0)
+            {
+                <p class="credits-use">
+                    @foreach (var id in resource.Refs)
+                    {
+                        <a href="#ref-@id">[@id]</a>
+                        @(" ")
+                    }
+                </p>
+            }
+        </li>
+    }
+</ul>
+
+@if (loading)
+{
+    <p class="muted">@L["common.loading"]</p>
+}
+else if (Store.Credits?.Entries is not { } entries)
+{
+    <p class="error">@L["credits.missing"]</p>
+}
+else
+{
+    @foreach (var kind in new[] { "data", "software" })
+    {
+        <h2 class="credits-kind" id="@kind">@L["credits.kind." + kind]</h2>
+        <ul class="credits">
+            @foreach (var entry in entries.Where(e => (e.Kind ?? "data") == kind))
+            {
+                <li>
+                    <h3><a href="@entry.Source" rel="noopener" target="_blank">@entry.Title</a></h3>
+                    <p class="credits-use">@Used(entry)</p>
+                    <dl>
+                        <div><dt>@L["credits.author"]</dt><dd>@entry.Author</dd></div>
+                        <div><dt>@L["credits.license"]</dt><dd>@entry.License</dd></div>
+                    </dl>
+                </li>
+            }
+        </ul>
+    }
+
+    <h2 class="credits-kind" id="research">@L["credits.kind.research"]</h2>
+    <p class="muted credits-note">@L["credits.researchIntro"]</p>
+    <ol class="credits-refs">
+        @foreach (var reference in References.All)
+        {
+            <li id="ref-@reference.Id">
+                @reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
+                {
+                    @(" ")
+                    <a href="@link" rel="noopener" target="_blank">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
+                }
+            </li>
+        }
+        @foreach (var entry in entries.Where(e => e.Kind == "research" && References.Find(e.Id) is null))
+        {
+            <li id="ref-@entry.Id">@entry.Author. @entry.Title. @Used(entry). <a href="@entry.Source" rel="noopener" target="_blank">@entry.Source</a></li>
+        }
+    </ol>
+
+    <h2 class="credits-kind" id="ai">@L["credits.ai"]</h2>
+    <p class="muted credits-note">@L["credits.ai.intro"]</p>
+    <ul class="credits-refs">
+        <li>@L["credits.ai.claude"]</li>
+        <li>@L["credits.ai.elicit"]</li>
+        <li>@L["credits.ai.gemini"]</li>
+    </ul>
+    <p class="muted credits-note">@L["credits.ai.data"]</p>
+}
+
+@code {
+    private bool loading = true;
+
+    private sealed record ChallengeResource(string Id, string Url, string[] Refs);
+
+    private static readonly ChallengeResource[] ChallengeResources =
+    [
+        new("horizons", "https://ssd.jpl.nasa.gov/horizons/", ["horizons", "de440", "spice"]),
+        new("trek", "https://trek.nasa.gov/moon/", []),
+        new("quickmap", "https://quickmap.lroc.im-ldi.com/", ["henriksen2017", "bandfield2011", "mazarico2011", "barker2023"]),
+        new("csa", "https://www.asc-csa.gc.ca/eng/astronomy/moon-exploration/", ["csa-moon", "csa-rover", "ispace2021", "space2026"]),
+    ];
+
+    private static readonly string[] ResourceParts = ["what", "how", "where", "use", "why"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Store.LoadCreditsAsync();
+        loading = false;
+    }
+
+    private string Used(Shadowline.Data.CreditEntry entry) =>
+        entry.UsedIn is { } used && used.TryGetValue(L.Language, out var text) ? text : entry.UsedIn?["en"] ?? string.Empty;
+}

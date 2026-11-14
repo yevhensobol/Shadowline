@@ -1,0 +1,76 @@
+﻿@inherits LocalizedComponent
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+@if (visible)
+{
+    <aside class="hud hud-coach-line" role="note" aria-label="@L["coach.title"]">
+        <span class="coach-mouse">@L["coach.line"]</span>
+        <span class="coach-touch">@L["coach.lineTouch"]</span>
+        <button type="button" class="coach-close" aria-label="@L["coach.close"]" @onclick="Dismiss">×</button>
+    </aside>
+}
+
+@code {
+    private static readonly TimeSpan ShowFor = TimeSpan.FromSeconds(12);
+
+    private readonly CancellationTokenSource timer = new();
+    private bool visible;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            visible = await Js.InvokeAsync<string?>("shadowlineHint.get", "explore") != "seen";
+        }
+        catch (JSException)
+        {
+            visible = true;
+        }
+
+        if (!visible)
+        {
+            return;
+        }
+
+        StateHasChanged();
+        try
+        {
+            await Task.Delay(ShowFor, timer.Token);
+            await Dismiss();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task Dismiss()
+    {
+        if (!visible)
+        {
+            return;
+        }
+
+        visible = false;
+        StateHasChanged();
+        try
+        {
+            await Js.InvokeVoidAsync("shadowlineHint.set", "explore", "seen");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        timer.Cancel();
+        timer.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

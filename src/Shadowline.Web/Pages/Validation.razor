@@ -1,0 +1,588 @@
+﻿@page "/validation"
+@page "/science/validation"
+@using System.Globalization
+@using System.Text.Json
+@using Shadowline.Core.Comms
+@using Shadowline.Core.Ephemeris
+@using Shadowline.Core.Validation
+@inherits LocalizedComponent
+@inject DataStore Store
+@inject HttpClient Http
+
+<PageTitle>@L["validation.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.ScienceTabs Tab="validation" />
+
+<header class="page-head">
+    <h1 class="page-title">@L["validation.title"]</h1>
+    <p class="lede">@L["validation.lede"]</p>
+</header>
+
+@if (error is not null)
+{
+    <p class="error">@error</p>
+}
+else if (!loaded)
+{
+    <p class="muted">@L["common.loading"]</p>
+}
+else if (result is null || result.Rows.Count == 0)
+{
+    <p class="muted">@L["validation.none"]</p>
+    @if (result is { Skipped: > 0 } empty)
+    {
+        <p class="notice">@L.Format("validation.skipped", empty.Skipped)</p>
+    }
+}
+else
+{
+    var summary = result.Summary();
+    var within = result.Rows.Count(row => Math.Abs(row.AzimuthErrorDeg) <= ToleranceDeg && Math.Abs(row.ElevationErrorDeg) <= ToleranceDeg);
+    var maxError = Math.Max(summary.MaxAzimuthErrorDeg, summary.MaxElevationErrorDeg);
+    <div class="validation">
+        <section class="report-figures" aria-label="@L["report.figures"]">
+            <div><strong>@summary.Count</strong><span>@L["validation.checks"]</span></div>
+            <div><strong>@within / @summary.Count</strong><span>@L["validation.within"]</span></div>
+            <div><strong>@Arcsec(maxError)″</strong><span>@L["validation.maxError"], @L["validation.arcsec"]</span></div>
+            <div><strong>@Arcsec(Math.Abs(summary.MeanElevationErrorDeg))″</strong><span>@L["validation.meanError"], @L["validation.arcsec"]</span></div>
+        </section>
+
+        <section class="v-scale">
+            <h2>@L["validation.scale.title"]</h2>
+            <p class="v-scale-lede">@L.Format("validation.scale.lede", Ratio(SunDiscArcsec / Math.Max(maxError * 3600, 1e-6)), Millimetres(maxError))</p>
+            <svg viewBox="0 0 @ScaleWidth 186" role="img" aria-label="@L["validation.scale.title"]">
+                <text x="@(ScaleWidth / 2)" y="182" text-anchor="middle" class="axis-title">@L["axis.angleLog"]</text>
+                <line x1="@ScaleLeft" x2="@(ScaleWidth - ScaleRight)" y1="80" y2="80" class="v-axis" />
+                @for (var e = ScaleMinExp; e <= ScaleMaxExp; e++)
+                {
+                    <g>
+                        <line x1="@F(LogX(Math.Pow(10, e)))" x2="@F(LogX(Math.Pow(10, e)))" y1="76" y2="84" class="v-axis" />
+                        <text x="@F(LogX(Math.Pow(10, e)))" y="100" text-anchor="middle" class="v-tick">@TickLabel(e)</text>
+                    </g>
+                }
+                @foreach (var (value, key, css, labelY, anchor) in Marks(maxError * 3600))
+                {
+                    <g class="@css">
+                        <line x1="@F(LogX(value))" x2="@F(LogX(value))" y1="@(labelY < 80 ? labelY + 8 : 80)" y2="@(labelY < 80 ? 80 : labelY - 14)" class="v-stem" />
+                        <circle cx="@F(LogX(value))" cy="80" r="5" />
+                        <text x="@F(LogX(value))" y="@labelY" text-anchor="@anchor" class="v-mark">@L[key]</text>
+                    </g>
+                }
+            </svg>
+            <p class="muted small">@L["validation.scale.note"]</p>
+        </section>
+
+        <section>
+            <h2>@L["validation.time.title"]</h2>
+            @{ var timeLimit = Math.Max(maxError * 3600 * 1.15, 1e-4); }
+            <svg class="v-time" viewBox="0 0 @TimeWidth 218" role="img" aria-label="@L["validation.time.title"]">
+                <rect x="@TimeLeft" y="0" width="@(TimeWidth - TimeLeft)" height="170" class="scatter-bg" />
+                <text x="@((TimeWidth + TimeLeft) / 2)" y="214" text-anchor="middle" class="axis-title">@L["axis.date"]</text>
+                <text transform="translate(9 85) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.totalError"]</text>
+                @for (var k = 0; k <= 4; k++)
+                {
+                    var v = timeLimit * k / 4;
+                    <g>
+                        <line x1="@TimeLeft" x2="@TimeWidth" y1="@F(TY(v, timeLimit))" y2="@F(TY(v, timeLimit))" class="hp-grid" />
+                        <text x="@(TimeLeft - 6)" y="@F(TY(v, timeLimit) + 4)" text-anchor="end" class="hp-axis">@v.ToString("F2", CultureInfo.InvariantCulture)″</text>
+                    </g>
+                }
+                @foreach (var row in result.Rows)
+                {
+                    <circle cx="@F(TX(row.Fixture.TimeUtc))" cy="@F(TY(Total(row), timeLimit))" r="@DotRadius" class="@(IsSun(row) ? "dot-sun" : "dot-earth")" />
+                }
+                @foreach (var (moment, label) in TimeTicks())
+                {
+                    <g>
+                        <line x1="@F(TX(moment))" x2="@F(TX(moment))" y1="170" y2="175" class="hp-tick" />
+                        <text x="@F(TX(moment))" y="192" text-anchor="middle" class="hp-axis">@label</text>
+                    </g>
+                }
+            </svg>
+            <p class="legend"><span class="sun">@L["validation.sun"]</span><span class="earth">@L["validation.earth"]</span></p>
+            <p class="muted small">@L["validation.time.note"]</p>
+        </section>
+
+        <section class="report-two even">
+            <div>
+                <h2>@L["validation.chart"]</h2>
+                @{ var limit = Math.Max(maxError * 1.2, 1e-6); }
+                <svg class="scatter" viewBox="0 0 @ChartSize @ChartSize" role="img" aria-label="@L["validation.chart"]">
+                    <rect x="0" y="0" width="@ChartSize" height="@ChartSize" class="scatter-bg" />
+                    <line x1="@(ChartSize / 2)" x2="@(ChartSize / 2)" y1="0" y2="@ChartSize" class="grid zero" />
+                    <line x1="0" x2="@ChartSize" y1="@(ChartSize / 2)" y2="@(ChartSize / 2)" class="grid zero" />
+                    @foreach (var row in result.Rows)
+                    {
+                        var x = ChartSize / 2.0 + row.AzimuthErrorDeg / limit * ChartSize / 2.0;
+                        var y = ChartSize / 2.0 - row.ElevationErrorDeg / limit * ChartSize / 2.0;
+                        <circle cx="@F(x)" cy="@F(y)" r="@DotRadius" class="@(IsSun(row) ? "dot-sun" : "dot-earth")" />
+                    }
+                    <g><text x="6" y="16" class="axis">+@Arcsec(limit)″</text></g>
+                    <g><text x="@(ChartSize - 6)" y="@(ChartSize / 2 - 6)" text-anchor="end" class="axis">+@Arcsec(limit)″</text></g>
+                    <g><text x="@(ChartSize / 2 + 6)" y="@(ChartSize - 8)" class="axis">@L["validation.axisEl"] &#8593;</text></g>
+                    <g><text x="@(ChartSize - 6)" y="@(ChartSize / 2 + 16)" text-anchor="end" class="axis">@L["validation.axisAz"] &#8594;</text></g>
+                </svg>
+                <p class="muted small">@L["validation.chart.note"]</p>
+            </div>
+            <div>
+                <h2>@L["validation.sites.title"]</h2>
+                <table class="report-table">
+                    <thead><tr><th>@L["replan.col.site"]</th><th>@L["validation.col.body"]</th><th>@L["validation.col.count"]</th><th>@L["validation.col.maxAz"]</th><th>@L["validation.col.maxEl"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var group in result.Rows.GroupBy(row => (row.Fixture.SiteId, Sun: IsSun(row))).OrderBy(g => g.Key.SiteId).ThenBy(g => g.Key.Sun ? 0 : 1))
+                        {
+                            <tr>
+                                <td>@SiteName(group.Key.SiteId)</td>
+                                <td>@L[group.Key.Sun ? "validation.sun" : "validation.earth"]</td>
+                                <td>@group.Count()</td>
+                                <td>@Arcsec(group.Max(r => Math.Abs(r.AzimuthErrorDeg)))″</td>
+                                <td>@Arcsec(group.Max(r => Math.Abs(r.ElevationErrorDeg)))″</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small">@L.Format("validation.source", source)</p>
+                @if (result.Skipped > 0)
+                {
+                    <p class="notice">@L.Format("validation.skipped", result.Skipped)</p>
+                }
+            </div>
+        </section>
+
+        <section>
+            <h2>@L["validation.dsn.title"]</h2>
+            <p class="muted">@L["validation.dsn.lede"]</p>
+            <table class="report-table">
+                <thead><tr><th>@L["validation.col.time"]</th><th>@L["validation.dsn.station"]</th><th>@L["validation.dsn.reference"]</th><th>@L["validation.dsn.computed"]</th><th>@L["validation.dsn.diff"]</th></tr></thead>
+                <tbody>
+                    @foreach (var row in dsnRows)
+                    {
+                        <tr>
+                            <td>@row.Case.TimeUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                            <td>@L.Place(row.Station)</td>
+                            <td>@Angle(row.Case.ElevationDeg)°</td>
+                            <td>@Angle(row.Computed)°</td>
+                            <td class="@(Math.Abs(row.Computed - row.Case.ElevationDeg) <= DsnToleranceDeg ? "pass" : "fail")">@((row.Computed - row.Case.ElevationDeg).ToString("+0.000;-0.000;0.000", CultureInfo.InvariantCulture))°</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (dsnRows.Count > 0)
+            {
+                <p class="muted small">@L.Format("validation.dsn.note", dsnRows.Max(r => Math.Abs(r.Computed - r.Case.ElevationDeg)).ToString("F3", CultureInfo.InvariantCulture))</p>
+            }
+        </section>
+
+        <section id="thermal">
+            <h2>@L["validation.thermal.title"]</h2>
+            <p class="muted">@L["validation.thermal.lede"]</p>
+            @if (thermal is { } tv)
+            {
+                <div class="results-wrap">
+                    <table class="report-table">
+                        <thead><tr><th>@L["validation.thermal.variant"]</th><th>@L["validation.thermal.maxBias"]</th><th>@L["validation.thermal.maxRmse"]</th><th>r</th><th>@L["validation.thermal.avgBias"]</th><th>@L["validation.thermal.avgRmse"]</th><th>r</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in tv.Rows)
+                            {
+                                <tr class="@(row.Key == "tilted" ? "base" : null)"><td>@L["validation.thermal.v." + row.Key]</td><td>@K(row.Max?.Bias)</td><td>@Kp(row.Max?.Rmse)</td><td>@R(row.Max?.R)</td><td>@K(row.Avg?.Bias)</td><td>@Kp(row.Avg?.Rmse)</td><td>@R(row.Avg?.R)</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="report-two even">
+                    <div>
+                        <h3 class="numbers-head">@L["validation.thermal.scatter"]</h3>
+                        <svg class="scatter" viewBox="0 0 @ChartSize @ChartSize" role="img" aria-label="@L["validation.thermal.scatter"]">
+                            <rect x="0" y="0" width="@ChartSize" height="@ChartSize" class="scatter-bg" />
+                            <line x1="0" y1="@ChartSize" x2="@ChartSize" y2="0" class="grid zero" />
+                            @foreach (var p in tv.Points)
+                            {
+                                <circle cx="@F(TK(p.Measured))" cy="@F(ChartSize - TK(p.Model))" r="2.2" class="@(p.Dark ? "dot-earth" : "dot-sun")" />
+                            }
+                            @foreach (var t in new[] { 100, 200, 300 })
+                            {
+                                <g><text x="@F(TK(t))" y="@(ChartSize - 6)" text-anchor="middle" class="axis">@t K</text><text x="6" y="@F(ChartSize - TK(t) + 4)" class="axis">@t K</text></g>
+                            }
+                            <g><text x="@(ChartSize - 6)" y="@(ChartSize - 22)" text-anchor="end" class="axis-title">@L["axis.diviner"] &#8594;</text></g>
+                            <g><text x="6" y="16" class="axis-title">@L["axis.model"] &#8593;</text></g>
+                        </svg>
+                        <p class="legend"><span class="sun">@L["validation.thermal.sunlit"]</span><span class="earth">@L["validation.thermal.dark"]</span></p>
+                        <p class="muted small">@L["validation.thermal.axes"]</p>
+                    </div>
+                    <div>
+                        <h3 class="numbers-head">@L["validation.thermal.classes"]</h3>
+                        <table class="report-table">
+                            <thead><tr><th>@L["validation.thermal.class"]</th><th>@L["validation.col.count"]</th><th>@L["validation.thermal.maxBias"]</th><th>@L["validation.thermal.maxRmse"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var c in tv.Classes)
+                                {
+                                    <tr><td>@L["validation.thermal.c." + c.Key]</td><td>@c.Count</td><td>@K(c.Bias)</td><td>@Kp(c.Rmse)</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                        <p class="muted small">@L["validation.thermal.why"]</p>
+                    </div>
+                </div>
+                <p class="muted small">@L["validation.thermal.reference"] @L["validation.thermal.mlMethod"]</p>
+            }
+            else
+            {
+                <p class="muted">@L["common.loading"]</p>
+            }
+        </section>
+
+        @if (lola is { } lv)
+        {
+            <section id="lola">
+                <h2>@L["validation.lola.title"]</h2>
+                <p class="muted">@L.Format("validation.lola.lede", N0(lv.Cells))</p>
+                <section class="report-figures" aria-label="@L["validation.lola.title"]">
+                    <div><strong>@lv.R.ToString("F3", CultureInfo.InvariantCulture)</strong><span>@L["validation.lola.r"]</span></div>
+                    <div><strong>@Signed(lv.MeanDiff)</strong><span>@L["validation.lola.bias"]</span></div>
+                    <div><strong>@lv.Mae.ToString("F3", CultureInfo.InvariantCulture)</strong><span>@L["validation.lola.mae"]</span></div>
+                    <div><strong>@Percent(lv.Within005)</strong><span>@L["validation.lola.within"]</span></div>
+                </section>
+                <h3 class="numbers-head">@L["validation.lola.hist"]</h3>
+                @{ var top = Math.Log10(lv.Histogram.Max() + 1.0); }
+                <svg class="v-time" viewBox="0 0 @TimeWidth 218" role="img" aria-label="@L["validation.lola.hist"]">
+                    <text x="@((TimeWidth + TimeLeft) / 2)" y="214" text-anchor="middle" class="axis-title">@L["axis.lolaDiff"]</text>
+                    <text transform="translate(12 85) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.cellsLog"]</text>
+                    <rect x="@TimeLeft" y="0" width="@(TimeWidth - TimeLeft)" height="170" class="scatter-bg" />
+                    @for (var k = 0; k < lv.Histogram.Count; k++)
+                    {
+                        var h = Math.Log10(lv.Histogram[k] + 1.0) / top * 160;
+                        var w = (TimeWidth - TimeLeft - 12) / (double)lv.Histogram.Count;
+                        <rect x="@F(TimeLeft + 6 + k * w + 1)" y="@F(170 - h)" width="@F(w - 2)" height="@F(h)" class="dot-sun"><title>@BinLabel(k, lv.Histogram.Count): @lv.Histogram[k]</title></rect>
+                    }
+                    @foreach (var tick in new[] { -0.5, -0.25, 0.0, 0.25, 0.5 })
+                    {
+                        var x = TimeLeft + 6 + (tick + 0.5) * (TimeWidth - TimeLeft - 12);
+                        <g>
+                            <line x1="@F(x)" x2="@F(x)" y1="170" y2="175" class="hp-tick" />
+                            <text x="@F(x)" y="192" text-anchor="middle" class="hp-axis">@Signed(tick)</text>
+                        </g>
+                    }
+                </svg>
+                <p class="muted small">@L["validation.lola.histNote"]</p>
+                <p class="muted small">@L.Format("validation.lola.psr", N0(lv.PsrOurs), N0(lv.PsrLola), N0(lv.PsrBoth))</p>
+                <p class="muted small">@L.Format("validation.lola.earth", Signed(lv.EarthDiff))</p>
+                <h3 class="numbers-head">@L["validation.lola.sites"]</h3>
+                <div class="results-wrap">
+                    <table class="report-table">
+                        <thead><tr><th>@L["replan.col.site"]</th><th>@L["validation.lola.col.oursSun"]</th><th>@L["validation.lola.col.lolaSun"]</th><th>@L["validation.lola.col.oursEarth"]</th><th>@L["validation.lola.col.lolaEarth"]</th><th>@L["validation.lola.col.res"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in lv.Sites)
+                            {
+                                <tr>
+                                    <td>@SiteName(row.Id)</td>
+                                    <td>@row.OursSun.ToString("F3", CultureInfo.InvariantCulture)</td>
+                                    <td>@row.LolaSun.ToString("F3", CultureInfo.InvariantCulture) <span class="muted">(@row.LolaSunMin.ToString("F2", CultureInfo.InvariantCulture)-@row.LolaSunMax.ToString("F2", CultureInfo.InvariantCulture))</span></td>
+                                    <td>@row.OursEarthCentre.ToString("F3", CultureInfo.InvariantCulture) / @row.OursEarthAny.ToString("F3", CultureInfo.InvariantCulture)</td>
+                                    <td>@row.LolaEarth.ToString("F3", CultureInfo.InvariantCulture)</td>
+                                    <td>@row.ResolutionM @L["validation.lola.m"]</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="muted small">@L["validation.lola.sitesNote"]</p>
+                <p class="muted small">@L["validation.lola.why"]</p>
+            </section>
+        }
+
+        <section>
+            <h2>@L["validation.offline.title"]</h2>
+            <ul class="v-checks">
+                @foreach (var key in OfflineChecks)
+                {
+                    <li><strong>@L["validation.offline." + key + ".what"]</strong><span>@L["validation.offline." + key + ".result"]</span></li>
+                }
+            </ul>
+        </section>
+
+        <details class="panel">
+            <summary>@L.Format("validation.details.worst", Math.Min(DetailRows, result.Rows.Count), result.Rows.Count)</summary>
+            <div class="results-wrap">
+                <table class="results">
+                    <thead>
+                        <tr>
+                            <th>@L["replan.col.site"]</th>
+                            <th>@L["validation.col.body"]</th>
+                            <th>@L["validation.col.time"]</th>
+                            <th>@L["validation.col.reference"]</th>
+                            <th>@L["validation.col.computed"]</th>
+                            <th>@L["validation.col.error"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in result.Rows.OrderByDescending(Total).Take(DetailRows))
+                        {
+                            var ok = Math.Abs(row.AzimuthErrorDeg) <= ToleranceDeg && Math.Abs(row.ElevationErrorDeg) <= ToleranceDeg;
+                            <tr>
+                                <td>@SiteName(row.Fixture.SiteId)</td>
+                                <td>@L[IsSun(row) ? "validation.sun" : "validation.earth"]</td>
+                                <td>@row.Fixture.TimeUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                                <td>@Angle(row.Fixture.AzimuthDeg), @Angle(row.Fixture.ElevationDeg)</td>
+                                <td>@Angle(row.ComputedAzimuthDeg), @Angle(row.ComputedElevationDeg)</td>
+                                <td class="@(ok ? "pass" : "fail")" title="@L[ok ? "validation.pass" : "validation.fail"]">@Arcsec(row.AzimuthErrorDeg)″, @Arcsec(row.ElevationErrorDeg)″</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </div>
+}
+
+@code {
+    private const double ToleranceDeg = 0.1;
+    private const double DsnToleranceDeg = 0.05;
+    private const double SunDiscArcsec = 1919;
+    private const int ChartSize = 360;
+    private const int ScaleWidth = 960;
+    private const int ScaleLeft = 30;
+    private const int ScaleRight = 30;
+    private const int ScaleMinExp = -2;
+    private const int ScaleMaxExp = 4;
+    private const int TimeWidth = 960;
+    private const int TimeLeft = 52;
+    private const int DetailRows = 200;
+
+    private static readonly string[] OfflineChecks = ["years", "pole", "global", "history"];
+
+    private sealed record DsnRow(DsnReferenceCase Case, string Station, double Computed);
+
+    private string? error;
+    private bool loaded;
+    private string source = string.Empty;
+    private ValidationResult? result;
+    private List<DsnRow> dsnRows = [];
+
+    private sealed record Stat(double Bias, double Rmse, double R, int Count);
+
+    private sealed record ThermalRow(string Key, Stat? Max, Stat? Avg);
+
+    private sealed record ThermalClass(string Key, int Count, double Bias, double Rmse);
+
+    private sealed record ThermalPoint(double Model, double Measured, bool Dark);
+
+    private sealed record ThermalCheck(IReadOnlyList<ThermalRow> Rows, IReadOnlyList<ThermalClass> Classes, IReadOnlyList<ThermalPoint> Points, string Reference, string MlMethod);
+
+    private ThermalCheck? thermal;
+
+    private sealed record LolaSite(string Id, double OursSun, double OursEarthCentre, double OursEarthAny, double LolaSun, double LolaSunMin, double LolaSunMax, double LolaEarth, int ResolutionM);
+
+    private sealed record LolaCheck(int Cells, double R, double MeanDiff, double Mae, double Within005, IReadOnlyList<int> Histogram, int PsrOurs, int PsrLola, int PsrBoth, double EarthDiff, IReadOnlyList<LolaSite> Sites);
+
+    private LolaCheck? lola;
+    private DateTimeOffset first;
+    private DateTimeOffset last;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            using var response = await Http.GetAsync("data/validation.json");
+            if (response.IsSuccessStatusCode)
+            {
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                var document = await ValidationReader.ReadAsync(stream);
+                source = document.Source;
+                var ephemerides = new List<BodyEphemeris> { Store.Ephemeris! };
+                foreach (var entry in Store.Years?.Years?.Skip(1) ?? [])
+                {
+                    if (await Store.LoadYearAsync(entry) is { } year)
+                    {
+                        ephemerides.Add(year);
+                    }
+                }
+
+                result = ValidationRunner.Run(document.Fixtures!, id => Store.Catalog!.Find(id), ephemerides);
+                if (result.Rows.Count > 0)
+                {
+                    first = result.Rows.Min(r => r.Fixture.TimeUtc);
+                    last = result.Rows.Max(r => r.Fixture.TimeUtc);
+                }
+            }
+
+            var grid = Store.Manifest!.Grid;
+            foreach (var item in DsnReference.Cases)
+            {
+                var index = grid.IndexOf(item.TimeUtc);
+                var station = DeepSpaceNetwork.Stations.ToList().FindIndex(s => s.Id == item.StationId);
+                if (index < 0 || station < 0)
+                {
+                    continue;
+                }
+
+                dsnRows.Add(new DsnRow(item, DeepSpaceNetwork.Stations[station].Name, DeepSpaceNetwork.Elevations(Store.Ephemeris!, index)[station]));
+            }
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(await Http.GetStringAsync("data/thermal_validation.json"));
+            var root = doc.RootElement;
+            var reg = root.GetProperty("regolith");
+            var ml = root.GetProperty("mlCorrection").GetProperty("results");
+            var offset = root.GetProperty("mlCorrection").GetProperty("offsetBaseline");
+            Stat? Read(JsonElement parent, string name)
+            {
+                if (!parent.TryGetProperty(name, out var group) || !group.TryGetProperty("all", out var all))
+                {
+                    return null;
+                }
+
+                return new Stat(all.GetProperty("biasK").GetDouble(), all.GetProperty("rmseK").GetDouble(), all.GetProperty("r").GetDouble(), all.GetProperty("count").GetInt32());
+            }
+
+            var rows = new List<ThermalRow>
+            {
+                new("simple", Read(reg, "simpleMax"), null),
+                new("flat", Read(reg, "flatMax"), Read(reg, "flatAvg2cm")),
+                new("tilted", Read(reg, "max"), Read(reg, "avg2cm")),
+                new("offset", Read(offset, "max"), Read(offset, "avg2cm")),
+                new("ml", Read(ml, "max"), Read(ml, "avg2cm")),
+            };
+            var classes = reg.GetProperty("max").EnumerateObject().Where(p => p.Name != "all")
+                .Select(p => new ThermalClass(p.Name, p.Value.GetProperty("count").GetInt32(), p.Value.GetProperty("biasK").GetDouble(), p.Value.GetProperty("rmseK").GetDouble())).ToList();
+            var points = root.GetProperty("scatter").GetProperty("rows").EnumerateArray()
+                .Select(r => new ThermalPoint(r[0].GetDouble(), r[1].GetDouble(), r[4].GetInt32() == 1)).ToList();
+            thermal = new ThermalCheck(rows, classes, points, root.GetProperty("reference").GetString() ?? "", root.GetProperty("mlCorrection").GetProperty("method").GetString() ?? "");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            thermal = null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(await Http.GetStringAsync("data/validation_lola.json"));
+            var root = doc.RootElement;
+            var map = root.GetProperty("map");
+            var sun = map.GetProperty("sun");
+            var psr = map.GetProperty("psrCells");
+            var sites = root.GetProperty("sites").EnumerateArray().Select(item =>
+            {
+                var ours = item.GetProperty("ours");
+                var reference = item.GetProperty("lola");
+                return new LolaSite(
+                    item.GetProperty("id").GetString() ?? string.Empty,
+                    ours.GetProperty("sunAny").GetDouble(),
+                    ours.GetProperty("earthCentre").GetDouble(),
+                    ours.GetProperty("earthAny").GetDouble(),
+                    reference.GetProperty("sun").GetDouble(),
+                    reference.GetProperty("sunMin").GetDouble(),
+                    reference.GetProperty("sunMax").GetDouble(),
+                    reference.GetProperty("earth").GetDouble(),
+                    item.GetProperty("lolaResolutionM").GetInt32());
+            }).ToList();
+            lola = new LolaCheck(
+                sun.GetProperty("cells").GetInt32(),
+                sun.GetProperty("r").GetDouble(),
+                sun.GetProperty("meanDiff").GetDouble(),
+                sun.GetProperty("mae").GetDouble(),
+                sun.GetProperty("within005").GetDouble(),
+                sun.GetProperty("histogram").EnumerateArray().Select(value => value.GetInt32()).ToList(),
+                psr.GetProperty("bothShadow").GetInt32() + psr.GetProperty("oursOnly").GetInt32(),
+                psr.GetProperty("bothShadow").GetInt32() + psr.GetProperty("lolaOnly").GetInt32(),
+                psr.GetProperty("bothShadow").GetInt32(),
+                map.GetProperty("earthCentreVsAny").GetProperty("meanDiff").GetDouble(),
+                sites);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            lola = null;
+        }
+
+        loaded = true;
+    }
+
+    private static string Signed(double value) => value.ToString("+0.000;-0.000;0.000", CultureInfo.InvariantCulture);
+
+    private static string Percent(double share) => (share * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
+
+    private static string N0(int value) => value.ToString("N0", CultureInfo.InvariantCulture).Replace(",", " ", StringComparison.Ordinal);
+
+    private static string BinLabel(int index, int count)
+    {
+        var width = 1.0 / count;
+        var low = -0.5 + index * width;
+        return Signed(low) + "…" + Signed(low + width);
+    }
+
+    private static double TK(double kelvin) => Math.Clamp(kelvin / 400.0, 0, 1) * ChartSize;
+
+    private static string K(double? value) => value is { } v ? v.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture) + " K" : "-";
+
+    private static string Kp(double? value) => value is { } v ? v.ToString("F1", CultureInfo.InvariantCulture) + " K" : "-";
+
+    private static string R(double? value) => value is { } v ? v.ToString("F2", CultureInfo.InvariantCulture) : "-";
+
+    private IEnumerable<(double Value, string Key, string Css, int LabelY, string Anchor)> Marks(double errorArcsec)
+    {
+        yield return (Math.Max(errorArcsec, 0.011), "validation.scale.ours", "mark-ours", 28, "middle");
+        yield return (360, "validation.scale.tolerance", "mark-ref", 132, "middle");
+        yield return (SunDiscArcsec, "validation.scale.sun", "mark-sun", 28, "middle");
+        yield return (1650, "validation.scale.pixel", "mark-ref", 158, "end");
+    }
+
+    private static double LogX(double arcsec)
+    {
+        var t = (Math.Log10(arcsec) - ScaleMinExp) / (ScaleMaxExp - ScaleMinExp);
+        return ScaleLeft + Math.Clamp(t, 0, 1) * (ScaleWidth - ScaleLeft - ScaleRight);
+    }
+
+    private static string TickLabel(int exp) => exp switch
+    {
+        < 0 => Math.Pow(10, exp).ToString(exp == -1 ? "F1" : "F2", CultureInfo.InvariantCulture) + "″",
+        < 2 => Math.Pow(10, exp).ToString("F0", CultureInfo.InvariantCulture) + "″",
+        2 => "100″",
+        3 => "1000″",
+        _ => "10⁴″",
+    };
+
+    private IEnumerable<(DateTimeOffset, string)> TimeTicks()
+    {
+        if (last <= first)
+        {
+            yield break;
+        }
+
+        var tick = new DateTimeOffset(first.Year, first.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(1);
+        var days = (last - first).TotalDays;
+        var step = days > 720 ? 6 : days > 200 ? 2 : 1;
+        while (tick < last)
+        {
+            yield return (tick, tick.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture));
+            tick = tick.AddMonths(step);
+        }
+    }
+
+    private double TX(DateTimeOffset moment) => TimeLeft + 6 + (last > first ? (moment - first).TotalSeconds / (last - first).TotalSeconds : 0) * (TimeWidth - TimeLeft - 12);
+
+    private static double TY(double arcsec, double limit) => 166 - arcsec / limit * 160;
+
+    private string DotRadius => result is { Rows.Count: > 1500 } ? "1.6" : "2.6";
+
+    private static double Total(ValidationRow row) => Math.Sqrt(row.AzimuthErrorDeg * row.AzimuthErrorDeg + row.ElevationErrorDeg * row.ElevationErrorDeg) * 3600;
+
+    private static bool IsSun(ValidationRow row) => row.Fixture.Body.Equals("sun", StringComparison.OrdinalIgnoreCase);
+
+    private string SiteName(string id) => Store.Catalog?.Find(id) is { } site ? L.Name(site) : id;
+
+    private static string Ratio(double value) => value >= 1000 ? (Math.Round(value / 1000) * 1000).ToString("N0", CultureInfo.InvariantCulture).Replace(",", " ", StringComparison.Ordinal) : value.ToString("F0", CultureInfo.InvariantCulture);
+
+    private static string Millimetres(double errorDeg) => (10_000_000 * Math.Tan(errorDeg * Math.PI / 180)).ToString("F0", CultureInfo.InvariantCulture);
+
+    private static string Arcsec(double degrees) => (degrees * 3600).ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string F(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Angle(double value) => (Math.Round(value, 3) + 0.0).ToString("F3", CultureInfo.InvariantCulture);
+}

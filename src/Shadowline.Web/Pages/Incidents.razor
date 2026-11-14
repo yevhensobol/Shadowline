@@ -1,0 +1,1374 @@
+﻿@page "/incidents"
+@page "/tipover/case"
+@page "/science/landings"
+@using System.Globalization
+@using System.Text.Json
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Incidents
+@using Shadowline.Data
+@using Shadowline.Web.Components
+@inherits LocalizedComponent
+@inject IncidentService Service
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+@inject DataStore Store
+
+<PageTitle>@L["inc.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.ScienceTabs Tab="landings" />
+
+<article class="method incidents">
+    <header>
+        <h1 class="page-title">@L["inc.title"]</h1>
+        <p class="lede">@L["inc.lede"]</p>
+        <nav class="inc-tabs" aria-label="@L["inc.cases"]">
+            @foreach (var id in CaseIds)
+            {
+                <a href="science/landings?case=@id" class="@(id == caseId ? "active" : null)" aria-current="@(id == caseId ? "page" : null)">@L["inc." + id + ".name"]</a>
+            }
+        </nav>
+        <ol class="inc-steps" aria-label="@L["inc.steps"]">
+            @foreach (var step in Steps)
+            {
+                <li><a href="science/landings?case=@caseId#step-@step">@L["inc.step." + step]</a></li>
+            }
+        </ol>
+    </header>
+
+    @if (item is null)
+    {
+        <p class="muted">@(failed ? L["inc.unavailable"] : L["common.loading"])</p>
+    }
+    else
+    {
+        var inc = item.Incident;
+
+        <section class="inc-answer" aria-label="@L["inc.answer.title"]">
+            <h2>@L["inc.answer.title"]</h2>
+            @foreach (var line in AnswerLines())
+            {
+                <p>@line</p>
+            }
+            @if (PredictionRows() is { Count: > 0 } pvf)
+            {
+                <figure class="pvf">
+                    <figcaption>@L["inc.pvf.title"]</figcaption>
+                    @foreach (var row in pvf)
+                    {
+                        <div class="pvf-row">
+                            <span class="pvf-label">@L.Format("inc.pvf.day", row.Day.Day.Index)<em>@L[row.HeldOut ? "inc.pvf.check" : "inc.pvf.fit"]</em></span>
+                            <svg viewBox="0 0 600 40" preserveAspectRatio="none" role="img" aria-label="@L.Format("inc.pvf.day", row.Day.Day.Index)">
+                                <line x1="0" x2="600" y1="20" y2="20" class="pvf-axis" />
+                                <rect x="@F(row.X(row.Low))" y="12" width="@F(Math.Max(2, row.X(row.High) - row.X(row.Low)))" height="16" class="pvf-band" />
+                                <line x1="@F(row.X(row.Median))" x2="@F(row.X(row.Median))" y1="8" y2="32" class="pvf-median" />
+                                @foreach (var (from, to, kind) in row.Reports)
+                                {
+                                    <rect x="@F(row.X(from) - 3)" y="4" width="@F(Math.Max(6, row.X(to) - row.X(from) + 6))" height="32" class="@(PowerKinds.Contains(kind) ? "pvf-report" : "pvf-report off")"><title>@L["inc.kindobs." + kind] @Short(from) – @Short(to)</title></rect>
+                                }
+                            </svg>
+                            <span class="pvf-dates"><span>@Short(row.Start)</span><span>@Short(row.End)</span></span>
+                        </div>
+                    }
+                    <p class="muted small">@L["inc.pvf.legend"]</p>
+                </figure>
+            }
+        </section>
+
+        <section id="step-case">
+            <h2><span class="inc-num">1</span>@L["inc.step.case"] <span class="inc-kind @inc.Kind">@L["inc.kind." + inc.Kind]</span></h2>
+            <div class="inc-intro">
+                <div>
+                    <p>@L["inc." + inc.Id + ".story"]</p>
+                    <dl class="report-facts">
+                        <div><dt>@L["inc.fact.landed"]</dt><dd>@inc.LandingUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) UTC@(inc.LandingNote is { } ln ? " *" : "")</dd></div>
+                        <div><dt>@L["inc.fact.place"]</dt><dd>@Coord(item.Site.LatitudeDeg, true), @Coord(item.Site.LongitudeEastDeg, false) · <a href="@($"./?site={Uri.EscapeDataString(item.Site.Id)}&h={Uri.EscapeDataString(inc.Id)}")">@L["inc.fact.globe"]</a></dd></div>
+                        <div><dt>@L["inc.fact.attitude"]</dt><dd>@L["inc." + inc.Id + ".attitude"] <Cites Ids="inc.Attitude?.Sources" Doc="doc" Order="order" /></dd></div>
+                        <div><dt>@L["inc.fact.vehicle"]</dt><dd>@L["inc." + inc.Id + ".vehicle"] <Cites Ids="inc.Vehicle?.Sources" Doc="doc" Order="order" /></dd></div>
+                    </dl>
+                    @if (inc.LandingNote is { } note)
+                    {
+                        <p class="muted small">* @L["inc." + inc.Id + ".landingNote"]</p>
+                    }
+                </div>
+                @if (PhotosReader.Find(Store.Photos, item.Site.Id) is { } photo)
+                {
+                    <figure class="site-photo">
+                        <a href="@photo.Source" target="_blank" rel="noopener"><img src="@photo.File" alt="@PhotoCaption(photo)" loading="lazy" /></a>
+                        <figcaption>@PhotoCaption(photo) <span class="muted">@photo.Credit</span></figcaption>
+                    </figure>
+                }
+            </div>
+        </section>
+
+        <section id="step-events">
+            <h2><span class="inc-num">2</span>@L["inc.step.events"]</h2>
+            <p class="muted small">@L["inc.events.lede"]@(inc.Id == "slim" ? " " + L["inc.events.jst"] : "")</p>
+            <div class="inc-scroll">
+                <table class="report-table inc-events">
+                    <thead><tr><th>@L["inc.events.when"]</th><th>@L["inc.events.kind"]</th><th>@L["inc.events.what"]</th><th>@L["inc.events.use"]</th><th>@L["inc.events.src"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var o in inc.Observations ?? [])
+                        {
+                            <tr>
+                                <td>@Range(o.FromUtc, o.ToUtc)</td>
+                                <td>@L["inc.kindobs." + Kind(o)]</td>
+                                <td>@Sentence(L.Language == "uk" ? o.NoteUk ?? o.Note : o.Note) @if (o.Derived) { <span class="inc-use derived">@L["inc.use.derived"]</span> }</td>
+                                <td><span class="inc-use @o.Use">@L["inc.use." + o.Use]</span></td>
+                                <td><Cites Ids="o.Sources" Doc="doc" Order="order" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (inc.Notes is { } notes)
+            {
+                <p class="muted small">@L["inc." + inc.Id + ".notes"] <Cites Ids="NoteIds" Doc="doc" Order="order" /></p>
+            }
+        </section>
+
+        <section id="step-model">
+            <h2><span class="inc-num">3</span>@L["inc.step.model"]</h2>
+            <p>@L["inc.model.lede"]</p>
+            <figure class="inc-diagram">
+                <svg viewBox="0 0 960 190" role="img" aria-label="@L["inc.model.diagram"]">
+                    @for (var k = 0; k < DiagramBoxes.Length; k++)
+                    {
+                        var x = 10 + k * 158;
+                        <g class="diag-box @(k >= 3 ? "infer" : null)">
+                            <rect x="@x" y="40" width="140" height="78" rx="6" />
+                            <text x="@(x + 70)" y="66" text-anchor="middle" class="diag-title">@L["inc.diag." + DiagramBoxes[k] + ".t"]</text>
+                            <text x="@(x + 70)" y="86" text-anchor="middle">@L["inc.diag." + DiagramBoxes[k] + ".a"]</text>
+                            <text x="@(x + 70)" y="104" text-anchor="middle">@L["inc.diag." + DiagramBoxes[k] + ".b"]</text>
+                        </g>
+                        @if (k < DiagramBoxes.Length - 1)
+                        {
+                            <path d="@($"M{x + 141} 79 L{x + 157} 79")" class="diag-arrow" />
+                        }
+                    }
+                    <text x="10" y="24" class="diag-band">@L["inc.diag.physics"]</text>
+                    <text x="484" y="24" class="diag-band">@L["inc.diag.inference"]</text>
+                    <text x="10" y="150" class="diag-io">@L["inc.diag.in"]</text>
+                    <text x="10" y="172" class="diag-io">@L["inc.diag.out"]</text>
+                </svg>
+            </figure>
+            <details class="inc-more">
+            <summary>@L["inc.more.method"]</summary>
+            <pre class="formula">@L["inc.formula.model"]</pre>
+            <div class="report-two even">
+                <div>
+                    <h3 class="numbers-head">@L["inc.model.operators"]</h3>
+                    <table class="report-table">
+                        <thead><tr><th>@L["inc.events.kind"]</th><th>@L["inc.model.rule"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var kind in OperatorKinds)
+                            {
+                                <tr><td>@L["inc.kindobs." + kind]</td><td>@L["inc.op." + kind]</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3 class="numbers-head">@L["inc.model.algorithm"]</h3>
+                    <ol class="inc-algo">
+                        @for (var k = 1; k <= 7; k++)
+                        {
+                            <li>@L.Format("inc.algo." + k, Draws, Seed)</li>
+                        }
+                    </ol>
+                </div>
+            </div>
+            <dl class="report-facts method-defs">
+                <div><dt>@L["inc.model.inputs"]</dt><dd>@L["inc.model.inputsText"]</dd></div>
+                <div><dt>@L["inc.model.outputs"]</dt><dd>@L["inc.model.outputsText"]</dd></div>
+                <div><dt>@L["inc.model.limits"]</dt><dd>@L["inc.model.limitsText"]</dd></div>
+                <div><dt>@L["inc.model.repro"]</dt><dd>@L.Format("inc.model.reproText", Draws, Seed)</dd></div>
+            </dl>
+            </details>
+        </section>
+
+        <section id="step-fit">
+            <h2><span class="inc-num">4</span>@L["inc.step.fit"]</h2>
+            @if (!HasFit)
+            {
+                <p class="muted">@L["inc.fit.none." + inc.Id]</p>
+            }
+            else if (fitting is { } progress)
+            {
+                <p class="muted">@L.Format("inc.fit.running", (progress * 100).ToString("F0", CultureInfo.InvariantCulture))</p>
+                <progress max="1" value="@progress.ToString(CultureInfo.InvariantCulture)"></progress>
+            }
+            else if (fit is { } r && prior is { } p0)
+            {
+                <p>@L["inc.fit.lede." + inc.Id]</p>
+                <div class="report-figures ml-figures">
+                    <div><strong>@r.Accepted.Count / @r.Drawn</strong><span>@L["inc.fit.accepted"]</span></div>
+                    <div><strong>@Deg(r.Azimuth?.Median)</strong><span>@L.Format("inc.fit.azimuth", Deg(r.Azimuth?.Low), Deg(r.Azimuth?.High))</span></div>
+                    <div><strong>@Deg(r.Elevation?.Median)</strong><span>@(r.Elevation is { } e && e.High - e.Low < 0.01 ? L["inc.fit.elevationFixed"] : L.Format("inc.fit.elevation", Deg(r.Elevation?.Low), Deg(r.Elevation?.High)))</span></div>
+                    <div><strong>@Pct(r.Threshold?.Median)</strong><span>@L.Format("inc.fit.threshold", Pct(r.Threshold?.Low), Pct(r.Threshold?.High))</span></div>
+                </div>
+                <div class="inc-grid3">
+                    <figure class="inc-polar">
+                        <figcaption class="series-title">@L["inc.fit.polar"]</figcaption>
+                        <svg viewBox="-120 -120 240 240" role="img" aria-label="@L["inc.fit.polar"]">
+                            <circle r="100" class="polar-edge" />
+                            <circle r="50" class="polar-horizon" />
+                            <line x1="-100" y1="0" x2="100" y2="0" class="polar-axis" />
+                            <line x1="0" y1="-100" x2="0" y2="100" class="polar-axis" />
+                            <text x="0" y="-106" text-anchor="middle">N</text>
+                            <text x="110" y="4" text-anchor="middle">E</text>
+                            <text x="0" y="114" text-anchor="middle">S</text>
+                            <text x="-110" y="4" text-anchor="middle">W</text>
+                            <text x="3" y="-3" class="series-axis">+90°</text>
+                            <text x="3" y="-53" class="series-axis">0°</text>
+                            <text x="3" y="-92" class="series-axis">−90°</text>
+                            @foreach (var s in IncidentAnalysis.Thin(r.Accepted, 700))
+                            {
+                                var (x, y) = Polar(s.AzimuthDeg, s.ElevationDeg);
+                                <circle cx="@F(x)" cy="@F(y)" r="1.6" class="polar-dot" />
+                            }
+                            @if (inc.Attitude?.PanelAzimuthDeg is { } reported)
+                            {
+                                var (rx, ry) = Polar(reported, 0);
+                                <circle cx="@F(rx)" cy="@F(ry)" r="6" class="polar-reported" />
+                            }
+                        </svg>
+                        <p class="muted small">@(inc.Attitude?.PanelAzimuthDeg is null ? L["inc.fit.polarNoteNone"] : L["inc.fit.polarNote"])</p>
+                    </figure>
+                    <div class="inc-hists">
+                        <Histogram Title="@L["inc.fit.histAz"]" Prior="p0.Accepted.Select(a => a.AzimuthDeg).ToList()" Posterior="r.Accepted.Select(a => a.AzimuthDeg).ToList()" Min="0" Max="360" Bins="24" Unit="°" XLabel="@L["axis.panelAz"]" PriorLabel="@L["inc.fit.prior"]" PosteriorLabel="@L["inc.fit.posterior"]" />
+                        <Histogram Title="@L["inc.fit.histEl"]" Prior="p0.Accepted.Select(a => a.ElevationDeg).ToList()" Posterior="r.Accepted.Select(a => a.ElevationDeg).ToList()" Min="-90" Max="90" Bins="18" Unit="°" XLabel="@L["axis.panelEl"]" PriorLabel="@L["inc.fit.prior"]" PosteriorLabel="@L["inc.fit.posterior"]" />
+                        <Histogram Title="@L["inc.fit.histTau"]" Prior="p0.Accepted.Select(a => a.Threshold * 100).ToList()" Posterior="r.Accepted.Select(a => a.Threshold * 100).ToList()" Min="0" Max="60" Bins="12" Unit="%" XLabel="@L["axis.tau"]" PriorLabel="@L["inc.fit.prior"]" PosteriorLabel="@L["inc.fit.posterior"]" />
+                    </div>
+                    @if (!(r.Elevation is { } fixedEl && fixedEl.High - fixedEl.Low < 0.01))
+                    {
+                    <figure class="inc-scatter">
+                        <figcaption class="series-title">@L["inc.fit.scatter"]</figcaption>
+                        <svg viewBox="-14 0 254 200" role="img" aria-label="@L["inc.fit.scatter"]">
+                            <text transform="translate(-4 88) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.tau"]</text>
+                            <rect x="34" y="6" width="200" height="164" class="series-bg" />
+                            @foreach (var s in IncidentAnalysis.Thin(r.Accepted, 700))
+                            {
+                                <circle cx="@F(34 + (s.ElevationDeg + 90) / 180 * 200)" cy="@F(170 - s.Threshold / 0.6 * 164)" r="1.5" class="polar-dot" />
+                            }
+                            <text x="34" y="186" class="series-axis">−90°</text>
+                            <text x="134" y="186" text-anchor="middle" class="series-axis">0°</text>
+                            <text x="234" y="186" text-anchor="end" class="series-axis">90°</text>
+                            <text x="30" y="14" text-anchor="end" class="series-axis">60%</text>
+                            <text x="30" y="170" text-anchor="end" class="series-axis">0%</text>
+                            <text x="134" y="198" text-anchor="middle" class="axis-title">@L["axis.panelEl"]</text>
+                        </svg>
+                        <p class="muted small">@L["inc.fit.scatterNote"]</p>
+                    </figure>
+                    }
+                </div>
+                <p class="muted small">@L["inc.fit.read." + inc.Id]</p>
+                @if (checks?.Soft.Where(x => x.Incident == inc.Id).ToList() is { Count: > 0 } softRows)
+                {
+                    <details class="inc-more">
+                    <summary>@L["inc.soft.title"]</summary>
+                    <p class="muted small">@L["inc.soft.lede"]</p>
+                    <div class="inc-scroll">
+                        <table class="report-table">
+                            <thead><tr><th>@L["inc.soft.rule"]</th><th>@L["inc.soft.ess"]</th><th>@L["inc.val.az"]</th><th>el</th><th>τ</th><th>@L["inc.soft.check"]</th><th>@L["inc.soft.log"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var row in softRows)
+                                {
+                                    @if (row.Id == "sunUp")
+                                    {
+                                        <tr class="muted"><td>@L["inc.soft.sunUp"]</td><td>—</td><td>—</td><td>—</td><td>—</td><td>@Pct(row.CheckShare)</td><td>@(row.CheckLog is { } lg ? Math.Abs(lg).ToString("F2", CultureInfo.InvariantCulture) : "—")</td></tr>
+                                    }
+                                    else
+                                    {
+                                        <tr><td>@(row.Id == "strict" ? L["inc.soft.strict"] : L.Format("inc.soft.row", row.Sigma.ToString("F0", CultureInfo.InvariantCulture), Pct(row.Lapse)))</td><td>@row.Ess.ToString("F0", CultureInfo.InvariantCulture)</td><td>@Deg(row.Az) <span class="muted">(@Deg(row.AzLow)–@Deg(row.AzHigh))</span></td><td>@Deg(row.El)</td><td>@Pct(row.Tau)</td><td>@Pct(row.CheckShare)</td><td>@(row.CheckLog is { } lg ? Math.Abs(lg).ToString("F2", CultureInfo.InvariantCulture) : "—")</td></tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="muted small">@L["inc.soft.read." + inc.Id]</p>
+                    </details>
+                }
+            }
+            @if (inc.Id == "im2" && crater is { } c)
+            {
+                <h3 class="method-sub">@L["inc.crater.title"] <Cites Ids="CraterIds" Doc="doc" Order="order" /></h3>
+                <p>@L.Format("inc.crater.lede", Deg1(c.SunMin), Deg1(c.SunMax), Deg1(c.TerrainMax))</p>
+                <pre class="formula">@L["inc.formula.rim"]</pre>
+                <table class="report-table">
+                    <thead><tr><th>@L["inc.crater.ratio"]</th><th>@L["inc.crater.height"]</th><th>@L["inc.crater.rim"]</th><th>@L["inc.crater.sun"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in c.Rows)
+                        {
+                            <tr><td>@row.Ratio.ToString("F2", CultureInfo.InvariantCulture)</td><td>@row.HeightM.ToString("F1", CultureInfo.InvariantCulture) m</td><td>@Deg1(row.RimDeg)</td><td class="@(row.RimDeg > c.SunMax ? "down" : "up")">@(row.RimDeg > c.SunMax ? L["inc.crater.blocked"] : L["inc.crater.open"])</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p>@L.Format("inc.crater.inverse", c.MaxRatio1.ToString("F2", CultureInfo.InvariantCulture), c.MaxRatio2.ToString("F2", CultureInfo.InvariantCulture))</p>
+                <p class="muted small">@L.Format("inc.crater.battery", c.LifeHours.ToString("F1", CultureInfo.InvariantCulture), (700 / c.LifeHours).ToString("F0", CultureInfo.InvariantCulture), (560 / c.LifeHours).ToString("F0", CultureInfo.InvariantCulture))</p>
+            }
+        </section>
+
+        <section id="step-predict">
+            <h2><span class="inc-num">5</span>@L["inc.step.predict"]</h2>
+            @if (days is { Count: > 0 } && fit is not null)
+            {
+                <p class="muted small">@L["inc.predict.lede"]</p>
+                <div class="inc-scroll">
+                    <table class="report-table">
+                        <thead><tr><th>@L["inc.predict.day"]</th><th>@L["inc.predict.sun"]</th><th>@L["inc.predict.p"]</th><th>@L["inc.predict.first"]</th><th>@L["inc.predict.last"]</th><th>@L["inc.predict.reported"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in days)
+                            {
+                                <tr>
+                                    <td>@d.Day.Index</td>
+                                    <td>@(d.Day.SunriseBeforeData ? L["inc.day.before"] + " " : "")@Range(d.Day.SunriseUtc, d.Day.SunsetUtc)@(d.Day.SunsetAfterData ? " " + L["inc.day.after"] : "")</td>
+                                    <td>@Pct(d.PowerShare)</td>
+                                    <td>@Hours(d.FirstPowerUtcHours, true)</td>
+                                    <td>@Hours(d.LastPowerUtcHours, true)</td>
+                                    <td>@Reported(d)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (band is { Length: > 0 } b)
+            {
+                <SeriesChart Title="@L["inc.chart.band"]" YLabel="@L["axis.pOn"]" XLabel="@L["axis.daysFromLanding"]" StepHours="item.Track.StepHours * bandStride" Unit="%" Min="0" Max="100" Marks="marks" Bands="nights"
+                             Lines="@(new SeriesChart.Line[] { new(L["inc.chart.pOn"], b.Select(v => v * 100).ToList(), "sun") })" />
+                <SeriesChart Title="@L["inc.chart.sun"]" YLabel="@L["axis.elevation"]" XLabel="@L["axis.daysFromLanding"]" StepHours="item.Track.StepHours * bandStride" Unit="°" ZeroLine="true" Marks="marks" Bands="nights"
+                             Lines="@(new SeriesChart.Line[] { new(L["inc.chart.sunEl"], StrideFrom(item.Track.ElevationDeg), "sun"), new(L["inc.chart.horizon"], StrideFrom(item.Track.HorizonDeg), "fixed") })" />
+                <p class="muted small">@L.Format("inc.chart.note", Utc(inc.LandingUtc))</p>
+            }
+            else if (inc.Kind == "control" && sunset is { } ss)
+            {
+                <dl class="report-facts">
+                    <div><dt>@L["inc.control.model"]</dt><dd>@Utc(ss.Model)</dd></div>
+                    <div><dt>@L["inc.control.reported"]</dt><dd>@Utc(ss.Reported)</dd></div>
+                    <div><dt>@L["inc.control.diff"]</dt><dd>@L.Format("inc.hours", (ss.Model - ss.Reported).TotalHours.ToString("+0.0;−0.0", CultureInfo.InvariantCulture))</dd></div>
+                </dl>
+                <p class="muted small">@L["inc.control.note"]</p>
+            }
+            else if (!HasFit)
+            {
+                <p class="muted">@L["inc.predict.none"]</p>
+            }
+        </section>
+
+        <section id="step-validate">
+            <h2><span class="inc-num">6</span>@L["inc.step.validate"]</h2>
+            @if (scores.Count > 0)
+            {
+                <h3 class="method-sub">@L["inc.val.table"]</h3>
+                <p class="muted small">@L["inc.val.lede"]</p>
+                <div class="inc-scroll">
+                    <table class="report-table inc-scores">
+                        <thead>
+                            <tr><th>@L["inc.events.when"]</th><th>@L["inc.events.use"]</th>@foreach (var m in modelIds) { <th>@L["inc.model." + m]</th> }</tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var group in scores.GroupBy(s => s.Observation))
+                            {
+                                <tr class="@(group.Key.Fit ? "inc-insample" : null)">
+                                    <td>@L["inc.kindobs." + group.Key.Kind]<br /><span class="muted small">@Range(group.Key.FromUtc, group.Key.ToUtc)</span></td>
+                                    <td><span class="inc-use @(group.Key.Fit ? "fit" : "check")">@L[group.Key.Fit ? "inc.use.fit" : "inc.use.check"]</span></td>
+                                    @foreach (var m in modelIds)
+                                    {
+                                        var sc = group.FirstOrDefault(x => x.ModelId == m);
+                                        <td class="@(sc is null ? null : sc.Probability >= 0.8 ? "up" : sc.Probability < 0.5 ? "down" : null)">@(sc is null ? "—" : Pct(sc.Probability))@(sc?.MedianErrorHours is { } eh ? " · " + L.Format("inc.hours", eh.ToString("+0;−0;0", CultureInfo.InvariantCulture)) : "")</td>
+                                    }
+                                </tr>
+                            }
+                            <tr class="inc-total"><td>@L["inc.val.brier"]</td><td></td>@foreach (var m in modelIds) { <td>@Mean(m, s => s.Brier)</td> }</tr>
+                            <tr class="inc-total"><td>@L["inc.val.log"]</td><td></td>@foreach (var m in modelIds) { <td>@Mean(m, s => s.LogScore)</td> }</tr>
+                        </tbody>
+                    </table>
+                </div>
+                <dl class="report-facts method-defs">
+                    @foreach (var m in modelIds)
+                    {
+                        <div><dt>@L["inc.model." + m]</dt><dd>@L["inc.model." + m + ".def"]</dd></div>
+                    }
+                </dl>
+                <p class="muted small">@L["inc.val.read." + inc.Id]</p>
+            }
+            @if (inc.Id == "slim" && checks is { } ck)
+            {
+                <h3 class="method-sub">@L["inc.val.evidence"]</h3>
+                <p class="muted small">@L["inc.val.evidenceLede"]</p>
+                <table class="report-table">
+                    <thead><tr><th>@L["inc.val.hypothesis"]</th><th>@L["inc.val.kept"]</th><th>@L["inc.val.pData"]</th><th>@L["inc.val.factor"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in ck.Evidence)
+                        {
+                            <tr><td>@L["inc.ev." + e.Id]</td><td>@e.Kept / @Draws</td><td>@(e.Kept == 0 ? "< " + (3.0 / Draws).ToString("F4", CultureInfo.InvariantCulture) : e.Kept == Draws ? "> " + (1 - 3.0 / Draws).ToString("F4", CultureInfo.InvariantCulture) : e.Evidence.ToString("F3", CultureInfo.InvariantCulture) + " ± " + e.Error.ToString("F3", CultureInfo.InvariantCulture))</td><td>@(e.Factor is { } bf ? bf.ToString("F2", CultureInfo.InvariantCulture) : "—")</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small">@L["inc.val.evidenceNote"]</p>
+
+                <details class="inc-more">
+                <summary>@L["inc.val.synthetic"]</summary>
+                <p>@L.Format("inc.val.syntheticLede", ck.Matched.Count, ck.Matched.Draws)</p>
+                <table class="report-table">
+                    <thead><tr><th>@L["inc.val.run"]</th><th>@L["inc.val.covAz"]</th><th>@L["inc.val.covEl"]</th><th>@L["inc.val.covTau"]</th><th>@L["inc.val.covFirst"]</th><th>@L["inc.val.azErr"]</th><th>@L["inc.val.brierDay2"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var (key, run2) in new[] { ("matched", ck.Matched), ("misspecified", ck.Misspecified) })
+                        {
+                            <tr><td>@L.Format("inc.val.run." + key, run2.MaxDelayHours / 24)</td><td>@Pct(run2.CovAz)</td><td>@Pct(run2.CovEl)</td><td>@Pct(run2.CovTau)</td><td>@Pct(run2.CovFirst)</td><td>@Deg(run2.AzErrMedian) <span class="muted">(95%: @Deg(run2.AzErrHigh))</span></td><td>@run2.Brier.ToString("F3", CultureInfo.InvariantCulture) <span class="muted">/ @run2.BrierClim.ToString("F3", CultureInfo.InvariantCulture)</span></td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small">@L["inc.val.syntheticNote"]</p>
+                <div class="report-two even">
+                    <figure class="inc-reliability">
+                        <figcaption class="series-title">@L["inc.val.reliability"]</figcaption>
+                        <svg viewBox="-14 -12 254 232" role="img" aria-label="@L["inc.val.reliability"]">
+                            <text transform="translate(-4 101) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.observed"]</text>
+                            <rect x="34" y="6" width="190" height="190" class="series-bg" />
+                            <line x1="34" y1="196" x2="224" y2="6" class="series-ref" />
+                            @foreach (var bin in ck.Misspecified.Reliability.Where(x => x.Predicted is not null))
+                            {
+                                <circle cx="@F(34 + bin.Predicted!.Value * 190)" cy="@F(196 - bin.Observed!.Value * 190)" r="@F(3 + Math.Sqrt(bin.Count))" class="rel-dot" />
+                            }
+                            <text x="34" y="212" class="series-axis">0</text>
+                            <text x="224" y="212" text-anchor="end" class="series-axis">1</text>
+                            <text x="129" y="212" text-anchor="middle" class="axis-title">@L["inc.val.relX"]</text>
+                            <text x="30" y="14" text-anchor="end" class="series-axis">1</text>
+                        </svg>
+                        <p class="muted small">@L.Format("inc.val.relNote", ck.Misspecified.Brier.ToString("F3", CultureInfo.InvariantCulture), ck.Misspecified.BrierClim.ToString("F3", CultureInfo.InvariantCulture))</p>
+                    </figure>
+                </div>
+                <div>
+                        <h3 class="numbers-head">@L["inc.val.sensitivity"]</h3>
+                        <div class="inc-scroll">
+                            <table class="report-table">
+                                <thead><tr><th>@L["inc.val.variant"]</th><th>@L["inc.val.az"]</th><th>el</th><th>τ</th><th>@L["inc.val.kept"]</th><th>@L["inc.val.lost"]</th><th>@L["inc.val.sunset"]</th></tr></thead>
+                                <tbody>
+                                    @foreach (var v in ck.Sensitivity)
+                                    {
+                                        <tr><td>@L["inc.sens." + v.Id]</td><td>@Deg(v.Az) <span class="muted">(@Deg(v.AzLow)–@Deg(v.AzHigh))</span></td><td>@Deg(v.El)</td><td>@Pct(v.Tau)</td><td>@v.Kept</td><td>@Pct(v.LostShare)</td><td>@(v.Sunset is { } su ? Short(su) : "—")</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="muted small">@L["inc.val.sensNote"]</p>
+                </div>
+                </details>
+            }
+            @if (inc.Id == "im1" && checks is { } ck1)
+            {
+                <h3 class="method-sub">@L["inc.val.hypotheses"]</h3>
+                <table class="report-table">
+                    <thead><tr><th>@L["inc.val.hypothesis"]</th><th>@L["inc.val.pData"]</th><th>@L["inc.val.share"]</th><th>@L["inc.check.error"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in ck1.Hypotheses)
+                        {
+                            <tr><td>@L["inc.hyp." + h.Id]</td><td>@h.Evidence.ToString("F3", CultureInfo.InvariantCulture) <span class="muted">(@h.Kept)</span></td><td>@Pct(h.Share) <span class="muted">± @Pct(h.ShareError)</span></td><td>@L.Format("inc.errValue", Signed(h.Median), Signed(h.Low), Signed(h.High))</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small">@L["inc.val.hypNote"]</p>
+            }
+            @if (comms is { } cm)
+            {
+                <h3 class="method-sub">@L["inc.comms.title"] @if (inc.Id == "slim") { <Cites Ids="CommsIds" Doc="doc" Order="order" /> }</h3>
+                <p class="muted small">@L["inc.comms.lede." + (inc.Id == "slim" ? "jaxa" : "dsn")]</p>
+                @if (cm.Contacts.Count > 0)
+                {
+                    <table class="report-table">
+                        <thead><tr><th>@L["inc.events.when"]</th><th>@L["inc.comms.max"]</th><th>@L["inc.comms.share"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var k in cm.Contacts)
+                            {
+                                <tr><td>@Range(k.Observation.FromUtc, k.Observation.ToUtc)</td><td class="@(k.MaxElevationDeg >= 10 ? "up" : "down")">@Deg1(k.MaxElevationDeg) <span class="muted">@L.Place(k.BestStation)</span></td><td>@Pct(k.VisibleShare)</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                    <p>@L.Format("inc.comms.read", cm.Contacts.Count(k => k.MaxElevationDeg >= 10), cm.Contacts.Count, Pct(cm.BaseRate), cm.ChanceAllByLuck.ToString("F3", CultureInfo.InvariantCulture))</p>
+                    <div class="inc-mini">
+                        @foreach (var k in cm.Contacts)
+                        {
+                            var ca = Math.Max(0, item.Track.IndexOf(k.Observation.FromUtc.AddHours(-18)));
+                            var cb = Math.Min(item.Track.Count - 1, item.Track.IndexOf(k.Observation.ToUtc.AddHours(18)));
+                            <SeriesChart Title="@L.Format("inc.comms.chartJaxa", Short(k.Observation.FromUtc))" YLabel="@L["axis.moonElevation"]" StepHours="item.Track.StepHours" Unit="°" ZeroLine="true" Height="260"
+                                         Marks="@(new SeriesChart.Mark[] { new((k.Observation.FromUtc - item.Track.At(ca)).TotalHours, (k.Observation.ToUtc - item.Track.At(ca)).TotalHours, "mark-check", "") })"
+                                         References="@(new SeriesChart.Reference[] { new(10, L["inc.comms.min"]) })"
+                                         Lines="@(new SeriesChart.Line[] { new(L["inc.comms.moonUp"], cm.StationElevationDeg[ca..(cb + 1)], "earth") })" />
+                        }
+                    </div>
+                    <p class="muted small">@L["inc.comms.miniNote"]</p>
+                }
+                else
+                {
+                    <p>@L.Format("inc.comms.earthRead", Deg1(EarthMin(cm)), Deg1(EarthMax(cm)), Pct(cm.BaseRate))</p>
+                    <SeriesChart Title="@L["inc.comms.chartEarth"]" YLabel="@L["axis.elevation"]" XLabel="@L["axis.daysFromLanding"]" StepHours="item.Track.StepHours * bandStride" Unit="°" Marks="marks" Bands="nights"
+                                 Lines="@(new SeriesChart.Line[] { new(L["inc.comms.earth"], StrideFrom(cm.EarthElevationDeg), "earth"), new(L["inc.chart.horizon"], StrideFrom(cm.EarthHorizonDeg), "fixed") })" />
+                }
+            }
+            @if (!HasFit)
+            {
+                <p class="muted">@L["inc.val.none." + inc.Id]</p>
+            }
+        </section>
+
+        <section id="step-whatif">
+            <h2><span class="inc-num">7</span>@L["inc.step.whatif"]</h2>
+            <p class="muted small">@L["inc.sim.lede"]</p>
+            <div class="inc-sim">
+                <fieldset>
+                    <legend>@L["inc.sim.panelDir"]</legend>
+                    @if (fit is { Accepted.Count: > 0 })
+                    {
+                        <button type="button" class="primary" @onclick="DrawFromPosterior">@L["inc.sim.draw"]</button>
+                    }
+                    <label>@L["inc.sim.az"] <b>@Deg(panelAz)</b><input type="range" min="0" max="359" step="1" @bind="panelAz" @bind:event="oninput" @bind:after="PanelChanged" /></label>
+                    <label>@L["inc.sim.el"] <b>@Deg(panelEl)</b><input type="range" min="-90" max="90" step="1" @bind="panelEl" @bind:event="oninput" @bind:after="PanelChanged" /></label>
+                    <label>@L["inc.sim.tau"] <b>@Pct(tau)</b><input type="range" min="0.02" max="0.6" step="0.01" @bind="tau" @bind:event="oninput" @bind:after="Simulate" /></label>
+                    <label>@L["inc.sim.crater"] <b>@Deg1(localHorizon)</b><input type="range" min="0" max="25" step="0.5" @bind="localHorizon" @bind:event="oninput" @bind:after="Rebuild" /></label>
+                </fieldset>
+                <fieldset>
+                    <legend>@L["inc.sim.energy"]</legend>
+                    <label>@L["inc.sim.area"] <b>@(area.ToString("F2", CultureInfo.InvariantCulture)) m²</b><input type="range" min="0.05" max="3" step="0.05" @bind="area" @bind:event="oninput" @bind:after="Simulate" /></label>
+                    <label>@L["inc.sim.eff"] <b>@Pct(eff)</b><input type="range" min="0.1" max="0.35" step="0.01" @bind="eff" @bind:event="oninput" @bind:after="Simulate" /></label>
+                    <label>@L["inc.sim.battery"] <b>@(batteryWh.ToString("F0", CultureInfo.InvariantCulture)) Wh</b><input type="range" min="50" max="3000" step="50" @bind="batteryWh" @bind:event="oninput" @bind:after="Simulate" /></label>
+                    <label>@L["inc.sim.start"] <b>@Pct(startSoc)</b><input type="range" min="0.05" max="1" step="0.05" @bind="startSoc" @bind:event="oninput" @bind:after="Simulate" /></label>
+                    <label>@L["inc.sim.load"] <b>@(load.ToString("F0", CultureInfo.InvariantCulture)) W</b><input type="range" min="5" max="400" step="5" @bind="load" @bind:event="oninput" @bind:after="Simulate" /></label>
+                </fieldset>
+                <details class="inc-advanced">
+                    <summary>@L["inc.sim.advanced"]</summary>
+                    <p class="muted small">@L["inc.sim.advancedNote"]</p>
+                    <div class="inc-presets" role="group" aria-label="@L["inc.sim.presets"]">
+                        @foreach (var preset in Presets)
+                        {
+                            <button type="button" @onclick="() => ApplyBody(preset.Tilt, preset.SpinOffset)">@L["inc.preset." + preset.Id]</button>
+                        }
+                        <button type="button" @onclick="RandomPreset">@L["inc.preset.random"]</button>
+                    </div>
+                    <label>@L["inc.sim.tilt"] <b>@Deg(tilt)</b><input type="range" min="0" max="180" step="1" @bind="tilt" @bind:event="oninput" @bind:after="BodyChanged" /></label>
+                    <label>@L["inc.sim.tiltDir"] <b>@Deg(tiltDir)</b><input type="range" min="0" max="359" step="1" @bind="tiltDir" @bind:event="oninput" @bind:after="BodyChanged" /></label>
+                    <label>@L["inc.sim.spin"] <b>@Deg(spin)</b><input type="range" min="0" max="359" step="1" @bind="spin" @bind:event="oninput" @bind:after="BodyChanged" /></label>
+                    <p class="small">@L.Format("inc.sim.bodyResult", Deg(panelAz), Deg(panelEl))</p>
+                </details>
+            </div>
+            @if (run is { } scene)
+            {
+                <figure class="inc-scene">
+                    <canvas @ref="sceneCanvas" aria-label="@L["inc.scene.label"]"></canvas>
+                    <div class="inc-scene-bar">
+                        <button type="button" @onclick="TogglePlay">@(playing ? L["inc.scene.pause"] : L["inc.scene.play"])</button>
+                        <input type="range" min="0" max="@(scene.PowerW.Length - 1)" step="1" @bind="sceneStep" @bind:event="oninput" @bind:after="UpdateSceneAsync" aria-label="@L["inc.scene.time"]" />
+                    </div>
+                    <figcaption class="inc-scene-read">
+                        <span>@Utc(scene.StartUtc.AddHours(sceneStep * scene.StepHours))</span>
+                        <span>@L.Format("inc.scene.sun", Deg1(SceneSun().El), Deg(SceneSun().Az))</span>
+                        <span>@L.Format("inc.scene.light", Pct(SceneLight()))</span>
+                        <span>@L.Format("inc.scene.power", scene.PowerW[Math.Clamp(sceneStep, 0, scene.PowerW.Length - 1)].ToString("F0", CultureInfo.InvariantCulture))</span>
+                    </figcaption>
+                    <p class="muted small">@L["inc.scene.note"]</p>
+                </figure>
+            }
+            @if (run is { } sim)
+            {
+                <div class="report-figures">
+                    <div><strong>@FirstPower(sim)</strong><span>@L["inc.sim.first"]</span></div>
+                    <div><strong>@Pct(sim.AwakeShare)</strong><span>@L["inc.sim.awake"]</span></div>
+                    <div><strong>@(sim.PowerW.Max().ToString("F0", CultureInfo.InvariantCulture)) W</strong><span>@L["inc.sim.peak"]</span></div>
+                    <div><strong>@(sim.EnergyKWh.ToString("F1", CultureInfo.InvariantCulture))</strong><span>@L["inc.sim.kwh"]</span></div>
+                </div>
+                <SeriesChart Title="@L["inc.chart.power"]" YLabel="@L["axis.power"]" StepHours="sim.StepHours * stride" Unit=" W" Min="0" Marks="marks" Bands="nights"
+                             References="@(new SeriesChart.Reference[] { new(WakeW, L["inc.chart.wake"]) })"
+                             Lines="@(new SeriesChart.Line[] { new(L["inc.chart.panels"], Stride(sim.PowerW), "sun") })" />
+                <SeriesChart Title="@L["inc.chart.battery"]" YLabel="@L["axis.charge"]" StepHours="sim.StepHours * stride" Unit="%" Min="0" Max="100" Marks="marks" Bands="nights"
+                             Lines="@(new SeriesChart.Line[] { new(L["inc.chart.charge"], Stride(sim.Charge).Select(v => v * 100).ToList(), "soc2"), new(L["inc.chart.on"], Stride(sim.Awake.Select(a => a ? 100.0 : 0.0).ToArray()), "soc0") })" />
+                <p class="muted small">@L.Format("inc.sim.chartNote", Utc(sim.StartUtc), (WakeW).ToString("F0", CultureInfo.InvariantCulture)) @(HasFit ? L["inc.sim.pointNote"] : "")</p>
+            }
+            <div class="report-actions">
+                <button type="button" @onclick="PrintAsync">@L["inc.print"]</button>
+                <button type="button" @onclick="JsonAsync">@L["inc.json"]</button>
+            </div>
+        </section>
+
+        <section>
+            <h2>@L["report.sources"]</h2>
+            <ol class="report-refs">
+                @foreach (var (key, source) in UsedSources())
+                {
+                    <li id="src-@key">@source.Title <a href="@source.Url" target="_blank" rel="noopener">@Host(source.Url)</a></li>
+                }
+            </ol>
+        </section>
+    }
+</article>
+
+@code {
+    private const int Draws = 6000;
+    private const int Seed = 1;
+
+    private static readonly string[] CaseIds = ["slim", "im1", "im2", "blueghost1"];
+
+    private static readonly string[] Steps = ["case", "events", "model", "fit", "predict", "validate", "whatif"];
+
+    private static readonly string[] DiagramBoxes = ["eph", "terrain", "panel", "events", "kept", "predict"];
+
+    private static readonly string[] OperatorKinds = ["Power", "NoPower", "PowerThroughout", "PowerLost"];
+
+    private static readonly IReadOnlyList<string> CraterIds = ["stopar2017", "pike1977"];
+
+    private static readonly IReadOnlyList<string> NoteIds = ["nasa2024slimlaser"];
+
+    private static readonly IReadOnlyList<string> CommsIds = ["jaxaStations"];
+
+    private sealed record CraterRow(double Ratio, double HeightM, double RimDeg);
+
+    private sealed record CraterCheck(double SunMin, double SunMax, double TerrainMax, double LifeHours, IReadOnlyList<CraterRow> Rows, double MaxRatio1, double MaxRatio2);
+
+    private sealed record SunsetCheck(DateTimeOffset Model, DateTimeOffset Reported);
+
+    private sealed record AttitudePreset(string Id, double Tilt, double SpinOffset);
+
+    private sealed record RelBin(int Count, double? Predicted, double? Observed);
+
+    private sealed record SensRow(string Id, double? Az, double? AzLow, double? AzHigh, double? El, double? Tau, int Kept, double? LostShare, DateTimeOffset? Sunset);
+
+    private sealed record HypRow(string Id, int Kept, double Evidence, double Share, double ShareError, double? Median, double? Low, double? High);
+
+    private sealed record EvidenceRow(string Id, int Kept, double Evidence, double Error, double? Factor);
+
+    private sealed record SynRun(int Count, int Draws, double CovAz, double CovEl, double CovTau, double CovFirst, double AzErrMedian, double AzErrHigh, double Brier, double BrierClim, int MaxDelayHours, IReadOnlyList<RelBin> Reliability);
+
+    private sealed record SoftRow(string Incident, string Id, double Sigma, double Lapse, double Ess, double? Az, double? AzLow, double? AzHigh, double? El, double? Tau, double? CheckShare, double? CheckLog);
+
+    private sealed record CheckData(SynRun Matched, SynRun Misspecified, IReadOnlyList<SensRow> Sensitivity, IReadOnlyList<HypRow> Hypotheses, IReadOnlyList<EvidenceRow> Evidence, IReadOnlyList<SoftRow> Soft);
+
+    private static readonly AttitudePreset[] Presets =
+    [
+        new("upright", 0, 0),
+        new("lean15", 15, 0),
+        new("lean30", 30, 0),
+        new("sideUp", 90, 180),
+        new("nose", 120, 180),
+        new("upside", 180, 0),
+    ];
+
+    [SupplyParameterFromQuery(Name = "case")]
+    public string? CaseQuery { get; set; }
+
+    private string caseId = "slim";
+    private IncidentsDocument? doc;
+    private IncidentCase? item;
+    private InferenceResult? fit;
+    private InferenceResult? prior;
+    private CraterCheck? crater;
+    private SunsetCheck? sunset;
+    private CheckData? checks;
+    private CommsSummary? comms;
+    private LanderRun? run;
+    private IReadOnlyList<DayPrediction>? days;
+    private double[]? band;
+    private int bandStride = 1;
+    private IReadOnlyList<SeriesChart.Band> nights = [];
+    private List<ModelScore> scores = [];
+    private string[] modelIds = [];
+    private IReadOnlyList<SeriesChart.Mark> marks = [];
+    private IReadOnlyList<string> order = [];
+    private bool failed;
+    private double? fitting;
+    private int stride = 1;
+    private SunTrack? simTrack;
+    private readonly Random random = new();
+    private double panelAz = 270, panelEl, tau = 0.3, localHorizon, area = 1, eff = 0.3, batteryWh = 700, startSoc = 1, load = 100;
+    private double tilt, tiltDir, spin;
+    private LanderAttitude simAttitude = LanderAttitude.Upright;
+    private ElementReference sceneCanvas;
+    private IJSObjectReference? sceneModule;
+    private IJSObjectReference? sceneView;
+    private string? sceneFor;
+    private int sceneStep;
+    private bool playing;
+
+    private bool HasFit => item?.Observations.Any(o => o.Fit) == true;
+
+    private double WakeW => tau * area * Shadowline.Core.Power.PowerModel.SolarConstantW * eff * Shadowline.Core.Power.PowerModel.SystemFactorFixedEfficiency;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var query = CaseQuery ?? System.Web.HttpUtility.ParseQueryString(new Uri(Navigation.Uri).Query)["case"];
+        caseId = CaseIds.Contains(query) ? query! : "slim";
+        if (item?.Incident.Id == caseId)
+        {
+            return;
+        }
+
+        item = null;
+        comms = null;
+        fit = prior = null;
+        crater = null;
+        sunset = null;
+        run = null;
+        days = null;
+        band = null;
+        scores = [];
+        modelIds = [];
+        simTrack = null;
+        doc = await Service.LoadAsync();
+        item = await Service.CaseAsync(caseId);
+        failed = item is null;
+        if (item is null)
+        {
+            return;
+        }
+
+        var current = item;
+        order = UsedSources().Select(u => u.Key).ToList();
+        crater = current.Incident.Id == "im2" ? Crater(current) : null;
+        sunset = current.Incident.Kind == "control" ? Sunset(current) : null;
+        checks = ReadChecks(await Service.LoadChecksAsync());
+        nights = Nights(current);
+        bandStride = Math.Max(1, (int)Math.Ceiling((current.Track.Count - current.Track.IndexOf(current.Incident.LandingUtc)) / 600.0));
+        var lastEvent = current.Observations.Count == 0 ? current.Incident.LandingUtc.AddDays(1) : current.Observations.Max(o => o.ToUtc);
+        comms = IncidentComms.Analyze(new SiteFrame(current.Site), current.Ephemeris, current.Horizon, current.Incident.Id == "slim" ? IncidentComms.Jaxa : Shadowline.Core.Comms.DeepSpaceNetwork.Stations, current.Observations.Where(o => o.Fit || o.Check).ToList(), current.Incident.LandingUtc, lastEvent);
+        Defaults(current);
+        await Rebuild();
+        if (!HasFit)
+        {
+            return;
+        }
+
+        var p = PriorFor(current);
+        fitting = 0;
+        StateHasChanged();
+        fit = await Service.FitAsync(current, p, Draws, true, f => { fitting = f * 0.6; StateHasChanged(); });
+        prior = await Service.FitAsync(current, p, Draws / 2, false, f => { fitting = 0.6 + f * 0.2; StateHasChanged(); });
+        if (item != current)
+        {
+            return;
+        }
+
+        fitting = 0.85;
+        StateHasChanged();
+        await Task.Delay(1);
+        var lunar = IncidentAnalysis.LunarDays(current.Track, current.Incident.LandingUtc);
+        days = IncidentAnalysis.PredictDays(current.Track, fit.Accepted, lunar, current.Incident.LandingUtc, 400);
+        bandStride = Math.Max(1, (int)Math.Ceiling((current.Track.Count - current.Track.IndexOf(current.Incident.LandingUtc)) / 600.0));
+        band = IncidentAnalysis.OnShare(current.Track, fit.Accepted, Math.Max(0, current.Track.IndexOf(current.Incident.LandingUtc)), bandStride, 250);
+        fitting = 0.95;
+        StateHasChanged();
+        await Task.Delay(1);
+        BuildScores(current);
+        fitting = null;
+        Defaults(current);
+        Simulate();
+    }
+
+    private void BuildScores(IncidentCase c)
+    {
+        if (fit is null || prior is null)
+        {
+            return;
+        }
+
+        var tauMedian = fit.Threshold?.Median ?? 0.3;
+        var models = new List<PredictiveModel>
+        {
+            new("prior", null, IncidentAnalysis.Thin(prior.Accepted, 1500)),
+            new("sunUp", IncidentAnalysis.SunUp(c.Track), null),
+            new("upright", IncidentAnalysis.FixedPanel(c.Track, 0, 90, tauMedian), null),
+        };
+        if (c.Incident.Attitude?.PanelAzimuthDeg is { } reportedAz)
+        {
+            models.Add(new("reported", IncidentAnalysis.FixedPanel(c.Track, reportedAz, 0, tauMedian), null));
+        }
+
+        models.Add(new("posterior", null, IncidentAnalysis.Thin(fit.Accepted, 1500)));
+        modelIds = models.Select(m => m.Id).ToArray();
+        scores = c.Observations.Where(o => (o.Fit || o.Check) && AttitudeInference.IsScored(o)).SelectMany(o => models.Select(m => IncidentAnalysis.Score(c.Track, m, o))).ToList();
+    }
+
+    private string Mean(string model, Func<ModelScore, double> value)
+    {
+        var held = scores.Where(s => s.ModelId == model && !s.Observation.Fit).ToList();
+        return held.Count == 0 ? "—" : Math.Max(0, held.Average(value)).ToString("F3", CultureInfo.InvariantCulture);
+    }
+
+    private sealed record PvfRow(DayPrediction Day, DateTimeOffset Start, DateTimeOffset End, DateTimeOffset Low, DateTimeOffset Median, DateTimeOffset High, IReadOnlyList<(DateTimeOffset From, DateTimeOffset To, ObservationKind Kind)> Reports, bool HeldOut)
+    {
+        public double X(DateTimeOffset t) => Math.Clamp((t - Start) / (End - Start), 0, 1) * 600;
+    }
+
+    private static readonly ObservationKind[] PowerKinds = [ObservationKind.Power, ObservationKind.PowerThroughout, ObservationKind.Operations];
+
+    private List<PvfRow> PredictionRows()
+    {
+        if (item is null || days is null || fit is null)
+        {
+            return [];
+        }
+
+        var rows = new List<PvfRow>();
+        foreach (var d in days)
+        {
+            if (d.FirstPowerUtcHours is not { } first)
+            {
+                continue;
+            }
+
+            var observed = item.Observations.Where(o => (o.Fit || o.Check) && AttitudeInference.IsScored(o) && o.ToUtc >= d.Day.SunriseUtc && o.FromUtc <= d.Day.SunsetUtc).ToList();
+            if (observed.Count == 0)
+            {
+                continue;
+            }
+
+            var low = item.Incident.LandingUtc.AddHours(first.Low);
+            var median = item.Incident.LandingUtc.AddHours(first.Median);
+            var high = item.Incident.LandingUtc.AddHours(first.High);
+            var reports = observed.Select(o => (o.FromUtc, o.ToUtc, o.Kind)).ToList();
+            var start = new[] { low }.Concat(reports.Select(r => r.FromUtc)).Min().AddHours(-24);
+            var end = new[] { high }.Concat(reports.Select(r => r.ToUtc)).Max().AddHours(24);
+            rows.Add(new PvfRow(d, start, end, low, median, high, reports, observed.All(o => o.Check && !o.Fit)));
+        }
+
+        return rows;
+    }
+
+    private IEnumerable<string> AnswerLines()
+    {
+        if (item is null)
+        {
+            yield break;
+        }
+
+        var inc = item.Incident;
+        if (HasFit && fit is null)
+        {
+            yield return L["inc.answer.wait"];
+            yield break;
+        }
+
+        switch (inc.Id)
+        {
+            case "slim" when fit is { } r && days is { Count: > 1 } d:
+                yield return L.Format("inc.answer.slim1", Deg(r.Azimuth?.Median), Deg(r.Azimuth?.Low), Deg(r.Azimuth?.High));
+                yield return L.Format("inc.answer.slim2", HoursUtc(d[0].FirstPowerUtcHours?.Median), HoursUtc(d[0].FirstPowerUtcHours?.Low), HoursUtc(d[0].FirstPowerUtcHours?.High));
+                yield return L.Format("inc.answer.slim3", HoursUtc(d[1].FirstPowerUtcHours?.Median), HoursUtc(d[1].FirstPowerUtcHours?.Low), HoursUtc(d[1].FirstPowerUtcHours?.High));
+                break;
+            case "im1" when fit is { } r && days is { Count: > 0 } d:
+                yield return L.Format("inc.answer.im1a", Deg(r.Azimuth?.Median), Deg(r.Azimuth?.Low), Deg(r.Azimuth?.High));
+                yield return L.Format("inc.answer.im1b", HoursUtc(d[0].LastPowerUtcHours?.Median), HoursUtc(d[0].LastPowerUtcHours?.Low), HoursUtc(d[0].LastPowerUtcHours?.High), Utc(d[0].Day.SunsetUtc), Pct(r.Scores.FirstOrDefault()?.Share));
+                break;
+            case "im2" when crater is { } c:
+                yield return L.Format("inc.answer.im2", Deg1(c.SunMin), Deg1(c.SunMax), c.MaxRatio1.ToString("F2", CultureInfo.InvariantCulture), c.MaxRatio2.ToString("F2", CultureInfo.InvariantCulture));
+                break;
+            case "blueghost1" when sunset is { } s:
+                yield return L.Format("inc.answer.bg", Utc(s.Model), Utc(s.Reported), (s.Model - s.Reported).TotalHours.ToString("+0.0;−0.0", CultureInfo.InvariantCulture));
+                break;
+        }
+    }
+
+    private static InferencePrior PriorFor(IncidentCase c) => c.Incident.Attitude?.PanelTiltDeg is { } t
+        ? new InferencePrior(0, 360, 90 - t, 90 - t, 0.02, 0.6)
+        : InferencePrior.Sphere;
+
+    private void Defaults(IncidentCase c)
+    {
+        localHorizon = 0;
+        eff = 0.3;
+        batteryWh = 700;
+        startSoc = 1;
+        load = 100;
+        area = 1;
+        panelAz = fit?.Azimuth?.Median ?? 270;
+        panelEl = fit?.Elevation?.Median ?? 0;
+        tau = fit?.Threshold?.Median ?? 0.3;
+        switch (c.Incident.Id)
+        {
+            case "slim":
+                batteryWh = 300;
+                startSoc = 0.12;
+                load = 60;
+                break;
+            case "im1":
+                area = 0.2;
+                load = 30;
+                break;
+            case "im2":
+                area = 0.2;
+                panelAz = 60;
+                panelEl = 0;
+                load = 55;
+                localHorizon = 0;
+                break;
+            case "blueghost1":
+                panelAz = 270;
+                panelEl = 0;
+                tau = 0.05;
+                area = 1;
+                break;
+        }
+
+        SyncBody();
+    }
+
+    private void SyncBody()
+    {
+        tilt = 90 - panelEl;
+        tiltDir = panelAz;
+        spin = 0;
+        simAttitude = new LanderAttitude(tilt, tiltDir, spin);
+    }
+
+    private void DrawFromPosterior()
+    {
+        if (fit is not { Accepted.Count: > 0 } r)
+        {
+            return;
+        }
+
+        var s = r.Accepted[random.Next(r.Accepted.Count)];
+        panelAz = Math.Round(s.AzimuthDeg);
+        panelEl = Math.Round(s.ElevationDeg);
+        tau = Math.Round(s.Threshold, 2);
+        SyncBody();
+        Simulate();
+    }
+
+    private void ApplyBody(double t, double spinOffset)
+    {
+        tilt = t;
+        spin = ((tiltDir + spinOffset - 180) % 360 + 360) % 360;
+        BodyChanged();
+    }
+
+    private void RandomPreset()
+    {
+        tilt = Math.Round(Math.Acos(1 - 2 * random.NextDouble()) * 180 / Math.PI);
+        tiltDir = random.Next(0, 360);
+        spin = random.Next(0, 360);
+        BodyChanged();
+    }
+
+    private void PanelChanged()
+    {
+        SyncBody();
+        Simulate();
+    }
+
+    private void BodyChanged()
+    {
+        simAttitude = new LanderAttitude(tilt, tiltDir, spin);
+        var normal = simAttitude.ToLocal(new Vec3(0, 0, 1));
+        var (az, el) = LanderGeometry.Angles(normal);
+        panelAz = Math.Round(az);
+        panelEl = Math.Round(el);
+        Simulate();
+    }
+
+    private (double Az, double El) SceneSun()
+    {
+        if (item is null || run is null)
+        {
+            return (0, 0);
+        }
+
+        var i = Math.Clamp(item.Track.IndexOf(run.StartUtc) + sceneStep, 0, item.Track.Count - 1);
+        return LanderGeometry.Angles(item.Track.Direction[i]);
+    }
+
+    private double SceneLight()
+    {
+        if (item is null || run is null)
+        {
+            return 0;
+        }
+
+        var track = simTrack ?? item.Track;
+        var i = Math.Clamp(track.IndexOf(run.StartUtc) + sceneStep, 0, track.Count - 1);
+        return track.Irradiance[i] / Shadowline.Core.Power.PowerModel.SolarConstantW * Math.Max(0, Vec3.Dot(track.Direction[i], simAttitude.ToLocal(new Vec3(0, 0, 1))));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (run is null || item is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (sceneView is null || sceneFor != item.Incident.Id)
+            {
+                sceneModule ??= await Js.InvokeAsync<IJSObjectReference>("import", "./js/landerview.js");
+                if (sceneView is not null)
+                {
+                    await sceneView.InvokeVoidAsync("dispose");
+                    await sceneView.DisposeAsync();
+                }
+
+                var samples = Enumerable.Range(0, 180).Select(k => item.Horizon.ElevationAt(k * 2.0)).ToArray();
+                sceneView = await sceneModule.InvokeAsync<IJSObjectReference>("create", sceneCanvas, samples);
+                sceneFor = item.Incident.Id;
+                await UpdateSceneAsync();
+            }
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException or TaskCanceledException)
+        {
+            sceneView = null;
+        }
+    }
+
+    private async Task UpdateSceneAsync()
+    {
+        if (sceneView is null || item is null || run is null)
+        {
+            return;
+        }
+
+        var i = Math.Clamp(item.Track.IndexOf(run.StartUtc) + sceneStep, 0, item.Track.Count - 1);
+        var sun = SceneSun();
+        var earth = new SiteFrame(item.Site).Observe(item.Ephemeris.Earth(i));
+        static double[] V(Vec3 v) => [v.X, v.Y, v.Z];
+        try
+        {
+            await sceneView.InvokeVoidAsync("update", new
+            {
+                bodyX = V(simAttitude.ToLocal(new Vec3(1, 0, 0))),
+                bodyY = V(simAttitude.ToLocal(new Vec3(0, 1, 0))),
+                bodyZ = V(simAttitude.ToLocal(new Vec3(0, 0, 1))),
+                sunAz = sun.Az,
+                sunEl = sun.El,
+                sunVisible = item.Track.Irradiance[i] > 0,
+                earthAz = earth.AzimuthDeg,
+                earthEl = earth.ElevationDeg,
+                light = SceneLight() / Math.Max(0.02, tau) / 2,
+            });
+        }
+        catch (Exception exception) when (exception is JSException or TaskCanceledException or ObjectDisposedException)
+        {
+        }
+    }
+
+    private async Task TogglePlay()
+    {
+        playing = !playing;
+        while (playing && run is not null)
+        {
+            sceneStep = (sceneStep + 2) % run.PowerW.Length;
+            await UpdateSceneAsync();
+            StateHasChanged();
+            await Task.Delay(60);
+        }
+    }
+
+    public override void Dispose()
+    {
+        playing = false;
+        if (sceneView is not null)
+        {
+            _ = sceneView.InvokeVoidAsync("dispose").AsTask().ContinueWith(_ => sceneView.DisposeAsync(), TaskScheduler.Default);
+        }
+
+        base.Dispose();
+    }
+
+    private async Task Rebuild()
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        simTrack = localHorizon > 0 ? (await Service.CaseAsync(item.Incident.Id, Math.Round(localHorizon * 2) / 2))?.Track : null;
+        Simulate();
+    }
+
+    private void Simulate()
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var track = simTrack ?? item.Track;
+        var spec = new LanderSpec([new LanderPanel("panel", 0, 90, area)], eff, Shadowline.Core.Power.PowerModel.SystemFactorFixedEfficiency, 1, new LanderBattery(batteryWh, startSoc, 0.05), load, 2, WakeW);
+        run = LanderModel.Run(track, spec, simAttitude, item.Incident.LandingUtc);
+        sceneStep = Math.Clamp(sceneStep, 0, run.PowerW.Length - 1);
+        _ = UpdateSceneAsync();
+        stride = Math.Max(1, (int)Math.Ceiling(run.PowerW.Length / 700.0));
+        marks = Marks(item, run.StartUtc);
+    }
+
+    private IReadOnlyList<SeriesChart.Mark> Marks(IncidentCase c, DateTimeOffset start) =>
+        (c.Incident.Observations ?? [])
+            .Where(o => o.ToUtc >= start)
+            .Select(o => new SeriesChart.Mark(Math.Max(0, (o.FromUtc - start).TotalHours), (o.ToUtc - start).TotalHours, "mark-" + o.Use, Sentence(L.Language == "uk" ? o.NoteUk ?? o.Note : o.Note)))
+            .ToList();
+
+    private static IReadOnlyList<SeriesChart.Band> Nights(IncidentCase c)
+    {
+        var start = c.Track.IndexOf(c.Incident.LandingUtc);
+        var bands = new List<SeriesChart.Band>();
+        int? from = null;
+        for (var i = Math.Max(0, start); i < c.Track.Count; i++)
+        {
+            var dark = c.Track.Irradiance[i] <= 0;
+            if (dark && from is null)
+            {
+                from = i;
+            }
+            else if (!dark && from is { } f)
+            {
+                bands.Add(new SeriesChart.Band((f - start) * c.Track.StepHours, (i - start) * c.Track.StepHours));
+                from = null;
+            }
+        }
+
+        if (from is { } last)
+        {
+            bands.Add(new SeriesChart.Band((last - start) * c.Track.StepHours, (c.Track.Count - start) * c.Track.StepHours));
+        }
+
+        return bands;
+    }
+
+    private double EarthMin(CommsSummary c) => Window(c).Min(i => c.EarthElevationDeg[i]);
+
+    private double EarthMax(CommsSummary c) => Window(c).Max(i => c.EarthElevationDeg[i]);
+
+    private IEnumerable<int> Window(CommsSummary c)
+    {
+        if (item is null)
+        {
+            return [0];
+        }
+
+        var from = Math.Max(0, item.Track.IndexOf(item.Incident.LandingUtc));
+        var last = item.Observations.Count == 0 ? item.Incident.LandingUtc.AddDays(1) : item.Observations.Max(o => o.ToUtc);
+        var to = Math.Clamp(item.Track.IndexOf(last), from, item.Track.Count - 1);
+        return Enumerable.Range(from, to - from + 1);
+    }
+
+    private string Reported(DayPrediction d)
+    {
+        if (item is null)
+        {
+            return "";
+        }
+
+        var inDay = item.Observations.Where(o => (o.Fit || o.Check) && AttitudeInference.IsScored(o) && o.ToUtc >= d.Day.SunriseUtc && o.FromUtc <= d.Day.SunsetUtc).ToList();
+        return inDay.Count == 0 ? "—" : string.Join("; ", inDay.Select(o => L["inc.kindobs." + o.Kind] + " " + Range(o.FromUtc, o.ToUtc)));
+    }
+
+    private CraterCheck Crater(IncidentCase c)
+    {
+        var start = c.Track.IndexOf(c.Incident.LandingUtc);
+        var end = c.Observations.FirstOrDefault(o => o.Kind == ObservationKind.End)?.FromUtc ?? c.Incident.LandingUtc.AddHours(13);
+        var stop = Math.Min(c.Track.Count - 1, c.Track.IndexOf(end));
+        var sun = Enumerable.Range(start, stop - start + 1).Select(i => c.Track.ElevationDeg[i]).ToList();
+        var terrain = Enumerable.Range(start, stop - start + 1).Select(i => c.Track.HorizonDeg[i]).Max();
+        var diameter = c.Incident.Attitude?.CraterDiameterM ?? 20;
+        var rows = new List<CraterRow>();
+        foreach (var ratio in new[] { 0.05, 0.11, 0.17 })
+        {
+            foreach (var height in new[] { 0.5, 1.0, 2.0 })
+            {
+                rows.Add(new CraterRow(ratio, height, LanderGeometry.CraterHorizonDeg(diameter, ratio, height)));
+            }
+        }
+
+        var tanSun = Math.Tan(sun.Max() * Math.PI / 180);
+        double MaxRatio(double h) => (h + diameter / 2 * tanSun) / diameter;
+        return new CraterCheck(sun.Min(), sun.Max(), terrain, (end - c.Incident.LandingUtc).TotalHours, rows, MaxRatio(1), MaxRatio(2));
+    }
+
+    private static SunsetCheck? Sunset(IncidentCase c)
+    {
+        var end = c.Observations.FirstOrDefault(o => o.Kind == ObservationKind.End);
+        if (end is null)
+        {
+            return null;
+        }
+
+        var from = c.Track.IndexOf(end.FromUtc.AddHours(-48));
+        var last = -1;
+        for (var i = Math.Max(0, from); i < c.Track.Count; i++)
+        {
+            if (c.Track.Irradiance[i] > 0)
+            {
+                last = i;
+            }
+            else if (last >= 0)
+            {
+                break;
+            }
+        }
+
+        return last < 0 ? null : new SunsetCheck(c.Track.At(last + 1), end.FromUtc.AddHours(-5));
+    }
+
+    private static CheckData? ReadChecks(JsonDocument? json)
+    {
+        if (json is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var root = json.RootElement;
+            static double? Num(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
+            static SynRun Syn(JsonElement syn)
+            {
+                var cov = syn.GetProperty("coverage90");
+                var err = syn.GetProperty("azimuthErrorDeg");
+                var rel = syn.GetProperty("reliability").EnumerateArray().Select(b => new RelBin(b.GetProperty("count").GetInt32(), Num(b, "predicted"), Num(b, "observed"))).ToList();
+                return new SynRun(syn.GetProperty("count").GetInt32(), syn.GetProperty("drawsPerCase").GetInt32(), cov.GetProperty("azimuth").GetDouble(), cov.GetProperty("elevation").GetDouble(), cov.GetProperty("threshold").GetDouble(), cov.GetProperty("day2FirstPower").GetDouble(), err.GetProperty("median").GetDouble(), err.GetProperty("high").GetDouble(), syn.GetProperty("day2PowerBrier").GetDouble(), syn.GetProperty("day2PowerBrierClimatology").GetDouble(), syn.GetProperty("maxContactDelayHours").GetInt32(), rel);
+            }
+
+            var sens = root.GetProperty("slim").GetProperty("sensitivity").EnumerateArray().Select(v =>
+            {
+                var f = v.GetProperty("fit");
+                var az = f.GetProperty("azimuthDeg");
+                DateTimeOffset? sunset = v.TryGetProperty("day1SunsetUtc", out var ss) && ss.ValueKind == JsonValueKind.String ? ss.GetDateTimeOffset() : null;
+                return new SensRow(v.GetProperty("id").GetString() ?? "", Num(az, "median"), Num(az, "low"), Num(az, "high"), Num(f.GetProperty("elevationDeg"), "median"), Num(f.GetProperty("threshold"), "median"), f.GetProperty("kept").GetInt32(), Num(v, "powerLostShare"), sunset);
+            }).ToList();
+            var hyp = root.GetProperty("im1").GetProperty("hypotheses").EnumerateArray().Select(h => new HypRow(h.GetProperty("id").GetString() ?? "", h.GetProperty("fit").GetProperty("kept").GetInt32(), h.GetProperty("evidence").GetDouble(), h.GetProperty("share").GetDouble(), h.GetProperty("shareError").GetDouble(), Num(h, "medianErrorHours"), Num(h, "lowHours"), Num(h, "highHours"))).ToList();
+            var ev = root.GetProperty("evidence").EnumerateArray().Select(e => new EvidenceRow(e.GetProperty("id").GetString() ?? "", e.GetProperty("kept").GetInt32(), e.GetProperty("evidence").GetDouble(), e.GetProperty("standardError").GetDouble(), Num(e, "bayesFactor"))).ToList();
+            var soft = root.TryGetProperty("soft", out var sf) ? sf.EnumerateArray().Select(r =>
+            {
+                double? Part(string name, string key) => r.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Object ? Num(v, key) : null;
+                return new SoftRow(r.GetProperty("incident").GetString() ?? "", r.GetProperty("id").GetString() ?? "", r.GetProperty("sigmaHours").GetDouble(), r.GetProperty("lapse").GetDouble(), r.GetProperty("effectiveSize").GetDouble(), Part("azimuthDeg", "median"), Part("azimuthDeg", "low"), Part("azimuthDeg", "high"), Part("elevationDeg", "median"), Part("threshold", "median"), Num(r, "meanCheckShare"), Num(r, "meanCheckLog"));
+            }).ToList() : [];
+            return new CheckData(Syn(root.GetProperty("synthetic")), Syn(root.GetProperty("syntheticMisspecified")), sens, hyp, ev, soft);
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    private IReadOnlyList<double> Stride(double[] values) => StrideValues(values, 0, stride);
+
+    private IReadOnlyList<double> StrideFrom(double[] values) => item is null ? [] : StrideValues(values, Math.Max(0, item.Track.IndexOf(item.Incident.LandingUtc)), bandStride);
+
+    private static IReadOnlyList<double> StrideValues(double[] values, int first, int step)
+    {
+        var list = new List<double>();
+        for (var i = first; i < values.Length; i += Math.Max(1, step))
+        {
+            list.Add(values[i]);
+        }
+
+        return list;
+    }
+
+    private string FirstPower(LanderRun r)
+    {
+        for (var i = 0; i < r.PowerW.Length; i++)
+        {
+            if (r.PowerW[i] >= WakeW && r.PowerW[i] > 0)
+            {
+                return Utc(r.StartUtc.AddHours(i * r.StepHours));
+            }
+        }
+
+        return L["inc.sim.never"];
+    }
+
+    private IEnumerable<(string Key, IncidentSource Source)> UsedSources()
+    {
+        if (doc?.Sources is null || item is null)
+        {
+            yield break;
+        }
+
+        var inc = item.Incident;
+        var keys = (inc.Attitude?.Sources ?? []).Concat(inc.Vehicle?.Sources ?? []).Concat((inc.Observations ?? []).SelectMany(o => o.Sources ?? [])).Concat(inc.Notes is null ? [] : NoteIds).Concat(inc.Id == "slim" ? CommsIds : []).Distinct();
+        foreach (var key in keys)
+        {
+            if (doc.Sources.TryGetValue(key, out var source))
+            {
+                yield return (key, source);
+            }
+        }
+    }
+
+    private async Task PrintAsync()
+    {
+        await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await module.InvokeVoidAsync("print");
+    }
+
+    private async Task JsonAsync()
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var payload = new
+        {
+            incident = item.Incident.Id,
+            site = new { item.Site.Id, item.Site.LatitudeDeg, item.Site.LongitudeEastDeg },
+            landingUtc = item.Incident.LandingUtc,
+            method = new { draws = Draws, seed = Seed, prior = PriorFor(item), stepMinutes = item.Incident.GridStepMinutes },
+            inference = fit is null ? null : new
+            {
+                drawn = fit.Drawn,
+                kept = fit.Accepted.Count,
+                azimuthDeg = fit.Azimuth,
+                elevationDeg = fit.Elevation,
+                threshold = fit.Threshold,
+                samples = fit.Accepted.Select(s => new[] { Math.Round(s.AzimuthDeg, 2), Math.Round(s.ElevationDeg, 2), Math.Round(s.Threshold, 4) }),
+            },
+            lunarDays = days?.Select(d => new { d.Day.Index, d.Day.SunriseUtc, d.Day.SunsetUtc, d.PowerShare, firstPowerHoursAfterLanding = d.FirstPowerUtcHours, lastPowerHoursAfterLanding = d.LastPowerUtcHours }),
+            scores = scores.Select(s => new { model = s.ModelId, kind = s.Observation.Kind.ToString(), s.Observation.FromUtc, s.Observation.ToUtc, fit = s.Observation.Fit, s.Probability, s.Brier, s.LogScore, s.MedianErrorHours }),
+            simulation = run is null ? null : new { panelAzimuthDeg = panelAz, panelElevationDeg = panelEl, threshold = tau, localHorizonDeg = localHorizon, energyKWh = run.EnergyKWh, awakeShare = run.AwakeShare, events = run.Events },
+        };
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await module.InvokeVoidAsync("download", "shadowline-incident-" + item.Incident.Id + ".json", json, "application/json");
+    }
+
+    private static string Kind(IncidentObservation o) => Enum.TryParse<ObservationKind>(o.Type, true, out var k) ? k.ToString() : o.Type;
+
+    private string PhotoCaption(SitePhoto photo) => (L.Language == "uk" ? photo.Caption?.GetValueOrDefault("uk") : photo.Caption?.GetValueOrDefault("en")) ?? "";
+
+    private static (double X, double Y) Polar(double azimuthDeg, double elevationDeg)
+    {
+        var r = (90 - elevationDeg) / 180 * 100;
+        var a = azimuthDeg * Math.PI / 180;
+        return (r * Math.Sin(a), -r * Math.Cos(a));
+    }
+
+    private string HoursUtc(double? hours) => hours is { } h && item is not null ? Utc(item.Incident.LandingUtc.AddHours(h)) : "—";
+
+    private string Hours(Interval? i, bool utc) => i is null ? "—" : utc && item is not null
+        ? Short(item.Incident.LandingUtc.AddHours(i.Median)) + " (" + Short(item.Incident.LandingUtc.AddHours(i.Low)) + " – " + Short(item.Incident.LandingUtc.AddHours(i.High)) + ")"
+        : i.Median.ToString("F0", CultureInfo.InvariantCulture);
+
+    private static string Short(DateTimeOffset t) => Round(t).ToString("MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    private static DateTime Round(DateTimeOffset t) => new DateTime((t.UtcDateTime.Ticks + TimeSpan.TicksPerMinute / 2) / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+
+    private static string Signed(double? v) => v is { } d ? d.ToString("+0;−0;0", CultureInfo.InvariantCulture) : "—";
+
+    private static string Utc(DateTimeOffset t) => Round(t).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC";
+
+    private static string Range(DateTimeOffset a, DateTimeOffset b) => a == b
+        ? a.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)
+        : a.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " – " + b.UtcDateTime.ToString(a.Date == b.Date ? "HH:mm" : "MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    private string Coord(double v, bool lat) => lat ? L.Lat(v, 4) : L.Lon(v, 4);
+
+    private static string Deg(double? v) => v is { } d ? d.ToString("F0", CultureInfo.InvariantCulture) + "°" : "—";
+
+    private static string Deg1(double v) => v.ToString("F1", CultureInfo.InvariantCulture) + "°";
+
+    private static string Pct(double? v) => v is { } d ? (d * 100).ToString("F0", CultureInfo.InvariantCulture) + "%" : "—";
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Sentence(string? text) => string.IsNullOrEmpty(text) ? "" : char.ToUpperInvariant(text[0]) + text[1..];
+
+    private static string Host(string url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host : url;
+}
