@@ -1,7 +1,7 @@
 import * as THREE from "../lib/three/three.min.js";
 
 const DEG = Math.PI / 180;
-const KEEP = 24;
+const KEEP = 40;
 const MAX_LOADS = 6;
 const RETRY_MS = 8000;
 const SKIRT_KM = 0.12;
@@ -198,7 +198,7 @@ export class Sdem {
             }
             texture.colorSpace = THREE.SRGBColorSpace;
             texture.anisotropy = this.anisotropy;
-            const photo = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
+            const photo = new THREE.MeshBasicMaterial({ map: texture });
             const mesh = new THREE.Mesh(this.build(tile, heights), this.mode === "photo" ? photo : this.reliefMaterial());
             mesh.position.copy(tile.center);
             mesh.castShadow = true;

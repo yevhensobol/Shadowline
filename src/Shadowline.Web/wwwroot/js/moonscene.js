@@ -11,7 +11,7 @@ const POLE_LAT = -76;
 const MIN_RANGE = 6;
 const MAX_RANGE = 40000;
 const RELIEF_RANGE = 3000;
-const SDEM_TILES = 16;
+const SDEM_TILES = 24;
 const SDEM_MIN_RANGE = 0.4;
 
 const sdemDiscard = (uv) => `    for (int i = 0; i < ${SDEM_TILES}; i++) {
