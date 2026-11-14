@@ -1,0 +1,123 @@
+﻿@using System.Globalization
+@using Shadowline.Core.Radio
+@inherits Shadowline.Web.Services.LocalizedComponent
+@inject Shadowline.Web.Services.SiteViewCache Views
+
+@if (Applies)
+{
+    <section class="radio @(Bare ? "bare" : null)" aria-live="polite">
+        @if (!Bare)
+        {
+            <SectionHeader Title="@L["radio.title"]" />
+        }
+        @if (loading)
+        {
+            <p class="muted small">@L["common.loading"]</p>
+        }
+        else if (viewshed is null)
+        {
+            <p class="muted small">@L["radio.none"]</p>
+        }
+        else
+        {
+            <div class="radio-body">
+                <dl class="ro">
+                    <div><dt>@L["radio.eva"]</dt><dd>@Percent(viewshed.EvaFraction)</dd></div>
+                    <div><dt>@L["radio.near"]</dt><dd>@Percent(viewshed.NearFraction)</dd></div>
+                    <div><dt>@L["radio.area"]</dt><dd>@L.Format("radio.km2", viewshed.AreaKm2.ToString("F0", CultureInfo.InvariantCulture))</dd></div>
+                </dl>
+                <svg class="radio-map" viewBox="0 0 @Size @Size" role="img" aria-label="@L["radio.mapLabel"]">
+                    <defs><clipPath id="radio-disc"><circle cx="@Half" cy="@Half" r="@Half" /></clipPath></defs>
+                    <image href="@image" x="0" y="0" width="@Size" height="@Size" clip-path="url(#radio-disc)" preserveAspectRatio="none" />
+                    <circle cx="@Half" cy="@Half" r="@Ring(MastViewshed.EvaRadiusM)" class="radio-ring" />
+                    <circle cx="@Half" cy="@Half" r="@Ring(MastViewshed.NearRadiusM)" class="radio-ring" />
+                    <circle cx="@Half" cy="@Half" r="@(Half - 0.5)" class="radio-edge" />
+                    <circle cx="@Half" cy="@Half" r="2.5" class="radio-mast" />
+                    <text x="@Half" y="11" text-anchor="middle" class="radio-north">@L["radio.north"]</text>
+                </svg>
+                <p class="radio-legend"><span class="swatch seen"></span>@L["radio.legendSeen"] <span class="swatch hidden"></span>@L["radio.legendHidden"] <span class="swatch mast"></span>@L["radio.legendMast"]</p>
+                <p class="muted small">@L["radio.read"]</p>
+            </div>
+            <p class="muted small">@L["radio.note"]</p>
+            @if (SiteId == "im2-athena")
+            {
+                <p class="muted small">@L["radio.im2"] <a href="@Shadowline.Core.Reports.References.Link(Shadowline.Core.Reports.References.Nokia2025)" target="_blank" rel="noopener">Nokia, 2025</a></p>
+            }
+            @if (!Bare)
+            {
+                <a class="ro-link" href="science/method#radio">@L["explore.how"] ›</a>
+            }
+        }
+    </section>
+}
+
+@code {
+    private const int Size = MastViewshed.MapSizePx;
+    private const double Half = Size / 2.0;
+
+    private static readonly (byte R, byte G, byte B)[] Palette = BuildPalette();
+
+    private static (byte R, byte G, byte B)[] BuildPalette()
+    {
+        var palette = new (byte, byte, byte)[MastViewshed.Outside + 1];
+        for (var i = 0; i < MastViewshed.ShadeLevels; i++)
+        {
+            var t = i / (double)(MastViewshed.ShadeLevels - 1);
+            var grey = 34 + t * 120;
+            palette[i] = ((byte)(grey * 0.92), (byte)(grey * 0.95), (byte)grey);
+            palette[MastViewshed.ShadeLevels + i] = ((byte)(40 + t * 90), (byte)(100 + t * 110), (byte)(190 + t * 65));
+        }
+
+        palette[MastViewshed.Outside] = (6, 9, 20);
+        return palette;
+    }
+
+    [Parameter]
+    public string? SiteId { get; set; }
+
+    [Parameter]
+    public bool Bare { get; set; }
+
+    [Parameter]
+    public EventCallback<MastViewshed?> Computed { get; set; }
+
+    [Parameter, EditorRequired]
+    public double LatitudeDeg { get; set; }
+
+    [Parameter, EditorRequired]
+    public double LongitudeDeg { get; set; }
+
+    private bool Applies => LatitudeDeg <= -80;
+
+    private (double, double)? shown;
+    private bool loading;
+    private MastViewshed? viewshed;
+    private string image = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var key = (LatitudeDeg, LongitudeDeg);
+        if (!Applies || shown == key)
+        {
+            return;
+        }
+
+        shown = key;
+        loading = true;
+        viewshed = null;
+        var result = await Views.RadioAsync(LatitudeDeg, LongitudeDeg);
+        if (shown != key)
+        {
+            return;
+        }
+
+        viewshed = result?.Viewshed;
+        image = result is null ? string.Empty : Shadowline.Web.Services.IndexedBitmap.DataUrl(result.Pixels, Size, Size, Palette);
+        loading = false;
+        await Computed.InvokeAsync(viewshed);
+    }
+
+    private static string Ring(double radiusM) => (radiusM / MastViewshed.RangeM * Half).ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + " %";
+}

@@ -1,0 +1,126 @@
+﻿@using System.Globalization
+@using Shadowline.Core.Sensitivity
+@using Shadowline.Core.Horizon
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Terrain
+@using Shadowline.Core.Time
+@inherits LocalizedComponent
+@inject SiteViewCache Views
+
+<p class="muted">@L["sens.intro"]</p>
+<p>
+    <button type="button" @onclick="Compute" disabled="@busy">@L[busy ? "common.loading" : "sens.compute"]</button>
+</p>
+
+@if (date is not null)
+{
+    @if (north is not null && east is not null)
+    {
+        <p class="notice">@L.Format("sens.summary", Percent(DateDelta()), Percent(PositionDelta()))</p>
+    }
+    else
+    {
+        <p class="notice">@L.Format("sens.summaryDate", Percent(DateDelta()))</p>
+    }
+
+    <div class="sens-grid">
+        @Chart(L["sens.byDate"], date, L["common.unit.d"])
+        @if (north is not null && east is not null)
+        {
+            @Chart(L["sens.north"], north, L["common.unit.km"])
+            @Chart(L["sens.east"], east, L["common.unit.km"])
+        }
+    </div>
+    <p class="muted">@L[north is null ? "sens.noTerrain" : polar ? "sens.horizonPolar" : "sens.horizonGlobal"]</p>
+}
+
+@code {
+    private const double BarAreaHeight = 100;
+    private static readonly int[] DateShifts = [-7, -3, -2, -1, 0, 1, 2, 3, 7];
+    private static readonly double[] PositionShifts = [-20, -10, -5, -2, -1, 0, 1, 2, 5, 10, 20];
+
+    private IReadOnlyList<SensitivityPoint>? date;
+    private IReadOnlyList<SensitivityPoint>? north;
+    private IReadOnlyList<SensitivityPoint>? east;
+    private string? computedFor;
+    private bool busy;
+    private bool polar;
+
+    [Parameter, EditorRequired]
+    public SiteView View { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Shadowline.Core.Ephemeris.BodyEphemeris Ephemeris { get; set; } = default!;
+
+    [Parameter]
+    public int Start { get; set; }
+
+    [Parameter]
+    public int Length { get; set; } = 1;
+
+    protected override void OnParametersSet()
+    {
+        if (computedFor is not null && computedFor != Key())
+        {
+            date = north = east = null;
+            computedFor = null;
+        }
+    }
+
+    private string Key() => View.Site.Id + "|" + Start + "|" + Length;
+
+    private async Task Compute()
+    {
+        busy = true;
+        var grid = Ephemeris.Grid;
+        date = SensitivityAnalyzer.ByStartShift(View.Tracks, grid, Start, Length, DateShifts);
+        north = east = null;
+        StateHasChanged();
+        await Task.Yield();
+        var sampler = await Views.SamplerAroundAsync(View.Site.LatitudeDeg, View.Site.LongitudeEastDeg, 325000);
+        if (sampler is not null)
+        {
+            polar = sampler.Polar;
+            HorizonProfile For(Site site) => LocalTerrain.Horizon(sampler.Sample, site.LatitudeDeg, site.LongitudeEastDeg);
+            north = SensitivityAnalyzer.ByPosition(View.Site, Ephemeris, For, Start, Length, PositionShifts, true);
+            await Task.Yield();
+            east = SensitivityAnalyzer.ByPosition(View.Site, Ephemeris, For, Start, Length, PositionShifts, false);
+        }
+
+        computedFor = Key();
+        busy = false;
+    }
+
+    private static double Reference(IReadOnlyList<SensitivityPoint> points) =>
+        points.FirstOrDefault(point => point.Offset == 0).Metrics?.SunFraction ?? 0;
+
+    private static double MaxDelta(IReadOnlyList<SensitivityPoint> points, double limit) =>
+        points.Where(point => Math.Abs(point.Offset) <= limit && point.Offset != 0)
+            .Select(point => Math.Abs(point.Metrics.SunFraction - Reference(points)))
+            .DefaultIfEmpty(0)
+            .Max();
+
+    private double DateDelta() => MaxDelta(date!, 1);
+
+    private double PositionDelta() => Math.Max(MaxDelta(north!, 1), MaxDelta(east!, 1));
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private RenderFragment Chart(string title, IReadOnlyList<SensitivityPoint> points, string unit) => @<figure>
+        <figcaption>@title</figcaption>
+        <svg viewBox="0 0 @Number(points.Count * 30) 130" role="img" aria-label="@title">
+            @for (var i = 0; i < points.Count; i++)
+            {
+                var point = points[i];
+                var height = point.Metrics.SunFraction * BarAreaHeight;
+                <g>
+                    <rect x="@Number(i * 30 + 3)" y="@Number(BarAreaHeight - height)" width="24" height="@Number(height)" class="@(point.Offset == 0 ? "sens-bar base" : "sens-bar")" />
+                    <text x="@Number(i * 30 + 15)" y="124" class="axis" text-anchor="middle">@Number(point.Offset)</text>
+                </g>
+            }
+        </svg>
+        <figcaption class="muted">@unit, @L["metric.sun"]</figcaption>
+    </figure>;
+}

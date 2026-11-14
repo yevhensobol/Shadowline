@@ -1,0 +1,40 @@
+﻿@using System.Globalization
+@using Shadowline.Core.Thermal
+@inherits LocalizedComponent
+
+<section class="power thermal @Class">
+    <h3>@L["thermal.title"]</h3>
+    @if (ColdTrap)
+    {
+        <p class="notice small">@L["thermal.trap"]</p>
+    }
+    else
+    {
+        <dl>
+            <div><dt>@L[Window ? "thermal.start" : "thermal.now"]</dt><dd class="@(Estimate.NowK > Estimate.NightK + 1 ? "sun" : "cold")">@Celsius(Estimate.NowK)</dd></div>
+            <div><dt>@L[Window ? "thermal.max.window" : "thermal.max"]</dt><dd>@Celsius(Estimate.DayMaxK)</dd></div>
+            <div><dt>@L[Window ? "thermal.night.window" : "thermal.night"]</dt><dd class="cold">@Celsius(Estimate.NightK)</dd></div>
+        </dl>
+    }
+    <p class="muted small">@L[Tilted ? "thermal.note.tilted" : "thermal.note"]</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public ThermalEstimate Estimate { get; set; } = default!;
+
+    [Parameter]
+    public bool ColdTrap { get; set; }
+
+    [Parameter]
+    public bool Window { get; set; }
+
+    [Parameter]
+    public bool Tilted { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private static string Celsius(double kelvin) =>
+        (kelvin - 273.15).ToString("F0", CultureInfo.InvariantCulture).Replace("-", "−", StringComparison.Ordinal) + " °C (" + kelvin.ToString("F0", CultureInfo.InvariantCulture) + " K)";
+}

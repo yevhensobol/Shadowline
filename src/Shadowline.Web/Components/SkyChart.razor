@@ -1,0 +1,125 @@
+﻿@using Shadowline.Core.Geometry
+@using Shadowline.Core.Horizon
+@inherits LocalizedComponent
+
+<svg class="sky @(Pan ? "pan" : null)" data-width="@Width" viewBox="0 0 @Width @(Height + 22)" role="img" aria-label="@L["explore.skyNow"]">
+    <defs>
+        <linearGradient id="sky-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="var(--sky-top)" />
+            <stop offset="1" stop-color="var(--sky-low)" />
+        </linearGradient>
+        <radialGradient id="sun-glow">
+            <stop offset="0" stop-color="var(--sun)" stop-opacity="0.55" />
+            <stop offset="1" stop-color="var(--sun)" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="earth-fill" cx="0.38" cy="0.35" r="0.75">
+            <stop offset="0" stop-color="var(--earth-hi)" />
+            <stop offset="1" stop-color="var(--earth)" />
+        </radialGradient>
+    </defs>
+    <rect x="0" y="0" width="@Width" height="@Height" fill="url(#sky-fill)" />
+    @for (var elevation = 0; elevation <= MaxElevation; elevation += 10)
+    {
+        var y = Y(elevation);
+        <g>
+            <line x1="0" x2="@Width" y1="@Format(y)" y2="@Format(y)" class="@(elevation == 0 ? "grid zero" : "grid")" />
+            @if (elevation > 0)
+            {
+                <g><text x="@(Width - 6)" y="@Format(y - 4)" text-anchor="end" class="axis">@elevation&#176;</text></g>
+            }
+        </g>
+    }
+    @if (Pan)
+    {
+        <g class="sky-pan">
+            @foreach (var offset in PanOffsets)
+            {
+                <circle cx="@Format(offset + X(Snapshot.Sun.AzimuthDeg))" cy="@Format(Y(Snapshot.Sun.ElevationDeg))" r="@Format(GlowRadius)" fill="url(#sun-glow)" />
+                <circle cx="@Format(offset + X(Snapshot.Earth.AzimuthDeg))" cy="@Format(Y(Snapshot.Earth.ElevationDeg))" r="@Format(MarkerRadius)" fill="url(#earth-fill)" />
+                <circle cx="@Format(offset + X(Snapshot.Sun.AzimuthDeg))" cy="@Format(Y(Snapshot.Sun.ElevationDeg))" r="@Format(MarkerRadius)" class="sun-disc" />
+            }
+            @foreach (var offset in PanOffsets)
+            {
+                <path d="@HorizonPath()" transform="translate(@offset 0)" class="terrain" />
+            }
+            @foreach (var offset in PanOffsets)
+            {
+                @foreach (var direction in Directions)
+                {
+                    <g><text x="@Format(offset + X(direction.Azimuth))" y="@(Height - 8)" text-anchor="middle" class="axis dir">@direction.Label</text></g>
+                }
+            }
+        </g>
+        <rect class="sky-fov" x="@Format(Width / 2.0 - DefaultFovWidth / 2)" y="0" width="@Format(DefaultFovWidth)" height="@Height" />
+    }
+    else
+    {
+        <circle cx="@Format(X(Snapshot.Sun.AzimuthDeg))" cy="@Format(Y(Snapshot.Sun.ElevationDeg))" r="@Format(GlowRadius)" fill="url(#sun-glow)" />
+        <circle cx="@Format(X(Snapshot.Earth.AzimuthDeg))" cy="@Format(Y(Snapshot.Earth.ElevationDeg))" r="@Format(MarkerRadius)" fill="url(#earth-fill)" />
+        <circle cx="@Format(X(Snapshot.Sun.AzimuthDeg))" cy="@Format(Y(Snapshot.Sun.ElevationDeg))" r="@Format(MarkerRadius)" class="sun-disc" />
+        <path d="@HorizonPath()" class="terrain" />
+    }
+    <text transform="translate(14 @Format(Height / 2.0)) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.elevation"]</text>
+    <text x="@(Width / 2)" y="@(Height + 17)" text-anchor="middle" class="axis-title">@L["axis.azimuth"]</text>
+    @if (!Pan)
+    {
+        @foreach (var direction in Directions)
+        {
+            var x = X(direction.Azimuth);
+            <g>
+                <text x="@Format(x + (direction.Azimuth == 0 ? 6 : 0))" y="@(Height - 8)" text-anchor="@(direction.Azimuth == 0 ? "start" : "middle")" class="axis dir">@direction.Label</text>
+            </g>
+        }
+    }
+</svg>
+
+@code {
+    private const int Width = 720;
+    private const int Height = 260;
+    private const int MinElevation = -6;
+    private const int MaxElevation = 40;
+    private const double MarkerRadius = 8;
+    private const double GlowRadius = 40;
+
+    private static readonly (double Azimuth, string Label)[] Directions =
+    [
+        (0, "N"), (45, "NE"), (90, "E"), (135, "SE"), (180, "S"), (225, "SW"), (270, "W"), (315, "NW")
+    ];
+
+    private const double DefaultFovWidth = 62.0 / 360 * Width;
+
+    private static readonly int[] PanOffsets = [-Width, 0, Width];
+
+    [Parameter, EditorRequired]
+    public SkySnapshot Snapshot { get; set; }
+
+    [Parameter]
+    public bool Pan { get; set; }
+
+    [Parameter, EditorRequired]
+    public HorizonProfile Horizon { get; set; } = HorizonProfile.Flat;
+
+    private static double X(double azimuthDeg) => azimuthDeg / 360.0 * Width;
+
+    private static double Y(double elevationDeg)
+    {
+        var clamped = Math.Clamp(elevationDeg, MinElevation, MaxElevation);
+        return (MaxElevation - clamped) / (MaxElevation - MinElevation) * Height;
+    }
+
+    private static string Format(double value) => value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string HorizonPath()
+    {
+        var builder = new System.Text.StringBuilder();
+        builder.Append($"M0 {Format(Height)}");
+        for (var i = 0; i <= HorizonProfile.SampleCount; i += 2)
+        {
+            var azimuth = i * HorizonProfile.StepDeg;
+            builder.Append($" L{Format(X(azimuth))} {Format(Y(Horizon.ElevationAt(azimuth)))}");
+        }
+
+        builder.Append($" L{Format(Width)} {Format(Height)} Z");
+        return builder.ToString();
+    }
+}

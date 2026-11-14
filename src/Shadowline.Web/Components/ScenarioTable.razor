@@ -1,0 +1,66 @@
+﻿@inherits LocalizedComponent
+@using Shadowline.Core.Metrics
+
+<div class="compare">
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                @for (var i = 0; i < Rows.Count; i++)
+                {
+                    var index = i;
+                    <th>
+                        <div>@L.Name(Rows[i].Site)</div>
+                        <div class="muted">@Rows[i].Start.ToString("yyyy-MM-dd HH:mm") UTC, @Rows[i].WindowHours @L["common.unit.h"]</div>
+                        <button type="button" @onclick="() => Remove.InvokeAsync(index)">@L["compare.remove"]</button>
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var metric in Definitions)
+            {
+                var best = Best(metric);
+                var distinct = Rows.Select(row => metric.Value(row.Metrics)).Distinct().Count() > 1;
+                <tr>
+                    <th>@L[metric.LabelKey]</th>
+                    @for (var i = 0; i < Rows.Count; i++)
+                    {
+                        var value = metric.Value(Rows[i].Metrics);
+                        <td class="@(distinct && value == best ? "best" : null)">@Format(metric, value)</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private sealed record Definition(string LabelKey, Func<WindowMetrics, double> Value, bool HigherIsBetter, bool IsFraction);
+
+    private static readonly Definition[] Definitions =
+    [
+        new("metric.sun", m => m.SunFraction, true, true),
+        new("metric.darkness", m => m.LongestDarkness.TotalHours, false, false),
+        new("metric.earth", m => m.EarthFraction, true, true),
+        new("metric.gap", m => m.LongestEarthGap.TotalHours, false, false),
+        new("metric.eclipse", m => m.EarthOverSun.TotalHours, false, false)
+    ];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ScenarioRow> Rows { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<int> Remove { get; set; }
+
+    private double Best(Definition metric)
+    {
+        var values = Rows.Select(row => metric.Value(row.Metrics));
+        return metric.HigherIsBetter ? values.Max() : values.Min();
+    }
+
+    private string Format(Definition metric, double value) =>
+        metric.IsFraction
+            ? (value * 100).ToString("F0") + "%"
+            : L.Duration(TimeSpan.FromHours(value));
+}

@@ -1,0 +1,408 @@
+﻿@using System.Globalization
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Incidents
+@using Shadowline.Core.Missions
+@inherits Shadowline.Web.Services.LocalizedComponent
+@inject Shadowline.Web.Services.DataStore Store
+@inject Shadowline.Web.Services.SiteViewCache Views
+@inject Shadowline.Web.Services.MissionStore Missions
+
+<section class="robust @(Compact ? "compact" : null)" aria-live="polite">
+    <header>
+        <h2>@L["robust.title"]</h2>
+        <a class="robust-mission" href="plan/when">@MissionLine() ›</a>
+    </header>
+    @if (!Bare)
+    {
+        <p class="robust-lede">@L["robust.lede"]</p>
+    }
+    @if (shiftDays is { } shift)
+    {
+        <p class="robust-shift">@L.Format("robust.shifted", Days(shift))</p>
+    }
+    <dl>
+        <div class="robust-row">
+            <dt>@L["robust.slip"]</dt>
+            <dd>
+                @if (slip is null)
+                {
+                    <span class="muted">@L["common.loading"]</span>
+                }
+                else if (slip.PlannedMeets)
+                {
+                    <span>@L["robust.slip.holds"]</span> <b class="ok">@Days(slip.HoldsForDays)</b>
+                }
+                else if (slip.NextStartDays is { } next)
+                {
+                    <b class="bad">@L["robust.slip.fails"]</b> <span>@L.Format("robust.slip.next", Days(next))</span>
+                }
+                else
+                {
+                    <b class="bad">@L["robust.slip.fails"]</b> <span>@L.Format("robust.slip.none", Days(slip.SearchedDays))</span>
+                }
+            </dd>
+        </div>
+        <div class="robust-row">
+            <dt>
+                @L["robust.miss"]
+                <span class="robust-radii" role="group" aria-label="@L["robust.miss.radius"]">
+                    @foreach (var r in PlanRobustness.MissRadiiM)
+                    {
+                        <button type="button" aria-pressed="@(r == radius ? "true" : "false")" @onclick="() => SetRadius(r)">@Distance(r)</button>
+                    }
+                </span>
+            </dt>
+            <dd>
+                @if (noTerrain)
+                {
+                    <span class="muted">@L["robust.miss.noTerrain"]</span>
+                }
+                else if (miss is null)
+                {
+                    <span class="muted">@L["common.loading"]</span>
+                }
+                else if (miss.BelowResolution)
+                {
+                    <span>@L.Format("robust.miss.below", Distance(miss.DemSpacingM))</span>
+                }
+                else
+                {
+                    <b class="@Tone(miss.PassShare)">@Pct(miss.PassShare)</b> <span>@L.Format("robust.miss.share", Distance(radius))</span>
+                    <span class="robust-records small">
+                        @L["robust.records"] @foreach (var record in LandingRecords.Misses)
+                        {
+                            <span class="@(record.DistanceM <= radius ? "in" : "out")" title="@(Shadowline.Core.Reports.References.Find(record.ReferenceId)?.Citation)">@record.Name @(record.UpperBound ? "<" : "")@Distance(record.DistanceM)</span>
+                        }
+                    </span>
+                    @if (miss.Worst is { } worst)
+                    {
+                        <span class="muted small">@L.Format("robust.miss.worst", Pct(worst.Metrics.SunFraction), Pct(worst.Metrics.EarthFraction), worst.SlopeDeg.ToString("0.#", CultureInfo.InvariantCulture))</span>
+                    }
+                    <svg class="miss-plot" viewBox="0 0 200 200" shape-rendering="crispEdges" role="img" aria-label="@L["robust.miss.plot"]">
+                        @if (relief is { } shade)
+                        {
+                            var cell = 200.0 / ReliefSize;
+                            for (var row = 0; row < ReliefSize; row++)
+                            {
+                                for (var col = 0; col < ReliefSize; col++)
+                                {
+                                    <rect x="@F(col * cell)" y="@F(row * cell)" width="@F(cell + 0.8)" height="@F(cell + 0.8)" fill="rgb(@Gray(shade[row * ReliefSize + col]))" />
+                                }
+                            }
+                        }
+                        <circle cx="100" cy="100" r="@F(PlotScale / 2)" class="ring" />
+                        <circle cx="100" cy="100" r="@F(PlotScale)" class="ring" />
+                        <text x="100" y="12" class="north">N</text>
+                        @foreach (var point in miss.Points)
+                        {
+                            <circle cx="@F(100 + point.EastM / radius * PlotScale)" cy="@F(100 - point.NorthM / radius * PlotScale)" r="@(point.EastM == 0 && point.NorthM == 0 ? "6" : "4.5")" class="@(point.Meets ? "pass" : "fail")">
+                                <title>@L.Format("robust.miss.point", Distance(Math.Sqrt(point.EastM * point.EastM + point.NorthM * point.NorthM)), Pct(point.Metrics.SunFraction), Pct(point.Metrics.EarthFraction), L.Duration(point.Metrics.LongestDarkness), point.SlopeDeg.ToString("0.#", CultureInfo.InvariantCulture))</title>
+                            </circle>
+                        }
+                        <text x="196" y="196" class="scale">@Distance(radius)</text>
+                    </svg>
+                }
+            </dd>
+        </div>
+        <div class="robust-row">
+            <dt>@L["robust.touchdown"]</dt>
+            <dd>
+                @if (noTerrain)
+                {
+                    <span class="muted">@L["robust.miss.noTerrain"]</span>
+                }
+                else if (touchdown is null)
+                {
+                    <span class="muted">@L["common.loading"]</span>
+                }
+                else
+                {
+                    <b class="@Risk(touchdown.TipProbability)">@Pct(touchdown.TipProbability)</b> <span>@L.Format("robust.touchdown.share", Speed(touchdown.LateralSpeedMs), Distance(radius))</span>
+                    @if (touchdown.TipSpeedMs <= 0)
+                    {
+                        <span class="muted small">@L.Format("robust.touchdown.static", Missions.Current.Stance.StaticTipDeg.ToString("0", CultureInfo.InvariantCulture))</span>
+                    }
+                    else
+                    {
+                        <span class="muted small">@L.Format("robust.touchdown.detail", Distance(Missions.Current.Stance.FootprintM), touchdown.FootprintSlopeDeg.ToString("0.#", CultureInfo.InvariantCulture), touchdown.SiteSlopeDeg.ToString("0.#", CultureInfo.InvariantCulture), Distance(touchdown.BaselineM), Speed(touchdown.TipSpeedMs))</span>
+                    }
+                }
+            </dd>
+        </div>
+        <div class="robust-row">
+            <dt>@L["robust.tip"]</dt>
+            <dd>
+                @if (tip is null)
+                {
+                    <span class="muted">@L["common.loading"]</span>
+                }
+                else
+                {
+                    <b class="@Tone(tip.Share)">@Pct(tip.Share)</b> <span>@L.Format("robust.tip.share", L["tip.layout." + tip.LayoutId])</span>
+                    @if (tip.BestShare > tip.Share + 0.05)
+                    {
+                        <span class="muted small">@L.Format("robust.tip.better", L["tip.layout." + tip.BestLayoutId], Pct(tip.BestShare))</span>
+                    }
+                    @if (touchdown is not null)
+                    {
+                        <span class="robust-loss">@L.Format("robust.powerLoss", PctFine(PowerLoss))</span>
+                    }
+                }
+            </dd>
+        </div>
+    </dl>
+    @if (!Bare)
+    {
+        <p class="muted small robust-note">@L["robust.note"] <a href="plan/tipover">@L["robust.tip.more"] ›</a></p>
+    }
+    @if (ShowReport && !Bare)
+    {
+        <a class="button robust-report" href="@ReportHref()">@L["report.full"] ›</a>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string SiteId { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Start { get; set; }
+
+    [Parameter]
+    public bool Compact { get; set; }
+
+    [Parameter]
+    public bool ShowReport { get; set; } = true;
+
+    [Parameter]
+    public bool Bare { get; set; }
+
+    [Parameter]
+    public EventCallback<Shadowline.Core.Reports.ReportRobustness> Computed { get; set; }
+
+    private string ReportHref() => $"report?site={Uri.EscapeDataString(SiteId)}&t={Start}&w={Missions.Current.DurationDays * 24}";
+
+    private static readonly Dictionary<string, object> Cache = [];
+
+    private double radius = 1000;
+    private SlipCheck? slip;
+    private MissCheck? miss;
+    private TipCheck? tip;
+    private TouchdownCheck? touchdown;
+
+    private double PowerLoss => (touchdown?.TipProbability ?? 0) * (1 - (tip?.Share ?? 0));
+    private bool noTerrain;
+    private double? shiftDays;
+    private double[]? relief;
+    private const int ReliefSize = 32;
+    private const double PlotScale = 80;
+    private string? shownKey;
+    private CancellationTokenSource? pending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+        Missions.Changed += OnMission;
+        await Missions.EnsureLoadedAsync();
+    }
+
+    protected override void OnParametersSet() => Schedule();
+
+    public override void Dispose()
+    {
+        Missions.Changed -= OnMission;
+        pending?.Cancel();
+        pending?.Dispose();
+        base.Dispose();
+    }
+
+    private void OnMission() => _ = InvokeAsync(Schedule);
+
+    private void SetRadius(double value)
+    {
+        radius = value;
+        Schedule();
+    }
+
+    private void Schedule()
+    {
+        var key = Key();
+        if (key == shownKey || Store.Ephemeris is null || string.IsNullOrEmpty(SiteId))
+        {
+            return;
+        }
+
+        pending?.Cancel();
+        pending = new CancellationTokenSource();
+        var token = pending.Token;
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(400, token);
+                await ComputeAsync(key, token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    private string Key() => string.Join('|', SiteId, Start, Missions.Current.ToQueryValue(), radius.ToString(CultureInfo.InvariantCulture), Store.Ephemeris?.GetHashCode() ?? 0);
+
+    private async Task ComputeAsync(string key, CancellationToken token)
+    {
+        var mission = Missions.Current;
+        var ephemeris = Store.Ephemeris!;
+        if (Shadowline.Core.Sites.CustomSite.TryParse(SiteId, out _))
+        {
+            await Views.PrepareAsync(SiteId, token);
+            token.ThrowIfCancellationRequested();
+        }
+
+        var view = Views.Get(SiteId);
+        var start = Math.Clamp(Start, 0, ephemeris.Grid.Count - 1);
+        var baseKey = string.Join('|', SiteId, start, mission.ToQueryValue(), ephemeris.GetHashCode());
+
+        slip = Cached($"slip|{baseKey}", () => PlanRobustness.Slip(view.Tracks, ephemeris.Grid, start, mission));
+        shiftDays = slip.PlannedMeets ? null : slip.NextStartDays;
+        if (shiftDays is { } shift)
+        {
+            start = Math.Clamp(start + (int)Math.Round(TimeSpan.FromDays(shift) / ephemeris.Grid.Step), 0, ephemeris.Grid.Count - 1);
+            baseKey = string.Join('|', SiteId, start, mission.ToQueryValue(), ephemeris.GetHashCode());
+        }
+
+        StateHasChanged();
+        await Task.Yield();
+        token.ThrowIfCancellationRequested();
+
+        if (Cache.GetValueOrDefault($"tip|{baseKey}") is TipCheck knownTip)
+        {
+            tip = knownTip;
+        }
+        else
+        {
+            tip = null;
+            StateHasChanged();
+            await Task.Yield();
+            var track = Cached($"sun|{SiteId}|{ephemeris.GetHashCode()}", () => SunTrack.Build(new SiteFrame(view.Site), ephemeris, view.Horizon));
+            token.ThrowIfCancellationRequested();
+            tip = PlanRobustness.Tip(track, start, mission);
+            Cache[$"tip|{baseKey}"] = tip;
+        }
+
+        StateHasChanged();
+        token.ThrowIfCancellationRequested();
+
+        var missKey = $"miss|{baseKey}|{radius.ToString(CultureInfo.InvariantCulture)}";
+        if (Cache.GetValueOrDefault(missKey) is MissCheck knownMiss)
+        {
+            miss = knownMiss;
+            noTerrain = false;
+            touchdown = Cached($"touch|{missKey}", () => PlanRobustness.Touchdown(knownMiss, mission));
+            relief = Cache.GetValueOrDefault($"relief|{SiteId}|{radius.ToString(CultureInfo.InvariantCulture)}") as double[];
+        }
+        else
+        {
+            miss = null;
+            touchdown = null;
+            StateHasChanged();
+            var patch = await Views.PatchAsync(SiteId, token);
+            noTerrain = patch is null;
+            if (patch is not null)
+            {
+                miss = await PlanRobustness.MissAsync(view.Site, view.Horizon, patch, ephemeris, start, mission, radius, token);
+                Cache[missKey] = miss;
+                touchdown = Cached($"touch|{missKey}", () => PlanRobustness.Touchdown(miss, mission));
+                relief = Cached($"relief|{SiteId}|{radius.ToString(CultureInfo.InvariantCulture)}", () => Relief(patch, radius * 100 / PlotScale));
+            }
+        }
+
+        shownKey = key;
+        StateHasChanged();
+        if (Computed.HasDelegate && slip is not null && tip is not null)
+        {
+            var grid = ephemeris.Grid;
+            await Computed.InvokeAsync(new Shadowline.Core.Reports.ReportRobustness(
+                mission.PanelW, mission.LoadW, mission.BatteryWh, mission.DurationDays, mission.MinEarthShare, mission.SafeLoadW,
+                grid.At(Math.Clamp(Start, 0, grid.Count - 1)), slip.PlannedMeets, slip.HoldsForDays, slip.NextStartDays, grid.At(start),
+                miss?.RadiusM, miss?.DemSpacingM, miss?.BelowResolution, miss?.PassShare,
+                miss?.Points.Select(p => new Shadowline.Core.Reports.ReportMissPoint(p.EastM, p.NorthM, p.LatitudeDeg, p.LongitudeEastDeg, p.Metrics.SunFraction, p.Metrics.EarthFraction, p.Metrics.LongestDarkness.TotalHours, p.SlopeDeg, p.Meets)).ToList(),
+                tip.LayoutId, tip.Share, tip.BestLayoutId, tip.BestShare, tip.BatteryHours, tip.Attitudes,
+                mission.Stance.Id, mission.LateralSpeedMs, touchdown?.TipProbability, touchdown?.FootprintSlopeDeg, touchdown?.TipSpeedMs, touchdown is null ? null : PowerLoss));
+        }
+    }
+
+    private static double[] Relief(Shadowline.Core.Terrain.TerrainPatch patch, double halfM)
+    {
+        var shade = new double[ReliefSize * ReliefSize];
+        var step = 2 * halfM / ReliefSize;
+        var d = Math.Max(step, patch.SpacingM) / 2;
+        var light = (Az: 315 * Math.PI / 180, Alt: 45 * Math.PI / 180);
+        for (var row = 0; row < ReliefSize; row++)
+        {
+            for (var col = 0; col < ReliefSize; col++)
+            {
+                var e = -halfM + (col + 0.5) * step;
+                var n = halfM - (row + 0.5) * step;
+                var dzdx = (patch.Height(e + d, n) - patch.Height(e - d, n)) / (2 * d);
+                var dzdy = (patch.Height(e, n + d) - patch.Height(e, n - d)) / (2 * d);
+                var slope = Math.Atan(Math.Sqrt(dzdx * dzdx + dzdy * dzdy));
+                var aspect = Math.Atan2(-dzdx, -dzdy);
+                var value = Math.Cos(Math.PI / 2 - light.Alt) * Math.Cos(slope) + Math.Sin(Math.PI / 2 - light.Alt) * Math.Sin(slope) * Math.Cos(light.Az - aspect);
+                shade[row * ReliefSize + col] = Math.Clamp(value, 0, 1);
+            }
+        }
+
+        return shade;
+    }
+
+    private static string Gray(double value)
+    {
+        var g = (int)Math.Round(30 + value * 110);
+        return string.Create(CultureInfo.InvariantCulture, $"{g},{g + 4},{g + 12}");
+    }
+
+    private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static T Cached<T>(string key, Func<T> build) where T : class
+    {
+        if (Cache.GetValueOrDefault(key) is T known)
+        {
+            return known;
+        }
+
+        if (Cache.Count > 400)
+        {
+            Cache.Clear();
+        }
+
+        var value = build();
+        Cache[key] = value;
+        return value;
+    }
+
+    private string MissionLine()
+    {
+        var m = Missions.Current;
+        return L.Format("robust.missionLine", m.PanelW.ToString("0", CultureInfo.InvariantCulture), m.LoadW.ToString("0", CultureInfo.InvariantCulture), (m.BatteryWh / 1000).ToString("0.#", CultureInfo.InvariantCulture), m.DurationDays.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private string Days(double days) => days >= 1
+        ? days.ToString("0.#", CultureInfo.InvariantCulture) + " " + L["common.unit.d"]
+        : (days * 24).ToString("0", CultureInfo.InvariantCulture) + " " + L["common.unit.h"];
+
+    private string Distance(double metres) => metres >= 1000
+        ? (metres / 1000).ToString("0.#", CultureInfo.InvariantCulture) + " " + L["finder.km"]
+        : metres.ToString("0", CultureInfo.InvariantCulture) + " " + L["common.unit.m"];
+
+    private static string Pct(double share) => (share * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+    private string Speed(double ms) => ms.ToString("0.0#", CultureInfo.InvariantCulture) + " " + L["mission.ms"];
+
+    private static string PctFine(double share) => share > 0 && share < 0.01 ? "<1%" : Pct(share);
+
+    private static string Risk(double p) => p <= 0.05 ? "ok" : p <= 0.2 ? "mid" : "bad";
+
+    private static string Tone(double share) => share >= 0.75 ? "ok" : share >= 0.4 ? "mid" : "bad";
+}

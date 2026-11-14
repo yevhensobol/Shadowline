@@ -9,7 +9,6 @@
 @using Shadowline.Core.Tracks
 @using System.Globalization
 @using Shadowline.Web.Components
-@using Shadowline.Data
 @inherits LocalizedComponent
 @inject DataStore Store
 @inject SiteViewCache Views
@@ -17,6 +16,7 @@
 @inject MissionStore Missions
 @inject IJSRuntime Js
 @inject CommsCache Comms
+@using Shadowline.Data
 
 <PageTitle>@(view is null ? L["planner.title"] : L.Name(view.Site)) - Shadowline</PageTitle>
 
