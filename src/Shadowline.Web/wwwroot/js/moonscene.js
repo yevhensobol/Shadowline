@@ -351,9 +351,10 @@ class MoonScene {
             const module = await import(new URL("./sdem.js" + new URL(import.meta.url).search, import.meta.url).href);
             if (this.polePromise) await this.polePromise;
             if (this.disposed || !this.poleGrid) return;
-            const sdem = new module.Sdem({ base: this.options.base + "../../data/sdem/", radius: R, scene: this.scene, poleHalf: this.poleGrid.half, count: this.layerUniforms.sdemCount, rects: this.layerUniforms.sdemRects.value, anisotropy: Math.min(8, this.renderer.capabilities.getMaxAnisotropy()), onChange: () => { this.dirty = true; } });
+            const sdem = new module.Sdem({ base: this.options.base + "../../data/sdem/", radius: R, scene: this.scene, poleHalf: this.poleGrid.half, albedo: this.pole ? this.pole.material.map : null, count: this.layerUniforms.sdemCount, rects: this.layerUniforms.sdemRects.value, anisotropy: Math.min(8, this.renderer.capabilities.getMaxAnisotropy()), onChange: () => { this.dirty = true; } });
             await sdem.init();
             if (this.disposed) { sdem.dispose(); return; }
+            sdem.setMode(this.poleMode || "relief");
             this.sdem = sdem;
             this.dirty = true;
         } catch (error) {
@@ -1437,6 +1438,7 @@ if (gridOn > 0.5) {
     setUnits(units) {
         this.units = Object.assign({ m: "m", km: "km" }, units || {});
         this.scaleKey = null;
+        this.sdemKey = null;
         this.dirty = true;
     }
 
@@ -1475,8 +1477,48 @@ if (gridOn > 0.5) {
         this.scaleEl.querySelector(".scale-bar").style.width = width.toFixed(0) + "px";
     }
 
+    updateSdemControl() {
+        if (!this.sdem) return;
+        if (!this.sdemEl) {
+            const el = document.createElement("div");
+            el.className = "scene-sdem";
+            el.setAttribute("role", "group");
+            for (const mode of ["relief", "photo"]) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.dataset.mode = mode;
+                button.addEventListener("pointerdown", (event) => event.stopPropagation());
+                button.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    this.poleMode = mode;
+                    this.sdem.setMode(mode);
+                    this.sdemKey = null;
+                    this.dirty = true;
+                });
+                el.appendChild(button);
+            }
+            this.overlay.appendChild(el);
+            this.sdemEl = el;
+        }
+        const show = !this.surface && this.poleReady && this.view.lat < -78 && this.view.range < 400;
+        this.sdemEl.style.display = show ? "" : "none";
+        if (!show) return;
+        const u = this.units || {};
+        const key = this.sdem.mode + "|" + (u.sdemPhoto || "");
+        if (key === this.sdemKey) return;
+        this.sdemKey = key;
+        this.sdemEl.setAttribute("aria-label", u.sdemTitle || "SDEM");
+        for (const button of this.sdemEl.querySelectorAll("button")) {
+            const photo = button.dataset.mode === "photo";
+            button.textContent = photo ? (u.sdemPhoto || "Photo") : (u.sdemRelief || "Relief");
+            button.title = photo ? (u.sdemPhotoHint || "") : (u.sdemReliefHint || "");
+            button.setAttribute("aria-pressed", String(button.dataset.mode === this.sdem.mode));
+        }
+    }
+
     updateOverlay() {
         this.updateScale();
+        this.updateSdemControl();
         const placed = [];
         const sorted = [...this.sites].sort((a, b) => (this.selected && b.id === this.selected.id) - (this.selected && a.id === this.selected.id));
         for (const site of sorted) {
@@ -2124,7 +2166,7 @@ if (gridOn > 0.5) {
         if (this.poleDetail) this.poleDetail.dispose();
         if (this.sdem) this.sdem.dispose();
         if (this.renderer) { this.renderer.dispose(); this.renderer.forceContextLoss(); }
-        this.overlay.querySelectorAll(".scene-site, .scene-custom, .scene-probe, .scene-route").forEach((el) => el.remove());
+        this.overlay.querySelectorAll(".scene-site, .scene-custom, .scene-probe, .scene-route, .scene-sdem").forEach((el) => el.remove());
     }
 }
 

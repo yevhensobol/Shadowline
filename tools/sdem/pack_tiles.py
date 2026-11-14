@@ -45,7 +45,7 @@ def pack(source, target, budget):
             tiles.append([tile["id"], tile["level"], x0, y0, x1, y1, tile["cols"], tile["rows"]])
         if not done:
             return files, False
-        regions.append({"id": region["id"], "name": region["name"], "bounds": [round(v, 2) for v in region["bounds"]], "tiles": tiles})
+        regions.append({"id": region["id"], "name": region["name"], "bounds": [round(v, 2) for v in region["bounds"]], "photoM": region.get("photoNativeM", [5.0])[0], "tiles": tiles})
     index = {"version": 1, "unitM": UNIT_M, "source": "doi:10.5281/zenodo.17954508", "regions": regions}
     (target / "index.json").write_text(json.dumps(index, separators=(",", ":")) + "\n", encoding="utf-8")
     return files + 1, True

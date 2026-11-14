@@ -1960,6 +1960,52 @@ body {
     text-shadow: 0 1px 3px #000000, 0 0 6px #000000;
 }
 
+.scene-sdem {
+    position: absolute;
+    top: 124px;
+    left: 50%;
+    z-index: 12;
+    transform: translateX(-50%);
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(13, 18, 27, 0.78);
+    pointer-events: auto;
+}
+
+.scene-sdem button {
+    padding: 5px 14px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--fg-soft);
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.scene-sdem button + button {
+    border-left: 1px solid var(--line);
+}
+
+.scene-sdem button[aria-pressed="true"] {
+    background: rgba(242, 163, 58, 0.18);
+    color: var(--sun);
+}
+
+.globe.embed .scene-sdem {
+    top: 12px;
+}
+
+@media (max-width: 800px) {
+    .scene-sdem {
+        top: 150px;
+    }
+}
+
 .scene-scale .scale-bar {
     display: block;
     height: 6px;

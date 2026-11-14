@@ -6,6 +6,7 @@ const MAX_LOADS = 6;
 const RETRY_MS = 8000;
 const SKIRT_KM = 0.12;
 const LEVELS = [[5, 2.5], [20, 10], [80, 40]];
+const PHOTO_FAR = 130;
 const HOLD = 1.25;
 
 async function readHeights(url) {
@@ -39,12 +40,14 @@ export class Sdem {
         this.onChange = options.onChange || (() => {});
         this.loader = new THREE.TextureLoader();
         this.anisotropy = options.anisotropy || 1;
+        this.albedo = options.albedo || null;
         this.group = new THREE.Group();
         this.scene.add(this.group);
         this.entries = new Map();
         this.loading = new Set();
         this.failed = new Map();
         this.shown = [];
+        this.mode = "relief";
         this.level = 0;
         this.frame = 0;
         this.frustum = new THREE.Frustum();
@@ -109,7 +112,8 @@ export class Sdem {
     }
 
     pickLevel(mpp) {
-        for (const [level, limit] of LEVELS) {
+        for (const [level, base] of LEVELS) {
+            const limit = level === 80 && this.mode === "photo" ? PHOTO_FAR : base;
             if (mpp < limit * (this.level === level ? HOLD : 1)) return level;
         }
         return 0;
@@ -194,14 +198,14 @@ export class Sdem {
             }
             texture.colorSpace = THREE.SRGBColorSpace;
             texture.anisotropy = this.anisotropy;
-            const material = new THREE.MeshStandardMaterial({ map: texture, roughness: 1, metalness: 0 });
-            const mesh = new THREE.Mesh(this.build(tile, heights), material);
+            const photo = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
+            const mesh = new THREE.Mesh(this.build(tile, heights), this.mode === "photo" ? photo : this.reliefMaterial());
             mesh.position.copy(tile.center);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             mesh.visible = false;
             this.group.add(mesh);
-            this.entries.set(tile.key, { heights, mesh, used: this.frame });
+            this.entries.set(tile.key, { heights, mesh, photo, texture, used: this.frame });
             this.failed.delete(tile.key);
         }).catch((error) => {
             this.failed.set(tile.key, performance.now());
@@ -222,15 +226,18 @@ export class Sdem {
         for (let i = H - 2; i > 0; i--) ring.push(i * W);
         ring.push(0);
         const count = W * H + ring.length;
-        const pos = new Float32Array(count * 3), uv = new Float32Array(count * 2), nor = new Float32Array(count * 3);
-        const c = tile.center;
+        const pos = new Float32Array(count * 3), uv = new Float32Array(count * 2), uv1 = new Float32Array(count * 2), nor = new Float32Array(count * 3);
+        const c = tile.center, size = 2 * this.poleHalf;
         for (let i = 0; i < H; i++) {
             for (let j = 0; j < W; j++) {
                 const k = i * W + j;
-                const p = this.toScene(tile.x0 + j * dx, tile.y1 - i * dy, heights[k] * this.unit);
+                const x = tile.x0 + j * dx, y = tile.y1 - i * dy;
+                const p = this.toScene(x, y, heights[k] * this.unit);
                 pos[k * 3] = p[0] - c.x; pos[k * 3 + 1] = p[1] - c.y; pos[k * 3 + 2] = p[2] - c.z;
                 uv[k * 2] = j / (W - 1);
                 uv[k * 2 + 1] = 1 - i / (H - 1);
+                uv1[k * 2] = (x + this.poleHalf) / size;
+                uv1[k * 2 + 1] = (y + this.poleHalf) / size;
             }
         }
         const at = (i, j, a) => pos[(i * W + j) * 3 + a];
@@ -254,6 +261,7 @@ export class Sdem {
             const f = (Math.hypot(px, py, pz) - SKIRT_KM) / Math.hypot(px, py, pz);
             pos[o * 3] = px * f - c.x; pos[o * 3 + 1] = py * f - c.y; pos[o * 3 + 2] = pz * f - c.z;
             uv[o * 2] = uv[k * 2]; uv[o * 2 + 1] = uv[k * 2 + 1];
+            uv1[o * 2] = uv1[k * 2]; uv1[o * 2 + 1] = uv1[k * 2 + 1];
             nor[o * 3] = nor[k * 3]; nor[o * 3 + 1] = nor[k * 3 + 1]; nor[o * 3 + 2] = nor[k * 3 + 2];
             skirt.push(o++);
         }
@@ -274,6 +282,7 @@ export class Sdem {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3));
         geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+        geometry.setAttribute("uv1", new THREE.BufferAttribute(uv1, 2));
         geometry.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
         geometry.setIndex(new THREE.BufferAttribute(index, 1));
         geometry.computeBoundingSphere();
@@ -290,11 +299,28 @@ export class Sdem {
         }
     }
 
+    reliefMaterial() {
+        if (!this.relief) {
+            const map = this.albedo ? this.albedo.clone() : null;
+            if (map) {
+                map.channel = 1;
+                map.needsUpdate = true;
+            }
+            this.relief = new THREE.MeshStandardMaterial({ map, color: map ? 0xffffff : 0xb4b4b4, roughness: 1, metalness: 0 });
+        }
+        return this.relief;
+    }
+
+    setMode(mode) {
+        this.mode = mode === "photo" ? "photo" : "relief";
+        for (const entry of this.entries.values()) entry.mesh.material = this.mode === "photo" ? entry.photo : this.reliefMaterial();
+    }
+
     release(entry) {
         this.group.remove(entry.mesh);
         entry.mesh.geometry.dispose();
-        entry.mesh.material.map.dispose();
-        entry.mesh.material.dispose();
+        entry.texture.dispose();
+        entry.photo.dispose();
     }
 
     dispose() {
@@ -302,6 +328,10 @@ export class Sdem {
         this.show([]);
         for (const entry of this.entries.values()) this.release(entry);
         this.entries.clear();
+        if (this.relief) {
+            if (this.relief.map) this.relief.map.dispose();
+            this.relief.dispose();
+        }
         this.scene.remove(this.group);
     }
 }
