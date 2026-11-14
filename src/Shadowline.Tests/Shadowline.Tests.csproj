@@ -29,4 +29,20 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\Shadowline.Web\wwwroot\data\*.json" Link="data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\*.bin" Link="data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\*.gz" Link="data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\horizon\*.bin" Link="data\horizon\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\terrain\*.bin" Link="data\terrain\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\dem\*.bin" Link="data\dem\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\pole\*.*" Link="data\pole\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\pole\80\*.gz" Link="data\pole\80\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\img\scene\pole_height.bin" Link="data\pole_height.bin" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\history\*.bin" Link="data\history\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\years\*.bin" Link="data\years\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Shadowline.Web\wwwroot\data\incidents\*.bin" Link="data\incidents\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

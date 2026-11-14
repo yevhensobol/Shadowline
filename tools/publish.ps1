@@ -27,7 +27,7 @@ if (Test-Path -LiteralPath $target) {
 }
 
 if (-not $SkipTests) {
-    dotnet test tests/Shadowline.Tests -c $Configuration
+    dotnet test src/Shadowline.Tests -c $Configuration
     if ($LASTEXITCODE -ne 0) {
         throw "tests failed"
     }
