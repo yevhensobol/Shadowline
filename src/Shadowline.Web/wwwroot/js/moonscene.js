@@ -18,6 +18,11 @@ const WAC_ORIGIN_M = 1095930;
 const WAC_LEVEL = 5;
 const WAC_SIZE = 2048;
 const WAC_CAP_M = 931000;
+const NAC_TILES = "https://trek.nasa.gov/tiles/Moon/SP/LRO_NAC_AvgMosaic_SPole855_1mp/1.0.0/default/default028mm/";
+const NAC_EDGE_M = 136500;
+const NAC_BASE_LEVEL = 6;
+const NAC_MAX_LEVEL = 11;
+const NAC_SPAN = 9;
 
 const sdemDiscard = (uv) => `    for (int i = 0; i < ${SDEM_TILES}; i++) {
         if (i >= sdemCount) break;
@@ -491,7 +496,7 @@ class MoonScene {
         mask.magFilter = THREE.NearestFilter;
         mask.minFilter = THREE.NearestFilter;
         mask.needsUpdate = true;
-        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, photoOn: this.photoUniform, sdemCount: { value: 0 }, sdemRects: { value: Array.from({ length: SDEM_TILES }, () => new THREE.Vector4()) } };
+        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, photoOn: this.photoUniform, nacMap: { value: blank }, nacRect: { value: new THREE.Vector4() }, nacScale: { value: 1 }, focusMap: { value: blank }, focusRect: { value: new THREE.Vector4() }, focusOn: { value: 0 }, sdemCount: { value: 0 }, sdemRects: { value: Array.from({ length: SDEM_TILES }, () => new THREE.Vector4()) } };
         this.poleDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
         this.poleDepth.onBeforeCompile = (shader) => {
             shader.uniforms.sdemCount = this.layerUniforms.sdemCount;
@@ -525,8 +530,20 @@ uniform sampler2D detailMask;
 uniform float detailOn;
 uniform float detailScale;
 uniform float photoOn;
+uniform sampler2D nacMap;
+uniform vec4 nacRect;
+uniform float nacScale;
+uniform sampler2D focusMap;
+uniform vec4 focusRect;
+uniform float focusOn;
 uniform int sdemCount;
 uniform vec4 sdemRects[${SDEM_TILES}];
+vec4 rectSample(sampler2D tex, vec4 rect, vec2 uv) {
+    vec2 t = (uv - rect.xy) / max(rect.zw - rect.xy, vec2(1e-9));
+    vec2 e = min(t, 1.0 - t);
+    vec4 c = texture2D(tex, t);
+    return vec4(c.rgb, c.a * smoothstep(0.0, 0.03, min(e.x, e.y)));
+}
 float gridLine(vec2 c, vec2 w, float width) {
     vec2 d = abs(fract(c + 0.5) - 0.5) / max(w, vec2(1e-6));
     return 1.0 - smoothstep(width - 0.5, width + 0.5, min(d.x, d.y));
@@ -588,7 +605,16 @@ if (gridOn > 0.5) {
     totalEmissiveRadiance += vec3(0.3, 0.5, 0.68) * a * 0.45;
     diffuseColor.rgb *= 1.0 - 0.3 * a;
 }`)
-                .replace("#include <opaque_fragment>", "if (photoOn > 0.5 && layerMode < 0.5) outgoingLight = diffuseColor.rgb * 0.62 + totalEmissiveRadiance;\n#include <opaque_fragment>");
+                .replace("#include <opaque_fragment>", `if (photoOn > 0.5 && layerMode < 0.5) {
+    vec3 pc = diffuseColor.rgb;
+    float inside = 1.0 - smoothstep(0.9, 0.98, length(vMapUv - 0.5) * nacScale);
+    vec4 nc = rectSample(nacMap, nacRect, vMapUv);
+    pc = mix(pc, nc.rgb, nc.a * inside);
+    vec4 fc = rectSample(focusMap, focusRect, vMapUv);
+    pc = mix(pc, fc.rgb, fc.a * focusOn * inside);
+    outgoingLight = pc * 0.62 + totalEmissiveRadiance;
+}
+#include <opaque_fragment>`);
         };
     }
 
@@ -1141,6 +1167,7 @@ if (gridOn > 0.5) {
             const active = !this.surface && (!this.layerMode || this.layerMode === "none") && !this.gridOn && this.poleMode !== "photo";
             if (this.sdem.update(this.camera, this.height || 800, v.lat, v.lon, target, active)) this.dirty = true;
         }
+        if (this.poleMode === "photo" && this.photoUniform.value > 0.5 && !this.surface) this.updatePhotoFocus(target, v.range);
         const shrink = reliefOn ? (R - 10) / R : 1;
         if (this.moon.scale.x !== shrink) {
             this.moon.scale.setScalar(shrink);
@@ -1561,16 +1588,99 @@ if (gridOn > 0.5) {
         return texture;
     }
 
+    async trekTexture(root, level, col0, row0, span) {
+        const canvas = document.createElement("canvas");
+        canvas.width = span * 256;
+        canvas.height = span * 256;
+        const ctx = canvas.getContext("2d");
+        const jobs = [];
+        for (let r = 0; r < span; r++) {
+            for (let c = 0; c < span; c++) {
+                jobs.push(new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = "anonymous";
+                    img.onload = () => {
+                        ctx.drawImage(img, c * 256, r * 256);
+                        resolve(true);
+                    };
+                    img.onerror = () => resolve(false);
+                    img.src = `${root}${level}/${row0 + r}/${col0 + c}.png`;
+                }));
+            }
+        }
+        if (!(await Promise.all(jobs)).some((ok) => ok)) throw new Error("trek tiles");
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+        const tileM = 2 * WAC_ORIGIN_M / 2 ** level, half = this.poleGrid.half, size = span * tileM;
+        const x0 = -WAC_ORIGIN_M + col0 * tileM, y1 = WAC_ORIGIN_M - row0 * tileM;
+        const rect = new THREE.Vector4((x0 + half) / (2 * half), (y1 - size + half) / (2 * half), (x0 + size + half) / (2 * half), (y1 + half) / (2 * half));
+        return { texture, rect };
+    }
+
     loadPolePhoto() {
         if (!this.polePhotoJob) {
             this.polePhotoJob = (async () => {
-                const [inner, outer] = await Promise.all([this.wacTexture(WAC_LEVEL, this.poleGrid.half, WAC_SIZE), this.wacTexture(WAC_LEVEL - 1, WAC_CAP_M, 2 * WAC_SIZE)]);
+                const tileM = 2 * WAC_ORIGIN_M / 2 ** NAC_BASE_LEVEL;
+                const first = Math.floor((WAC_ORIGIN_M - NAC_EDGE_M) / tileM), span = Math.floor((WAC_ORIGIN_M + NAC_EDGE_M) / tileM) - first + 1;
+                const [inner, outer, nac] = await Promise.all([
+                    this.wacTexture(WAC_LEVEL, this.poleGrid.half, WAC_SIZE),
+                    this.wacTexture(WAC_LEVEL - 1, WAC_CAP_M, 2 * WAC_SIZE),
+                    this.trekTexture(NAC_TILES, NAC_BASE_LEVEL, first, first, span).catch((error) => { console.warn("nac", error); return null; })
+                ]);
                 this.photoMap.value = outer;
+                if (nac) {
+                    this.layerUniforms.nacMap.value = nac.texture;
+                    this.layerUniforms.nacRect.value.copy(nac.rect);
+                }
+                this.layerUniforms.nacScale.value = 2 * this.poleGrid.half / NAC_EDGE_M;
                 return inner;
             })();
             this.polePhotoJob.catch(() => { this.polePhotoJob = null; });
         }
         return this.polePhotoJob;
+    }
+
+    updatePhotoFocus(target, range) {
+        const ll = toLatLon(target);
+        const rho = 2 * R * 1000 * Math.tan((90 + ll.lat) * DEG / 2);
+        const x = rho * Math.sin(ll.lon * DEG), y = rho * Math.cos(ll.lon * DEG);
+        const mpp = range * 1000 * 2 * Math.tan(this.camera.fov * DEG / 2) / (this.height || 800);
+        const level = Math.max(NAC_BASE_LEVEL, Math.min(NAC_MAX_LEVEL, Math.round(Math.log2(2 * WAC_ORIGIN_M / 256 / Math.max(mpp, 1)))));
+        const tileM = 2 * WAC_ORIGIN_M / 2 ** level;
+        const wanted = level > NAC_BASE_LEVEL && rho < NAC_EDGE_M + NAC_SPAN * tileM / 2;
+        const focus = this.photoFocus;
+        if (!wanted) {
+            if (this.layerUniforms.focusOn.value) {
+                this.layerUniforms.focusOn.value = 0;
+                this.dirty = true;
+            }
+            return;
+        }
+        const col = Math.floor((x + WAC_ORIGIN_M) / tileM), row = Math.floor((WAC_ORIGIN_M - y) / tileM);
+        if (focus && focus.level === level && Math.abs(focus.col - col) <= 2 && Math.abs(focus.row - row) <= 2) {
+            if (!this.layerUniforms.focusOn.value) {
+                this.layerUniforms.focusOn.value = 1;
+                this.dirty = true;
+            }
+            return;
+        }
+        if (this.photoFocusJob) return;
+        const half = Math.floor(NAC_SPAN / 2);
+        this.photoFocusJob = this.trekTexture(NAC_TILES, level, col - half, row - half, NAC_SPAN).then(({ texture, rect }) => {
+            if (this.disposed) { texture.dispose(); return; }
+            if (this.focusTexture) this.focusTexture.dispose();
+            this.focusTexture = texture;
+            this.layerUniforms.focusMap.value = texture;
+            this.layerUniforms.focusRect.value.copy(rect);
+            this.layerUniforms.focusOn.value = 1;
+            this.photoFocus = { level, col, row };
+        }).catch(() => {
+            this.photoFocus = { level, col, row };
+        }).finally(() => {
+            this.photoFocusJob = null;
+            this.dirty = true;
+        });
     }
 
     async setPoleMode(mode) {

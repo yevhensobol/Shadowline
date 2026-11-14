@@ -98,6 +98,18 @@
       "kind": "data"
     },
     {
+        "id": "trek-nac-spole",
+        "title": "LRO LROC NAC Image Mosaic, S Pole, Avg Merge, Edition 1 (LRO_NAC_AvgMosaic_SPole855_1mp)",
+        "author": "USGS and the LMMP Team (2011), from LROC NAC images by the LROC Team, Arizona State University. Served by NASA Moon Trek, NASA/JPL",
+        "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_NAC_AvgMosaic_SPole855_1mp",
+        "license": "NASA open data",
+        "usedIn": {
+            "en": "Photo view of the south pole in 3D, 85.5-90 S, loaded in more detail as the camera gets closer",
+            "uk": "Режим фото південного полюса в 3D, 85,5-90 пд. ш., деталізація зростає з наближенням камери"
+        },
+        "kind": "data"
+    },
+    {
       "id": "trek-wac-global",
       "title": "LRO WAC Mosaic v2 (LRO_WAC_Mosaic_Global_303ppd_v02)",
       "author": "The LROC Team, Arizona State University. Served by NASA Moon Trek, NASA/JPL. Robinson, M. S. et al., Space Science Reviews 150, 81-124 (2010), doi:10.1007/s11214-010-9634-2",
