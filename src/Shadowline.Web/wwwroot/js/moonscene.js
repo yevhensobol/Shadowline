@@ -13,6 +13,11 @@ const MAX_RANGE = 40000;
 const RELIEF_RANGE = 3000;
 const SDEM_TILES = 24;
 const SDEM_MIN_RANGE = 0.4;
+const WAC_TILES = "https://trek.nasa.gov/tiles/Moon/SP/LRO_WAC_Mosaic_SPole60_100m_v02/1.0.0/default/default028mm/";
+const WAC_ORIGIN_M = 1095930;
+const WAC_LEVEL = 5;
+const WAC_SIZE = 2048;
+const WAC_CAP_M = 931000;
 
 const sdemDiscard = (uv) => `    for (int i = 0; i < ${SDEM_TILES}; i++) {
         if (i >= sdemCount) break;
@@ -293,8 +298,16 @@ class MoonScene {
             material.bumpMap = map;
             material.bumpScale = 1.6;
         }
+        this.photoUniform = this.photoUniform || { value: 0 };
+        if (!this.photoMap) {
+            const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+            blank.needsUpdate = true;
+            this.photoMap = { value: blank };
+        }
         material.onBeforeCompile = (shader) => {
             shader.uniforms.poleHalf = { value: this.poleReady ? 300.0 : 0.0 };
+            shader.uniforms.photoOn = this.photoUniform;
+            shader.uniforms.photoMap = this.photoMap;
             shader.uniforms.holeDir = { value: new THREE.Vector3() };
             shader.uniforms.holeCos = { value: 2.0 };
             this.moonShader = shader;
@@ -302,7 +315,8 @@ class MoonScene {
                 .replace("#include <common>", "#include <common>\nvarying vec3 vObj;")
                 .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObj = position;");
             shader.fragmentShader = shader.fragmentShader
-                .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform float poleHalf;\nuniform vec3 holeDir;\nuniform float holeCos;")
+                .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform float poleHalf;\nuniform vec3 holeDir;\nuniform float holeCos;\nuniform float photoOn;\nuniform sampler2D photoMap;")
+                .replace("#include <opaque_fragment>", "vec3 pu = normalize(vec3(vObj.x, -vObj.z, vObj.y));\nfloat photoMix = photoOn * smoothstep(-0.87, -0.9, pu.z);\nif (photoMix > 0.0) {\n    float pk = 3474800.0 / (1.0 - pu.z);\n    vec3 pc = texture2D(photoMap, vec2(pk * pu.y, pk * pu.x) / 1862000.0 + 0.5).rgb;\n    outgoingLight = mix(outgoingLight, pc, photoMix);\n}\n#include <opaque_fragment>")
                 .replace("void main() {", `void main() {
     if (dot(normalize(vObj), holeDir) > holeCos) discard;
     if (poleHalf > 0.0) {
@@ -323,7 +337,7 @@ class MoonScene {
         try {
             const module = await import(new URL("./relief.js" + new URL(import.meta.url).search, import.meta.url).href);
             if (this.disposed) return;
-            const relief = new module.Relief({ base: this.options.base + "../../data/relief/", radius: R, scene: this.scene, source: () => this.moonMaterial, onChange: () => { this.dirty = true; } });
+            const relief = new module.Relief({ base: this.options.base + "../../data/relief/", radius: R, scene: this.scene, photo: this.photoUniform, photoMap: this.photoMap, source: () => this.moonMaterial, onChange: () => { this.dirty = true; } });
             await relief.init();
             if (this.disposed) { relief.dispose(); return; }
             this.relief = relief;
@@ -478,7 +492,7 @@ class MoonScene {
         mask.magFilter = THREE.NearestFilter;
         mask.minFilter = THREE.NearestFilter;
         mask.needsUpdate = true;
-        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, sdemCount: { value: 0 }, sdemRects: { value: Array.from({ length: SDEM_TILES }, () => new THREE.Vector4()) } };
+        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, photoOn: this.photoUniform, sdemCount: { value: 0 }, sdemRects: { value: Array.from({ length: SDEM_TILES }, () => new THREE.Vector4()) } };
         this.poleDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
         this.poleDepth.onBeforeCompile = (shader) => {
             shader.uniforms.sdemCount = this.layerUniforms.sdemCount;
@@ -511,6 +525,7 @@ uniform float gridCells;
 uniform sampler2D detailMask;
 uniform float detailOn;
 uniform float detailScale;
+uniform float photoOn;
 uniform int sdemCount;
 uniform vec4 sdemRects[${SDEM_TILES}];
 float gridLine(vec2 c, vec2 w, float width) {
@@ -573,7 +588,8 @@ if (gridOn > 0.5) {
     float a = max(max(fine * 0.6, major * 0.8), wide);
     totalEmissiveRadiance += vec3(0.3, 0.5, 0.68) * a * 0.45;
     diffuseColor.rgb *= 1.0 - 0.3 * a;
-}`);
+}`)
+                .replace("#include <opaque_fragment>", "if (photoOn > 0.5 && layerMode < 0.5) outgoingLight = diffuseColor.rgb + totalEmissiveRadiance;\n#include <opaque_fragment>");
         };
     }
 
@@ -1490,8 +1506,7 @@ if (gridOn > 0.5) {
                 button.addEventListener("pointerdown", (event) => event.stopPropagation());
                 button.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    this.poleMode = mode;
-                    this.sdem.setMode(mode);
+                    this.setPoleMode(mode);
                     this.sdemKey = null;
                     this.dirty = true;
                 });
@@ -1514,6 +1529,70 @@ if (gridOn > 0.5) {
             button.title = photo ? (u.sdemPhotoHint || "") : (u.sdemReliefHint || "");
             button.setAttribute("aria-pressed", String(button.dataset.mode === this.sdem.mode));
         }
+    }
+
+    async wacTexture(level, half, size) {
+        const tileM = 2 * WAC_ORIGIN_M / 2 ** level, scale = size / (2 * half);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const first = Math.max(0, Math.floor((WAC_ORIGIN_M - half) / tileM)), last = Math.min(2 ** level - 1, Math.floor((WAC_ORIGIN_M + half) / tileM));
+        const jobs = [];
+        for (let row = first; row <= last; row++) {
+            for (let col = first; col <= last; col++) {
+                jobs.push(new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = "anonymous";
+                    img.onload = () => {
+                        const x = (-WAC_ORIGIN_M + col * tileM + half) * scale, y = (half - (WAC_ORIGIN_M - row * tileM)) * scale, s = tileM * scale;
+                        ctx.drawImage(img, x, y, s + 1, s + 1);
+                        resolve(true);
+                    };
+                    img.onerror = () => resolve(false);
+                    img.src = `${WAC_TILES}${level}/${row}/${col}.png`;
+                }));
+            }
+        }
+        if (!(await Promise.all(jobs)).some((ok) => ok)) throw new Error("wac tiles");
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+        return texture;
+    }
+
+    loadPolePhoto() {
+        if (!this.polePhotoJob) {
+            this.polePhotoJob = (async () => {
+                const [inner, outer] = await Promise.all([this.wacTexture(WAC_LEVEL, this.poleGrid.half, WAC_SIZE), this.wacTexture(WAC_LEVEL - 1, WAC_CAP_M, 2 * WAC_SIZE)]);
+                this.photoMap.value = outer;
+                return inner;
+            })();
+            this.polePhotoJob.catch(() => { this.polePhotoJob = null; });
+        }
+        return this.polePhotoJob;
+    }
+
+    async setPoleMode(mode) {
+        this.poleMode = mode === "photo" ? "photo" : "relief";
+        if (this.sdem) this.sdem.setMode(this.poleMode);
+        this.photoUniform.value = this.poleMode === "photo" ? 1 : 0;
+        if (this.pole && !this.poleAlbedo) this.poleAlbedo = this.pole.material.map;
+        let map = this.poleAlbedo;
+        this.dirty = true;
+        if (this.poleMode === "photo" && this.poleGrid) {
+            try {
+                const photo = await this.loadPolePhoto();
+                if (this.poleMode !== "photo" || this.disposed) return;
+                map = photo;
+            } catch (error) {
+                console.warn("pole photo", error);
+            }
+        }
+        for (const material of [this.pole && this.pole.material, this.poleDetail && this.poleDetail.material]) {
+            if (material && map) material.map = map;
+        }
+        this.dirty = true;
     }
 
     updateOverlay() {

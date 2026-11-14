@@ -56,6 +56,8 @@ export class Relief {
         this.source = options.source;
         this.onChange = options.onChange || (() => {});
         this.poleHalf = { value: 0 };
+        this.photo = options.photo || { value: 0 };
+        this.photoMap = options.photoMap || { value: null };
         this.group = new THREE.Group();
         this.group.visible = false;
         this.scene.add(this.group);
@@ -263,11 +265,14 @@ export class Relief {
                     }
                     material.onBeforeCompile = (shader) => {
                         shader.uniforms.poleHalf = this.poleHalf;
+                        shader.uniforms.photoOn = this.photo;
+                        shader.uniforms.photoMap = this.photoMap;
                         shader.vertexShader = shader.vertexShader
                             .replace("#include <common>", "#include <common>\nvarying vec3 vObj;")
                             .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObj = position;");
                         shader.fragmentShader = shader.fragmentShader
-                            .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform float poleHalf;")
+                            .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform float poleHalf;\nuniform float photoOn;\nuniform sampler2D photoMap;")
+                            .replace("#include <opaque_fragment>", "vec3 pu = normalize(vec3(vObj.x, -vObj.z, vObj.y));\nfloat photoMix = photoOn * smoothstep(-0.87, -0.9, pu.z);\nif (photoMix > 0.0) {\n    float pk = 3474800.0 / (1.0 - pu.z);\n    vec3 pc = texture2D(photoMap, vec2(pk * pu.y, pk * pu.x) / 1862000.0 + 0.5).rgb;\n    outgoingLight = mix(outgoingLight, pc, photoMix);\n}\n#include <opaque_fragment>")
                             .replace("void main() {", `void main() {
     if (poleHalf > 0.0) {
         vec3 u = normalize(vec3(vObj.x, -vObj.z, vObj.y));

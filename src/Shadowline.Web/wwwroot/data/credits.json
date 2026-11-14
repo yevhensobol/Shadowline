@@ -92,8 +92,8 @@
       "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_WAC_Mosaic_SPole60_100m_v02",
       "license": "NASA open data",
       "usedIn": {
-        "en": "South polar 2D map, 60-90 S",
-        "uk": "Південна полярна 2D-карта, 60-90 пд. ш."
+        "en": "South polar 2D map, 60-90 S, and the photo view of the south pole in 3D",
+        "uk": "Південна полярна 2D-карта, 60-90 пд. ш., і режим фото південного полюса в 3D"
       },
       "kind": "data"
     },
