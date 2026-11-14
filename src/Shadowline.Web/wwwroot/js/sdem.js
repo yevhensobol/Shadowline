@@ -115,11 +115,10 @@ export class Sdem {
         return 0;
     }
 
-    update(camera, heightPx, latDeg, lonDeg, active) {
+    update(camera, heightPx, latDeg, lonDeg, target, active) {
         if (!this.regions || !active || latDeg > -75) return this.hide();
         this.frame++;
         const [x, y] = this.polar(latDeg, lonDeg);
-        const target = new THREE.Vector3(...this.toScene(x, y, 0));
         const dist = camera.position.distanceTo(target);
         const span = 2 * Math.tan(camera.fov * DEG / 2) * dist * 1000;
         const level = this.pickLevel(span / heightPx);

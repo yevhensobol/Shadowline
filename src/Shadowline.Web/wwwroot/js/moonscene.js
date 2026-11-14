@@ -1123,7 +1123,7 @@ if (gridOn > 0.5) {
         }
         if (this.sdem) {
             const active = !this.surface && (!this.layerMode || this.layerMode === "none") && !this.gridOn;
-            if (this.sdem.update(this.camera, this.height || 800, v.lat, v.lon, active)) this.dirty = true;
+            if (this.sdem.update(this.camera, this.height || 800, v.lat, v.lon, target, active)) this.dirty = true;
         }
         const shrink = reliefOn ? (R - 10) / R : 1;
         if (this.moon.scale.x !== shrink) {
