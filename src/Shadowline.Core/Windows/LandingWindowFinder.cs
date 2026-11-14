@@ -47,6 +47,12 @@ public static class LandingWindowFinder
 
             if (ok)
             {
+                if (first < 0)
+                {
+                    first = i;
+                    bestSun = -1;
+                }
+
                 if (sunShare > bestSun)
                 {
                     best = i;
