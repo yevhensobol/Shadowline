@@ -50,6 +50,18 @@
       "kind": "data"
     },
     {
+      "id": "sdem-a3clr",
+      "title": "Enhanced Topography Models for selected Lunar South Pole regions with Shape-from-Shading (SDEM)",
+      "author": "Bertone, S., McKenna, T. E., Barker, M. K., Mazarico, E., Beyer, R. A., Petro, N. (2025), NASA GSFC PGDA, doi:10.5281/zenodo.17954508",
+      "source": "https://doi.org/10.5281/zenodo.17954508",
+      "license": "CC BY 4.0",
+      "usedIn": {
+        "en": "5 m elevation and LROC NAC orthomosaics of the 13 Artemis III candidate regions in the 3D view, with 20 m and 80 m levels for distant views. Display only, not used in the calculations",
+        "uk": "Висоти з кроком 5 м і ортомозаїки LROC NAC для 13 кандидатних регіонів Artemis III у 3D-сцені, з рівнями 20 м і 80 м для дальніх видів. Лише відображення, у розрахунках не використовується"
+      },
+      "kind": "data"
+    },
+    {
       "id": "diviner-prp",
       "title": "LRO Diviner Polar Resource Product, south (LRO-L-DLRE-5-PRP-V2.0)",
       "author": "Paige, D. A. et al., Science 330, 479-482 (2010), doi:10.1126/science.1187726. NASA PDS Geosciences Node",

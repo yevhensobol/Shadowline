@@ -11,6 +11,14 @@ const POLE_LAT = -76;
 const MIN_RANGE = 6;
 const MAX_RANGE = 40000;
 const RELIEF_RANGE = 3000;
+const SDEM_TILES = 16;
+const SDEM_MIN_RANGE = 0.4;
+
+const sdemDiscard = (uv) => `    for (int i = 0; i < ${SDEM_TILES}; i++) {
+        if (i >= sdemCount) break;
+        vec4 sr = sdemRects[i];
+        if (${uv}.x > sr.x && ${uv}.x < sr.z && ${uv}.y > sr.y && ${uv}.y < sr.w) discard;
+    }`;
 
 const me = (x, y, z) => new THREE.Vector3(x, z, -y);
 
@@ -224,6 +232,7 @@ class MoonScene {
 
         this.polePromise = this.loadPole();
         this.loadRelief();
+        this.loadSdem();
         this.loadEarthTextures();
         this.loadStarMap();
     }
@@ -325,7 +334,7 @@ class MoonScene {
                 const material = this.pole.material.clone();
                 material.onBeforeCompile = this.pole.material.onBeforeCompile;
                 material.defines = Object.assign({}, material.defines, { POLE_DETAIL: "" });
-                const detail = new module.PoleDetail({ base: this.options.base + "../../data/pole/", radius: R, scene: this.scene, material, mask: this.layerUniforms.detailMask.value, onChange: () => { this.dirty = true; } });
+                const detail = new module.PoleDetail({ base: this.options.base + "../../data/pole/", radius: R, scene: this.scene, material, depthMaterial: this.poleDepth, mask: this.layerUniforms.detailMask.value, onChange: () => { this.dirty = true; } });
                 await detail.init();
                 if (this.disposed) { detail.dispose(); return; }
                 this.layerUniforms.detailScale.value = 2 * detail.half / (16 * detail.tileM);
@@ -337,8 +346,24 @@ class MoonScene {
         }
     }
 
+    async loadSdem() {
+        try {
+            const module = await import(new URL("./sdem.js" + new URL(import.meta.url).search, import.meta.url).href);
+            if (this.polePromise) await this.polePromise;
+            if (this.disposed || !this.poleGrid) return;
+            const sdem = new module.Sdem({ base: this.options.base + "../../data/sdem/", radius: R, scene: this.scene, poleHalf: this.poleGrid.half, count: this.layerUniforms.sdemCount, rects: this.layerUniforms.sdemRects.value, anisotropy: Math.min(8, this.renderer.capabilities.getMaxAnisotropy()), onChange: () => { this.dirty = true; } });
+            await sdem.init();
+            if (this.disposed) { sdem.dispose(); return; }
+            this.sdem = sdem;
+            this.dirty = true;
+        } catch (error) {
+            console.warn("sdem", error);
+        }
+    }
+
     hideRelief() {
         if (this.relief) this.relief.group.visible = false;
+        if (this.sdem && this.sdem.hide()) this.dirty = true;
         if (this.poleDetail) {
             this.poleDetail.update(this.camera, 1, false);
             this.layerUniforms.detailOn.value = 0;
@@ -431,6 +456,7 @@ class MoonScene {
             this.pole = new THREE.Mesh(geometry, material);
             this.pole.castShadow = true;
             this.pole.receiveShadow = true;
+            this.pole.customDepthMaterial = this.poleDepth;
             this.scene.add(this.pole);
             this.poleCenter = fromLatLon(-90, 0, R);
             this.poleGrid = { n, half, unit, heights, index };
@@ -451,7 +477,22 @@ class MoonScene {
         mask.magFilter = THREE.NearestFilter;
         mask.minFilter = THREE.NearestFilter;
         mask.needsUpdate = true;
-        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 } };
+        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, sdemCount: { value: 0 }, sdemRects: { value: Array.from({ length: SDEM_TILES }, () => new THREE.Vector4()) } };
+        this.poleDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+        this.poleDepth.onBeforeCompile = (shader) => {
+            shader.uniforms.sdemCount = this.layerUniforms.sdemCount;
+            shader.uniforms.sdemRects = this.layerUniforms.sdemRects;
+            shader.vertexShader = shader.vertexShader
+                .replace("#include <common>", "#include <common>\nvarying vec2 vSdemUv;")
+                .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSdemUv = uv;");
+            shader.fragmentShader = shader.fragmentShader
+                .replace("#include <common>", `#include <common>
+varying vec2 vSdemUv;
+uniform int sdemCount;
+uniform vec4 sdemRects[${SDEM_TILES}];`)
+                .replace("void main() {", `void main() {
+${sdemDiscard("vSdemUv")}`);
+        };
         material.onBeforeCompile = (shader) => {
             Object.assign(shader.uniforms, this.layerUniforms);
             shader.fragmentShader = shader.fragmentShader
@@ -469,6 +510,8 @@ uniform float gridCells;
 uniform sampler2D detailMask;
 uniform float detailOn;
 uniform float detailScale;
+uniform int sdemCount;
+uniform vec4 sdemRects[${SDEM_TILES}];
 float gridLine(vec2 c, vec2 w, float width) {
     vec2 d = abs(fract(c + 0.5) - 0.5) / max(w, vec2(1e-6));
     return 1.0 - smoothstep(width - 0.5, width + 0.5, min(d.x, d.y));
@@ -482,7 +525,8 @@ vec3 ramp5(float v, float a, float b, float c, float d, float e, vec3 ca, vec3 c
                 .replace("void main() {", `void main() {
 #ifndef POLE_DETAIL
     if (detailOn > 0.5 && texture2D(detailMask, vec2(vMapUv.x, 1.0 - vMapUv.y) * detailScale).r > 0.5) discard;
-#endif`)
+#endif
+${sdemDiscard("vMapUv")}`)
                 .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
 if (layerMode > 0.5) {
     vec3 layer;
@@ -1036,7 +1080,10 @@ if (gridOn > 0.5) {
     updateCamera() {
         const v = this.view;
         const { up, east, north } = localFrame(v.lat, v.lon);
-        const target = up.clone().multiplyScalar(R);
+        const fine = !!this.sdem && this.sdem.covers(v.lat, v.lon);
+        if (v.range < MIN_RANGE && !fine) v.range = MIN_RANGE;
+        const ground = fine ? this.sdem.heightAt(v.lat, v.lon) ?? (this.poleHeightAt(v.lat, v.lon)?.meters ?? 0) / 1000 : 0;
+        const target = up.clone().multiplyScalar(R + ground);
         const h = v.heading * DEG, tilt = v.tilt * DEG;
         const forward = north.clone().multiplyScalar(Math.cos(h)).addScaledVector(east, Math.sin(h));
         const back = up.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(forward, -Math.sin(tilt));
@@ -1052,6 +1099,11 @@ if (gridOn > 0.5) {
             if (ground !== null) this.reliefGround = { lat: ll.lat, lon: ll.lon, h: ground };
             const g = this.reliefGround;
             if (g && Math.abs(g.lat - ll.lat) < 1 && Math.abs(g.lon - ll.lon) < 1) minRadius = Math.max(minRadius, R + g.h + 1.5);
+        }
+        if (fine) {
+            const ll = toLatLon(position);
+            const floor = this.sdem.heightAt(ll.lat, ll.lon);
+            if (floor !== null) minRadius = R + floor + 0.03;
         }
         if (position.length() < minRadius) position.setLength(minRadius);
         this.camera.position.copy(position);
@@ -1069,6 +1121,10 @@ if (gridOn > 0.5) {
             if (this.poleDetail.update(this.camera, this.height || 800, v.lat < -70 && v.range < 1500)) this.dirty = true;
             this.layerUniforms.detailOn.value = this.poleDetail.maskOn ? 1 : 0;
         }
+        if (this.sdem) {
+            const active = !this.surface && (!this.layerMode || this.layerMode === "none") && !this.gridOn;
+            if (this.sdem.update(this.camera, this.height || 800, v.lat, v.lon, active)) this.dirty = true;
+        }
         const shrink = reliefOn ? (R - 10) / R : 1;
         if (this.moon.scale.x !== shrink) {
             this.moon.scale.setScalar(shrink);
@@ -1076,7 +1132,7 @@ if (gridOn > 0.5) {
             this.moonMaterial.needsUpdate = true;
         }
         const polarShadow = this.poleReady && v.lat < -55 && v.range < 5000;
-        const reliefShadow = reliefOn && !polarShadow && v.range < 1500;
+        const reliefShadow = (reliefOn && !polarShadow && v.range < 1500) || (!!this.sdem && this.sdem.shown.length > 0);
         if (reliefShadow) this.setReliefShadow(target, v.range);
         else if (this.shadowMode === "relief") this.setPoleShadow();
         const useShadows = polarShadow || reliefShadow;
@@ -1228,7 +1284,8 @@ if (gridOn > 0.5) {
 
     zoom(factor) {
         const before = this.view.range;
-        this.view.range = Math.max(MIN_RANGE, Math.min(MAX_RANGE, before * factor));
+        const min = this.sdem && this.sdem.covers(this.view.lat, this.view.lon) ? SDEM_MIN_RANGE : MIN_RANGE;
+        this.view.range = Math.max(min, Math.min(MAX_RANGE, before * factor));
         if (!this.manualTilt) this.view.tilt = this.autoTilt(this.view.range);
         this.dirty = true;
     }
@@ -1238,8 +1295,9 @@ if (gridOn > 0.5) {
         const ndc = new THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(ndc, this.camera);
+        const fine = this.sdem ? raycaster.intersectObjects(this.sdem.meshes(), false) : [];
         const targets = this.pole ? [this.pole] : [];
-        const hits = targets.length ? raycaster.intersectObjects(targets, false) : [];
+        const hits = fine.length ? fine : targets.length ? raycaster.intersectObjects(targets, false) : [];
         let point = hits.length ? hits[0].point : null;
         if (!point) {
             const o = raycaster.ray.origin, d = raycaster.ray.direction;
@@ -2064,6 +2122,7 @@ if (gridOn > 0.5) {
         this.resizeObserver && this.resizeObserver.disconnect();
         if (this.relief) this.relief.dispose();
         if (this.poleDetail) this.poleDetail.dispose();
+        if (this.sdem) this.sdem.dispose();
         if (this.renderer) { this.renderer.dispose(); this.renderer.forceContextLoss(); }
         this.overlay.querySelectorAll(".scene-site, .scene-custom, .scene-probe, .scene-route").forEach((el) => el.remove());
     }

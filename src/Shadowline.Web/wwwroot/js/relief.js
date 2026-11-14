@@ -520,6 +520,7 @@ export class PoleDetail {
         this.radius = options.radius;
         this.scene = options.scene;
         this.material = options.material;
+        this.depthMaterial = options.depthMaterial || null;
         this.mask = options.mask;
         this.onChange = options.onChange || (() => {});
         this.group = new THREE.Group();
@@ -774,6 +775,7 @@ export class PoleDetail {
         const mesh = new THREE.Mesh(geometry, this.material);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        if (this.depthMaterial) mesh.customDepthMaterial = this.depthMaterial;
         mesh.matrixAutoUpdate = false;
         mesh.visible = false;
         mesh.userData.node = node;
