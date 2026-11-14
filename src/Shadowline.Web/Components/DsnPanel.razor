@@ -1,0 +1,54 @@
+﻿@using System.Globalization
+@using Shadowline.Core.Comms
+@using Shadowline.Core.Ephemeris
+@using Shadowline.Core.Tracks
+@inherits LocalizedComponent
+
+<section class="dsn @Class">
+    <h3>@L["dsn.title"]</h3>
+    @{
+        var elevations = DeepSpaceNetwork.Elevations(Ephemeris, Cursor);
+    }
+    <ul class="dsn-stations">
+        @for (var i = 0; i < DeepSpaceNetwork.Stations.Count; i++)
+        {
+            var up = elevations[i] >= DeepSpaceNetwork.MinElevationDeg;
+            <li class="@(up ? "up" : null)"><span>@L.Place(DeepSpaceNetwork.Stations[i].Name)</span><span>@elevations[i].ToString("F0", CultureInfo.InvariantCulture)°</span></li>
+        }
+    </ul>
+    <dl>
+        <div><dt>@L["dsn.link"]</dt><dd>@((Link.Fraction * 100).ToString("F0", CultureInfo.InvariantCulture))%</dd></div>
+        <div><dt>@L["dsn.gap"]</dt><dd>@L.Duration(Link.LongestGap)</dd></div>
+        @if (DelaySeconds > 0)
+        {
+            <div><dt>@L["dsn.delay"]</dt><dd>@L.Format("dsn.delayValue", DelaySeconds.ToString("F2", CultureInfo.InvariantCulture), (2 * DelaySeconds).ToString("F2", CultureInfo.InvariantCulture))</dd></div>
+        }
+    </dl>
+    <p class="muted small">@L["dsn.note"]</p>
+    <p class="muted small">@L["dsn.globe"]</p>
+</section>
+
+@code {
+    public readonly record struct LinkSummary(double Fraction, TimeSpan LongestGap);
+
+    [Parameter, EditorRequired]
+    public BodyEphemeris Ephemeris { get; set; } = default!;
+
+    [Parameter]
+    public int Cursor { get; set; }
+
+    [Parameter]
+    public LinkSummary Link { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public double DelaySeconds { get; set; }
+
+    public static LinkSummary Summarize(BitTrack earth, BitTrack dsn, TimeSpan step, int start, int length)
+    {
+        var link = earth.And(dsn).Slice(start, length);
+        return new LinkSummary(link.Fraction(), step * link.LongestRun(false));
+    }
+}

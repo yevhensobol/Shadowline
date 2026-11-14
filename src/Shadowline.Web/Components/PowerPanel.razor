@@ -1,0 +1,21 @@
+﻿@using System.Globalization
+@using Shadowline.Core.Power
+@inherits LocalizedComponent
+
+<section class="power @Class">
+    <h3>@L["power.title"]</h3>
+    <dl>
+        <div><dt>@L["power.vertical"]</dt><dd class="sun">@L.Format("power.perDay", Estimate.VerticalKWhPerDay.ToString("F1", CultureInfo.InvariantCulture))</dd></div>
+        <div><dt>@L["power.flat"]</dt><dd>@L.Format("power.perDay", Estimate.HorizontalKWhPerDay.ToString("F1", CultureInfo.InvariantCulture))</dd></div>
+        <div><dt>@L["power.battery"]</dt><dd>@(Estimate.LongestDarkHours > 0 ? L.Format("power.kwh", Estimate.BatteryKWh.ToString("F0", CultureInfo.InvariantCulture), L.Duration(TimeSpan.FromHours(Estimate.LongestDarkHours))) : L["power.none"])</dd></div>
+    </dl>
+    <p class="muted small">@L["power.note"]</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public PowerEstimate Estimate { get; set; } = default!;
+
+    [Parameter]
+    public string? Class { get; set; }
+}
