@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Horizon;
 using Shadowline.Core.Reports;
 using Shadowline.Core.Sites;
@@ -61,5 +61,42 @@ public class MissionAnalysisTests
         var real = MissionAnalysis.Battery(1, 100, panel, 0.5, Shadowline.Core.Power.PowerOptions.Default);
         Assert.True(real.HoursToEmpty is > 7.4 and < 8.1);
         Assert.True(Math.Abs(real.MinStateOfCharge - 0.2) < 1e-6);
+    }
+
+    [Fact]
+    public void Analysis_reports_touchdown_and_changes()
+    {
+        var grid = new TimeGrid(new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero), TimeSpan.FromMinutes(30), 96);
+        var values = new float[96 * 6];
+        for (var i = 0; i < 96; i++)
+        {
+            var angle = i / 96.0 * 2 * Math.PI;
+            values[i * 6] = (float)(149_597_870 * Math.Cos(angle));
+            values[i * 6 + 1] = (float)(149_597_870 * Math.Sin(angle));
+            values[i * 6 + 3] = 384_400f;
+        }
+
+        var ephemeris = new BodyEphemeris(grid, values);
+        var site = new Site("eq", "Equator", null, 0, 0, 0);
+        var tracks = SkyTracks.Build(site, ephemeris, HorizonProfile.Flat);
+        var mission = MissionAnalysis.Analyze(site, HorizonProfile.Flat, ephemeris, tracks, new BitTrack(96).Not(), 0, 96, 100, null, null);
+        Assert.Equal(3, mission.Changes.Count);
+        Assert.True(mission.Changes[0].HoursToChange is > 0);
+        Assert.Equal(MissionAnalysis.BatteryKWh.Length, mission.Batteries.Count);
+        Assert.Equal(3, mission.Landing.Shadows.Count);
+        Assert.True(mission.Slope is null);
+    }
+
+    [Fact]
+    public void Battery_series_drains_to_the_floor_and_recharges()
+    {
+        var panel = Enumerable.Repeat(0.0, 100).Concat(Enumerable.Repeat(300.0, 100)).ToArray();
+        var soc = MissionAnalysis.BatterySeries(5, 100, panel, 0.5, Shadowline.Core.Power.PowerOptions.Default);
+        Assert.Equal(200, soc.Length);
+        Assert.Equal(1.0, soc[0], 6);
+        Assert.Equal(1 - 100 * 0.5 / 0.95 / 5000, soc[1], 6);
+        Assert.Equal(0.2, soc[99], 6);
+        Assert.Equal(0.2 + 200 * 0.95 * 0.5 / 5000, soc[101], 6);
+        Assert.Equal(1.0, soc[199], 6);
     }
 }
