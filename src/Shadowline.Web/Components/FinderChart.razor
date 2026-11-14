@@ -1,0 +1,119 @@
+@using System.Globalization
+
+<figure class="fchart">
+    <div class="fchart-keys">
+        @foreach (var series in Series)
+        {
+            <span class="fchart-key @series.Css"><i></i>@series.Label</span>
+        }
+    </div>
+    <svg viewBox="0 0 @Width @Height" role="img" aria-label="@Title">
+        <rect x="@Left" y="@Top" width="@(Width - Left - Right)" height="@(Height - Top - Bottom)" class="fchart-bg" />
+        @if (Band is { } band)
+        {
+            <rect x="@F(X(band.From))" y="@Top" width="@F(Math.Max(1, X(band.To) - X(band.From)))" height="@(Height - Top - Bottom)" class="fchart-band" />
+        }
+        @foreach (var tick in YTicks)
+        {
+            <g>
+                <line x1="@Left" x2="@(Width - Right)" y1="@F(Y(tick.Value))" y2="@F(Y(tick.Value))" class="fchart-grid" />
+                <text x="@(Left - 6)" y="@F(Y(tick.Value) + 4)" text-anchor="end" class="fchart-axis">@tick.Label</text>
+            </g>
+        }
+        @foreach (var tick in XTicks)
+        {
+            <g>
+                <line x1="@F(X(tick.Value))" x2="@F(X(tick.Value))" y1="@(Height - Bottom)" y2="@(Height - Bottom + 4)" class="fchart-grid" />
+                <text x="@F(X(tick.Value))" y="@(Height - Bottom + 16)" text-anchor="middle" class="fchart-axis">@tick.Label</text>
+            </g>
+        }
+        @foreach (var mark in Marks)
+        {
+            <g>
+                <line x1="@F(X(mark.Value))" x2="@F(X(mark.Value))" y1="@Top" y2="@(Height - Bottom)" class="fchart-mark" />
+                <text x="@F(X(mark.Value) + 4)" y="@(Top + 12)" class="fchart-axis mark">@mark.Label</text>
+            </g>
+        }
+        @if (XLabel is { Length: > 0 })
+        {
+            <g><text x="@F(Left + (Width - Left - Right) / 2.0)" y="@(Height - 3)" text-anchor="middle" class="axis-title">@XLabel</text></g>
+        }
+        @if (YLabel is { Length: > 0 })
+        {
+            <g><text transform="translate(12 @F(Top + (Height - Top - Bottom) / 2.0)) rotate(-90)" text-anchor="middle" class="axis-title">@YLabel</text></g>
+        }
+        @foreach (var series in Series)
+        {
+            <path d="@PathFor(series.Points)" class="fchart-line @series.Css" />
+            @if (series.Dots is { } dots)
+            {
+                @foreach (var dot in dots)
+                {
+                    <circle cx="@F(X(dot.X))" cy="@F(Y(dot.Y))" r="2.6" class="fchart-dot @series.Css" />
+                }
+            }
+        }
+    </svg>
+</figure>
+
+@code {
+    public sealed record Line(string Label, string Css, IReadOnlyList<(double X, double Y)> Points, IReadOnlyList<(double X, double Y)>? Dots = null);
+
+    public sealed record Tick(double Value, string Label);
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Line> Series { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Tick> XTicks { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Tick> YTicks { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Tick> Marks { get; set; } = [];
+
+    [Parameter]
+    public (double From, double To)? Band { get; set; }
+
+    [Parameter]
+    public double XMin { get; set; }
+
+    [Parameter]
+    public double XMax { get; set; } = 1;
+
+    [Parameter]
+    public double YMin { get; set; }
+
+    [Parameter]
+    public double YMax { get; set; } = 1;
+
+    [Parameter]
+    public int Width { get; set; } = 640;
+
+    [Parameter]
+    public int Height { get; set; } = 220;
+
+    private const int Left = 58;
+    private const int Right = 12;
+    private const int Top = 10;
+    private const int Bottom = 38;
+
+    [Parameter]
+    public string? XLabel { get; set; }
+
+    [Parameter]
+    public string? YLabel { get; set; }
+
+    private double X(double x) => Left + (x - XMin) / Math.Max(1e-9, XMax - XMin) * (Width - Left - Right);
+
+    private double Y(double y) => Top + (1 - (y - YMin) / Math.Max(1e-9, YMax - YMin)) * (Height - Top - Bottom);
+
+    private string PathFor(IReadOnlyList<(double X, double Y)> points) =>
+        string.Join(' ', points.Select((p, i) => (i == 0 ? "M" : "L") + F(X(p.X)) + " " + F(Y(p.Y))));
+
+    private static string F(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+}

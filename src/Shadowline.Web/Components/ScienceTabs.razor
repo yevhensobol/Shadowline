@@ -1,0 +1,21 @@
+@inherits Shadowline.Web.Services.LocalizedComponent
+
+<nav class="section-tabs" aria-label="@L["nav.science"]">
+    @foreach (var (tab, key) in Tabs)
+    {
+        <a href="science/@tab" class="@(tab == Tab ? "active" : null)" aria-current="@(tab == Tab ? "page" : null)">@L[key]</a>
+    }
+</nav>
+
+@code {
+    private static readonly (string Tab, string Key)[] Tabs =
+    [
+        ("method", "nav.method"),
+        ("validation", "nav.validation"),
+        ("landings", "nav.landings"),
+        ("about", "nav.about"),
+    ];
+
+    [Parameter, EditorRequired]
+    public string Tab { get; set; } = "method";
+}

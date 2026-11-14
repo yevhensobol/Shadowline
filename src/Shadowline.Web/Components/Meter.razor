@@ -1,0 +1,33 @@
+@using System.Globalization
+
+<div class="gauge @Tone">
+    <span class="gauge-label">@Label</span>
+    <svg class="gauge-bar" viewBox="0 0 158 16" aria-hidden="true">
+        @for (var i = 0; i < 10; i++)
+        {
+            var x = i * 16;
+            if (i < Filled)
+            {
+                <path d="M@(x + 5) 0H@(x + 14)L@(x + 9) 16H@(x)Z" class="on" />
+            }
+            else
+            {
+                <path d="M@(x + 13.3) 0.5L@(x + 8.6) 15.5H@(x + 0.7)L@(x + 5.4) 0.5Z" class="off" />
+            }
+        }
+    </svg>
+    <span class="gauge-value">@((Math.Clamp(Fraction, 0, 1) * 100).ToString("F0", CultureInfo.InvariantCulture))%</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public double Fraction { get; set; }
+
+    [Parameter]
+    public string Tone { get; set; } = "sun";
+
+    private int Filled => (int)Math.Round(Math.Clamp(Fraction, 0, 1) * 10, MidpointRounding.AwayFromZero);
+}

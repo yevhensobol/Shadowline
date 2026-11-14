@@ -1,0 +1,969 @@
+@page "/finder"
+@page "/plan"
+@page "/plan/where"
+@using System.Globalization
+@using Microsoft.JSInterop
+@using Shadowline.Core.Finder
+@using Shadowline.Core.Sites
+@using Shadowline.Web.Components
+@inherits LocalizedComponent
+@implements IAsyncDisposable
+@inject FinderStore FinderData
+@inject DataStore Store
+@inject IJSRuntime Js
+@inject MissionStore Missions
+
+<PageTitle>@L["finder.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.PlanTabs Tab="where" />
+
+<div class="finder">
+    <div class="finder-ribbon">
+        <span>@L.Format("finder.stepOf", step)</span>
+        <b>@L["finder.step" + step]</b>
+    </div>
+    <nav class="finder-steps" aria-label="@L["finder.title"]">
+        <button type="button" aria-pressed="@(step == 1 ? "true" : "false")" @onclick="() => GoStep(1)">1 · @L["finder.step1"]</button>
+        <button type="button" aria-pressed="@(step == 2 ? "true" : "false")" disabled="@(result is null)" @onclick="() => GoStep(2)">2 · @L["finder.step2"]</button>
+        <button type="button" aria-pressed="@(step == 3 ? "true" : "false")" disabled="@(pins.Count == 0)" @onclick="() => GoStep(3)">3 · @L["finder.step3"]</button>
+    </nav>
+
+    @if (failed)
+    {
+        <p class="error page-note">@L["finder.noData"]</p>
+    }
+    else if (grid is null)
+    {
+        <p class="muted page-note">@L["finder.loading"]</p>
+    }
+    else if (step == 1)
+    {
+        <div class="finder-cols">
+            <section class="finder-col">
+                <div class="fgroup">
+                    <span class="cap">@L["finder.profile"]</span>
+                    <div class="chips">
+                        @foreach (var key in ProfileKeys)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(profileKey == key ? "true" : "false")" @onclick="() => ApplyProfile(key)">@L.Profile(key)</button>
+                        }
+                    </div>
+                </div>
+                <SectionHeader Title="@L["finder.dateHead"]" />
+                <div class="frow">
+                    <label class="ffield"><span>@L["finder.date"]</span><input type="date" @bind="landingDate" min="@grid.StartUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" max="@grid.EndUtc.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" /></label>
+                    <label class="ffield short"><span>@L["finder.duration"]</span><span class="fin"><input type="number" min="1" max="60" @bind="durationDays" /><em>@L["finder.days"]</em></span></label>
+                </div>
+                <div class="fgroup">
+                    <span class="cap">@L["finder.flex"]</span>
+                    <div class="chips">
+                        @foreach (var (value, key) in FlexOptions)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(flexDays == value ? "true" : "false")" @onclick="() => flexDays = value">@L[key]</button>
+                        }
+                    </div>
+                    <span class="muted small">@L.Format("finder.dataYear", L.ShortDate(grid.StartUtc), L.ShortDate(grid.EndUtc.AddDays(-1)))</span>
+                </div>
+                <SectionHeader Title="@L["finder.lander"]" />
+                <div class="frow">
+                    <label class="ffield short"><span>@L["finder.panels"]</span><span class="fin"><input type="number" min="1" step="10" @bind="panelW" /><em>W</em></span></label>
+                    <label class="ffield short"><span>@L["finder.load"]</span><span class="fin"><input type="number" min="1" step="5" @bind="loadW" /><em>W</em></span></label>
+                    <label class="ffield short"><span>@L["finder.battery"]</span><span class="fin"><input type="number" min="0" step="0.5" @bind="batteryKWh" /><em>kWh</em></span></label>
+                </div>
+                <div class="fderived">
+                    <span class="cap">@L["finder.derived"]</span>
+                    <dl class="ro left">
+                        <div><dt>@L["finder.maxDark"]</dt><dd>@Hours(Lander.MaxDarkHours)</dd></div>
+                        <div><dt>@L["finder.needSun"]</dt><dd>≥ @Pct(Lander.RequiredSunShare)</dd></div>
+                    </dl>
+                    <p class="muted small">@L["finder.landerNote"]</p>
+                    @if (FinderPreset.All.FirstOrDefault(preset => preset.Key == profileKey) is { } shown && shown.Fits(Missions.Current with { PanelW = panelW, LoadW = loadW, BatteryWh = batteryKWh * 1000, DurationDays = durationDays, MinEarthShare = minEarth }))
+                    {
+                        <p class="muted small">@L["finder.lander." + shown.LanderKey] <a href="sources">@L["rec.sources"] ›</a></p>
+                    }
+                </div>
+                <SectionHeader Title="@L["finder.target"]" />
+                <div class="chips">
+                    @foreach (var key in TargetKeys)
+                    {
+                        <button type="button" class="chip" aria-pressed="@(targetKey == key ? "true" : "false")" @onclick="() => SetTarget(key)">@L["finder.target." + key]</button>
+                    }
+                </div>
+                <div class="frow">
+                    @if (targetKey == "site")
+                    {
+                        <label class="ffield"><span>@L["finder.targetSite"]</span>
+                            <select @bind="targetSiteId">
+                                @foreach (var site in PolarSites())
+                                {
+                                    <option value="@site.Id">@L.Name(site)</option>
+                                }
+                            </select>
+                        </label>
+                    }
+                    <label class="ffield short"><span>@L["finder.range"]</span><span class="fin"><input type="number" min="1" max="50" @bind="rangeKm" /><em>@L["finder.km"]</em></span></label>
+                </div>
+            </section>
+            <section class="finder-col center">
+                <figure class="finder-preview">
+                    <img src="img/finder/basemap.jpg" alt="" />
+                    <figcaption class="muted small">@L["finder.mapNote"]</figcaption>
+                </figure>
+            </section>
+            <section class="finder-col right">
+                <SectionHeader Title="@L["finder.constraints"]" />
+                <div class="fgroup end">
+                    <span class="cap">@L["finder.maxSlope"]</span>
+                    <div class="chips">
+                        @foreach (var value in SiteFinder.SlopeOptions)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(Math.Abs(maxSlope - value) < 1e-9 ? "true" : "false")" @onclick="() => maxSlope = value">≤ @value.ToString(CultureInfo.InvariantCulture)°</button>
+                        }
+                    </div>
+                </div>
+                <div class="fgroup end">
+                    <span class="cap">@L["finder.minEarth"]</span>
+                    <div class="chips">
+                        @foreach (var value in SiteFinder.EarthOptions)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(Math.Abs(minEarth - value) < 1e-9 ? "true" : "false")" @onclick="() => minEarth = value">≥ @Pct(value)</button>
+                        }
+                    </div>
+                </div>
+                <dl class="ro">
+                    <div><dt>@L["finder.darkLimit"]</dt><dd>@L.Format("finder.darkFromBattery", Hours(Lander.MaxDarkHours))</dd></div>
+                    <div><dt>@L["finder.area"]</dt><dd>@L["finder.areaValue"]</dd></div>
+                </dl>
+                <SectionHeader Title="@L["finder.weights"]" />
+                <div class="wsliders">
+                    @WeightRow("finder.w.sun", wSun, v => wSun = v)
+                    @WeightRow("finder.w.earth", wEarth, v => wEarth = v)
+                    @WeightRow("finder.w.water", wWater, v => wWater = v)
+                    @WeightRow("finder.w.slope", wSlope, v => wSlope = v)
+                    @WeightRow("finder.w.target", wTarget, v => wTarget = v)
+                </div>
+                <p class="muted small fnote">@L["finder.weightsNote"]</p>
+                <div class="factions">
+                    <button type="button" class="cta" disabled="@computing" @onclick="RunAsync">@(computing ? L["finder.computing"] : L["finder.search"]) ›</button>
+                    <div class="action-row">
+                        <button type="button" class="action" @onclick='() => ApplyProfile("water")'>@L["finder.reset"]</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    }
+    else if (step == 2 && result is not null)
+    {
+        <div class="fguide">
+            <ol>
+                <li>@L["finder.guide1"]</li>
+                <li>@L["finder.guide2"]</li>
+                <li>@L["finder.guide3"]</li>
+            </ol>
+            <button type="button" class="cta" disabled="@(pins.Count == 0)" @onclick="() => GoStep(3)">@L.Format("finder.compareN", pins.Count) ›</button>
+        </div>
+        <div class="finder-cols">
+            <section class="finder-col">
+                <div class="fgroup">
+                    <span class="cap">@L["finder.profile"]</span>
+                    <div class="chips">
+                        @foreach (var key in ProfileKeys)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(profileKey == key ? "true" : "false")" disabled="@computing" @onclick="() => QuickProfile(key)">@L.Profile(key)</button>
+                        }
+                    </div>
+                </div>
+                <div class="fsummary">
+                    <span>@Summary()</span>
+                    <button type="button" class="link" @onclick="() => GoStep(1)">@L["finder.refine"] ›</button>
+                </div>
+                <SectionHeader Title="@L["finder.filters"]" />
+                <div class="fgroup">
+                    <span class="cap">@L["finder.maxSlope"]</span>
+                    @foreach (var option in slopeCounts)
+                    {
+                        <button type="button" class="fopt" aria-pressed="@(Math.Abs(maxSlope - option.Value) < 1e-9 ? "true" : "false")" @onclick="() => SetSlope(option.Value)"><i></i>≤ @option.Value.ToString(CultureInfo.InvariantCulture)° <em>@L.Format("finder.zonesN", option.Zones)</em></button>
+                    }
+                </div>
+                <div class="fgroup">
+                    <span class="cap">@L["finder.minEarth"]</span>
+                    @foreach (var option in earthCounts)
+                    {
+                        <button type="button" class="fopt" aria-pressed="@(Math.Abs(minEarth - option.Value) < 1e-9 ? "true" : "false")" @onclick="() => SetEarth(option.Value)"><i></i>≥ @Pct(option.Value) <em>@L.Format("finder.zonesN", option.Zones)</em></button>
+                    }
+                </div>
+                <div class="fgroup">
+                    <span class="cap">@L["finder.darkLimit"]</span>
+                    <span class="fopt static" aria-pressed="true"><i></i>@L.Format("finder.darkFromBattery", Hours(Lander.MaxDarkHours))</span>
+                </div>
+                <div class="fgroup">
+                    <span class="cap">@L["finder.minArea"]</span>
+                    <div class="chips">
+                        @foreach (var cells in AreaOptions)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(minZoneCells == cells ? "true" : "false")" @onclick="() => SetArea(cells)">@((cells * grid.CellKm * grid.CellKm).ToString("F0", CultureInfo.InvariantCulture)) км²</button>
+                        }
+                    </div>
+                </div>
+                <div class="fgroup">
+                    <span class="cap">@L["finder.layer"]</span>
+                    <div class="chips">
+                        @foreach (var key in LayerKeys)
+                        {
+                            <button type="button" class="chip" aria-pressed="@(layer == key ? "true" : "false")" @onclick="() => SetLayer(key)">@L["finder.layer." + key]</button>
+                        }
+                    </div>
+                </div>
+            </section>
+            <section class="finder-col center">
+                <div class="finder-map">
+                    <img src="img/finder/basemap.jpg" alt="" />
+                    <canvas @ref="heat" class="heat"></canvas>
+                    <canvas @ref="lines" class="lines"></canvas>
+                    <div @ref="hit" class="hit" role="img" aria-label="@L["finder.legend"]"></div>
+                    @foreach (var zone in LabelZones())
+                    {
+                        var (lx, ly) = CellPercent(zone.BestCell);
+                        <span class="zone-label @(selZone == zone.Rank - 1 ? "on" : null)" style="left: @F(lx)%; top: @F(ly)%">Z@(zone.Rank)</span>
+                    }
+                </div>
+                <p class="fhover">@HoverText()</p>
+                <div class="flegend">
+                    <span class="cap">@L[layer == "score" ? "finder.legend" : "finder.legend." + layer]</span>
+                    <div class="flegend-bar"></div>
+                    <div class="flegend-scale"><span>0</span><span>0.5</span><span>1</span></div>
+                    <span class="flegend-fail"><i></i>@L["finder.legendFail"]</span>
+                    <p class="muted small">@L["finder.mapNote"]</p>
+                </div>
+                <div class="finder-tray">
+                    <div class="tray-head">
+                        <span class="cap">@L["finder.compare"]</span>
+                        @if (pins.Count > 0)
+                        {
+                            <button type="button" class="link" @onclick="() => GoStep(3)">@L["finder.compareGo"] ›</button>
+                        }
+                    </div>
+                    @foreach (var pin in pins)
+                    {
+                        <div class="pin @(pin.Cell == selCell ? "current" : null)">
+                            <button type="button" class="pin-main" @onclick="() => OnCellClick(pin.Cell)">
+                                <strong>@pin.Label <span class="badge">@F2(result.Score[pin.Cell])</span></strong>
+                                <span class="pin-stats"><span class="sun">@L.Format("explore.cardSun", Pct(result.Windows[pin.Cell].SunShare))</span><span class="earth">@L.Format("explore.cardEarth", Pct(result.Windows[pin.Cell].EarthShare))</span></span>
+                            </button>
+                            <button type="button" class="pin-x" aria-label="@L["explore.compareRemove"]" @onclick="() => Unpin(pin.Cell)">×</button>
+                        </div>
+                    }
+                </div>
+            </section>
+            <section class="finder-col right">
+                @if (selCell >= 0)
+                {
+                    var info = Info(selCell);
+                    var zone = selZone is { } z ? result.Zones[z] : null;
+                    <header class="freadout-head">
+                        <span class="badge big">@F2(result.Score[selCell])</span>
+                        <h1>@(zone is null ? L["finder.point"] : L.Format("finder.zone", zone.Rank))</h1>
+                    </header>
+                    <p class="fcoords">@L.Lat(info.Lat, 2) · @L.Lon(info.Lon, 1)@(zone is null ? null : " · " + L.Format("finder.rank", zone.Rank, result.Zones.Count))</p>
+                    @if (result.Fail[selCell] != FinderFail.None)
+                    {
+                        <p class="ffail">@L["finder.fails"]: @FailText(result.Fail[selCell])</p>
+                    }
+                    <dl class="ro">
+                        @if (zone is not null)
+                        {
+                            <div><dt>@L["finder.zoneArea"]</dt><dd>@zone.AreaKm2.ToString("F0", CultureInfo.InvariantCulture) км²</dd></div>
+                            <div><dt>@L["finder.minMean"]</dt><dd>@F2(zone.MinScore) / @F2(zone.MeanScore)</dd></div>
+                        }
+                        <div><dt>@L["finder.toWater"]</dt><dd>@grid.WaterDistanceKm(selCell).ToString("F0", CultureInfo.InvariantCulture) @L["finder.km"]</dd></div>
+                        <div><dt>@L["finder.bestStart"]</dt><dd>@L.ShortDate(grid.At(info.Window.StartStep))</dd></div>
+                    </dl>
+                    <SectionHeader Title="@L["finder.window"]" />
+                    <Meter Label="@L["metric.sun"]" Fraction="info.Window.SunShare" Tone="sun" />
+                    <Meter Label="@L["metric.earth"]" Fraction="info.Window.EarthShare" Tone="earth" />
+                    <dl class="ro">
+                        <div><dt>@L["finder.row.dark"]</dt><dd>@Hours(info.Window.LongestDarkHours)</dd></div>
+                        <div><dt>@L["finder.row.slope"]</dt><dd>@grid.SlopeMedianDeg(selCell).ToString("F1", CultureInfo.InvariantCulture)° / @grid.SlopeHighDeg(selCell).ToString("F1", CultureInfo.InvariantCulture)°</dd></div>
+                    </dl>
+                    <SectionHeader Title="@L["finder.contrib"]" />
+                    <Meter Label="@L["finder.w.sun"]" Fraction="info.Utility.Sun" Tone="sun" />
+                    <Meter Label="@L["finder.w.earth"]" Fraction="info.Utility.Earth" Tone="earth" />
+                    <Meter Label="@L["finder.w.water"]" Fraction="info.Utility.Water" Tone="earth" />
+                    <Meter Label="@L["finder.w.slope"]" Fraction="info.Utility.Slope" Tone="sun" />
+                    @if (wTarget > 0)
+                    {
+                        <Meter Label="@L["finder.w.target"]" Fraction="info.Utility.Target" Tone="sun" />
+                    }
+                    <SectionHeader Title="@L["finder.stability"]" />
+                    <dl class="ro">
+                        @if (zone is not null && stability is not null && stability.TryGetValue(zone.Rank - 1, out var share))
+                        {
+                            <div><dt>@L["finder.stable"]</dt><dd>@Pct(share)</dd></div>
+                        }
+                        <div><dt>@L["finder.miss2"]</dt><dd>@Pct(MissAt(selCell, 2))</dd></div>
+                    </dl>
+                    <div class="factions">
+                        <button type="button" class="cta" disabled="@(pins.Count >= MaxPins || pins.Any(p => p.Cell == selCell))" @onclick="PinSelected">@L["finder.addCompare"] ›</button>
+                        <div class="action-row">
+                            <a class="action" href="@ExploreLink(selCell)">@L["finder.openExplore"]</a>
+                        </div>
+                    </div>
+                }
+                @if (result.Zones.Count == 0)
+                {
+                    <p class="notice">@L["finder.none"]</p>
+                }
+                else
+                {
+                    <details class="fzones" open="@(selCell < 0)">
+                        <summary>@L.Format("finder.allZones", result.Zones.Count)</summary>
+                        <ol>
+                            @foreach (var zone in result.Zones.Take(30))
+                            {
+                                <li><button type="button" class="link @(selZone == zone.Rank - 1 ? "on" : null)" @onclick="() => OnCellClick(zone.BestCell)">Z@(zone.Rank) · @F2(zone.MaxScore) · @zone.AreaKm2.ToString("F0", CultureInfo.InvariantCulture) км² · @L.Lat(zone.LatitudeDeg, 1)</button></li>
+                            }
+                        </ol>
+                    </details>
+                }
+            </section>
+        </div>
+    }
+    else if (step == 3 && result is not null)
+    {
+        <div class="finder-report">
+            <header class="freport-head">
+                <div>
+                    <h1>@L["finder.reportTitle"]</h1>
+                    <p class="lede">@Summary()</p>
+                </div>
+                <div class="action-row">
+                    <button type="button" class="action" @onclick="() => GoStep(2)">@L["finder.back"]</button>
+                    <button type="button" class="action" @onclick="PrintAsync">@L["finder.print"]</button>
+                </div>
+            </header>
+            <div class="fcards">
+                @foreach (var pin in pins)
+                {
+                    var (pinId, pinStart) = PinSite(pin.Cell);
+                    var (pinLat, pinLon) = grid.LatLon(pin.Cell);
+                    <article class="fcard">
+                        <header>
+                            <h2>@pin.Label <span class="badge">@F2(result.Score[pin.Cell])</span></h2>
+                            <p class="fcoords">@L.Lat(pinLat, 2) · @L.Lon(pinLon, 1) · @L.Format("finder.startOn", L.ShortDate(grid.At(result.Windows[pin.Cell].StartStep)))</p>
+                        </header>
+                        <div class="fcard-actions">
+                            <a class="cta" href="@ReportLink(pin.Cell)">@L["finder.fullReport"] ›</a>
+                            <a class="link" href="@ExploreLink(pin.Cell)">@L["finder.openExplore"] ›</a>
+                        </div>
+                        <RobustnessCard SiteId="@pinId" Start="pinStart" Compact="true" Bare="true" />
+                    </article>
+                }
+            </div>
+            <p class="muted small fcards-note">@L["finder.robustNote"] @L["robust.note"] <a href="plan/tipover">@L["robust.tip.more"] ›</a></p>
+            <div class="freport-body">
+                <section>
+                    <SectionHeader Title="@L["finder.criteria"]" />
+                    <table class="ftable">
+                        <thead>
+                            <tr><th></th>@foreach (var pin in pins) { <th class="@(pin == pins[0] ? "lead" : null)">@pin.Label</th> }</tr>
+                        </thead>
+                        <tbody>
+                            <tr><th>@L["finder.score"]</th>@foreach (var pin in pins) { <td><span class="badge">@F2(result.Score[pin.Cell])</span></td> }</tr>
+                            <tr><th>@L["finder.row.sun"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Sun)">@Pct(result.Windows[pin.Cell].SunShare)</td> }</tr>
+                            <tr><th>@L["finder.row.dark"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Darkness)">@Hours(result.Windows[pin.Cell].LongestDarkHours)</td> }</tr>
+                            <tr><th>@L["finder.row.earth"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Earth)">@Pct(result.Windows[pin.Cell].EarthShare)</td> }</tr>
+                            <tr><th>@L["finder.row.slope"]</th>@foreach (var pin in pins) { <td class="@Bad(pin.Cell, FinderFail.Slope)">@grid.SlopeMedianDeg(pin.Cell).ToString("F1", CultureInfo.InvariantCulture)° / @grid.SlopeHighDeg(pin.Cell).ToString("F1", CultureInfo.InvariantCulture)°</td> }</tr>
+                            <tr><th>@L["finder.row.water"]</th>@foreach (var pin in pins) { <td>@grid.WaterDistanceKm(pin.Cell).ToString("F0", CultureInfo.InvariantCulture) @L["finder.km"]</td> }</tr>
+                            <tr><th>@L["finder.row.area"]</th>@foreach (var pin in pins) { <td>@(result.ZoneOf[pin.Cell] >= 0 ? result.Zones[result.ZoneOf[pin.Cell]].AreaKm2.ToString("F0", CultureInfo.InvariantCulture) + " км²" : "—")</td> }</tr>
+                            <tr><th>@L["finder.row.rank"]</th>@foreach (var pin in pins) { <td>@(result.ZoneOf[pin.Cell] >= 0 ? L.Format("finder.rank", result.ZoneOf[pin.Cell] + 1, result.Zones.Count) : L["finder.notPass"])</td> }</tr>
+                            <tr><th>@L["finder.row.start"]</th>@foreach (var pin in pins) { <td>@L.ShortDate(grid.At(result.Windows[pin.Cell].StartStep))</td> }</tr>
+                            <tr><th></th>@foreach (var pin in pins) { <td><a class="button" href="@ReportLink(pin.Cell)">@L["finder.fullReport"] ›</a></td> }</tr>
+                        </tbody>
+                    </table>
+                    <p class="muted small">@L["finder.failNote"]</p>
+                    <label class="ffield">
+                        <span>@L["finder.reference"]</span>
+                        <select value="" @onchange="AddReference" disabled="@(pins.Count >= MaxPins)">
+                            <option value="">—</option>
+                            @foreach (var site in PolarSites())
+                            {
+                                <option value="@site.Id">@L.Name(site)</option>
+                            }
+                        </select>
+                    </label>
+                    <SectionHeader Title="@L["finder.stabilityChart"]" />
+                    <div class="fbars">
+                        @foreach (var pin in pins)
+                        {
+                            var zoneIndex = result.ZoneOf[pin.Cell];
+                            var share = zoneIndex >= 0 && stability is not null && stability.TryGetValue(zoneIndex, out var s) ? s : 0;
+                            <div class="fbar"><span>@pin.Label</span><i><b style="width: @F(share * 100)%"></b></i><em>@(zoneIndex >= 0 ? Pct(share) : "—")</em></div>
+                        }
+                    </div>
+                    <p class="muted small">@L["finder.stabilityNote"]</p>
+                </section>
+                <section>
+                    <SectionHeader Title="@L["finder.dateChart"]" />
+                    <FinderChart Title="@L["finder.dateChart"]" XLabel="@L["axis.landingDate"]" YLabel="@L["axis.score"]" Series="DateSeries()" XMin="0" XMax="@((grid.EndUtc - grid.StartUtc).TotalDays)" YMin="0" YMax="1" XTicks="MonthTicks()" YTicks="ScoreTicks" Band="WindowBand()" />
+                    <p class="muted small">@L.Format("finder.dateNote", durationDays)</p>
+                    <SectionHeader Title="@L["finder.missChart"]" />
+                    <FinderChart Title="@L["finder.missChart"]" XLabel="@L["axis.missKm"]" YLabel="@L["axis.passShare"]" Series="MissSeries()" XMin="0" XMax="10" YMin="0" YMax="1" XTicks="MissTicks" YTicks="ShareTicks" Marks="MissMarks" />
+                    <p class="muted small">@L["finder.missNote"]</p>
+                </section>
+            </div>
+            <p class="muted small">@L["finder.limitNote"]</p>
+        </div>
+    }
+</div>
+
+@code {
+    private const int MaxPins = 3;
+
+    private static readonly string[] ProfileKeys = FinderPreset.All.Select(preset => preset.Key).ToArray();
+    private static readonly string[] TargetKeys = ["water", "site", "none"];
+    private static readonly string[] LayerKeys = ["score", "sun", "earth", "slope", "water"];
+    private static readonly int[] AreaOptions = [1, 3, 5];
+    private static readonly (int Value, string Key)[] FlexOptions = [(0, "finder.flex0"), (7, "finder.flex7"), (15, "finder.flex15"), (183, "finder.flexYear")];
+    private static readonly string[] Css = ["s1", "s2", "s3"];
+
+    private static readonly IReadOnlyList<FinderChart.Tick> ScoreTicks = [new(0, "0"), new(0.5, "0.5"), new(1, "1")];
+    private static readonly IReadOnlyList<FinderChart.Tick> ShareTicks = [new(0, "0%"), new(0.5, "50%"), new(1, "100%")];
+    private static readonly IReadOnlyList<FinderChart.Tick> MissTicks = [new(0, "0"), new(2, "2 km"), new(4, "4 km"), new(6, "6 km"), new(8, "8 km"), new(10, "10 km")];
+    private static readonly IReadOnlyList<FinderChart.Tick> MissMarks = [new(0.055, "SLIM"), new(1.5, "IM-1")];
+
+    private sealed record Pin(int Cell, string Label);
+
+    private readonly record struct CellInfo(double Lat, double Lon, WindowStats Window, CellUtility Utility);
+
+    private FinderGrid? grid;
+    private bool failed;
+    private int step = 1;
+    private string profileKey = "water";
+    private DateTime landingDate = new(2027, 3, 15);
+    private int flexDays = 15;
+    private int durationDays = 14;
+    private double panelW = 400;
+    private double loadW = 150;
+    private double batteryKWh = 10;
+    private string targetKey = "water";
+    private string? targetSiteId;
+    private double rangeKm = 5;
+    private double maxSlope = 8;
+    private double minEarth = 0.5;
+    private double wSun = 80;
+    private double wEarth = 70;
+    private double wWater = 90;
+    private double wSlope = 40;
+    private double wTarget;
+    private int minZoneCells = 1;
+    private string layer = "score";
+
+    private FinderResult? result;
+    private IReadOnlyList<FilterCount> slopeCounts = [];
+    private IReadOnlyList<FilterCount> earthCounts = [];
+    private IReadOnlyDictionary<int, double>? stability;
+    private int? selZone;
+    private int selCell = -1;
+    private int hoverCell = -1;
+    private bool computing;
+    private bool redraw;
+    private readonly List<Pin> pins = [];
+
+    private ElementReference heat;
+    private ElementReference lines;
+    private ElementReference hit;
+    private IJSObjectReference? module;
+    private IJSObjectReference? attached;
+    private DotNetObjectReference<Finder>? self;
+
+    [SupplyParameterFromQuery(Name = "date")]
+    public string? Date { get; set; }
+
+    private LanderSpec Lander => new(Math.Max(0, panelW), Math.Max(0, loadW), Math.Max(0, batteryKWh) * 1000);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Store.LoadAsync();
+        await Missions.EnsureLoadedAsync();
+        var mission = Missions.Current;
+        if (ProfileKeys.FirstOrDefault(key => Matches(key, mission)) is { } matched)
+        {
+            ApplyProfile(matched);
+        }
+        else
+        {
+            ApplyProfile("water");
+            profileKey = FinderPreset.Custom;
+            (panelW, loadW, batteryKWh, durationDays, minEarth) = (mission.PanelW, mission.LoadW, mission.BatteryWh / 1000, mission.DurationDays, mission.MinEarthShare);
+        }
+        grid = await FinderData.LoadAsync();
+        failed = grid is null;
+        targetSiteId = PolarSites().FirstOrDefault()?.Id;
+        if (DateTime.TryParseExact(Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var asked))
+        {
+            landingDate = asked;
+        }
+
+        if (grid is not null && (landingDate < grid.StartUtc.UtcDateTime || landingDate >= grid.EndUtc.UtcDateTime))
+        {
+            landingDate = grid.StartUtc.UtcDateTime.Date.AddDays(120);
+        }
+
+        if (grid is not null)
+        {
+            await RunAsync();
+        }
+    }
+
+    private IEnumerable<Site> PolarSites() =>
+        Store.Catalog?.Sites.Where(site => site.LatitudeDeg <= (grid?.DomainLatitudeDeg ?? -84) + 0.3 && !site.Id.StartsWith("syn-", StringComparison.Ordinal)) ?? [];
+
+    private static bool Matches(string key, Shadowline.Core.Missions.Mission mission) => FinderPreset.Get(key).Fits(mission);
+
+    private void ApplyProfile(string key)
+    {
+        var preset = FinderPreset.Get(key);
+        profileKey = preset.Key;
+        (wSun, wEarth, wWater, wSlope, wTarget) = (preset.Weights.Sun, preset.Weights.Earth, preset.Weights.Water, preset.Weights.Slope, preset.Weights.Target);
+        (durationDays, batteryKWh, minEarth) = (preset.DurationDays, preset.BatteryWh / 1000, preset.MinEarthShare);
+        targetKey = preset.Target == TargetKind.ColdTrap ? "water" : "none";
+        panelW = preset.PanelW;
+        loadW = preset.LoadW;
+        maxSlope = FinderPreset.MaxSlopeDeg;
+        rangeKm = FinderPreset.RangeKm;
+        flexDays = FinderPreset.FlexDays;
+    }
+
+    private void SetTarget(string key)
+    {
+        targetKey = key;
+        if (key == "site" && wTarget <= 0)
+        {
+            wTarget = 60;
+        }
+        else if (key != "site")
+        {
+            wTarget = 0;
+        }
+    }
+
+    private MissionProfile BuildProfile()
+    {
+        Site? site = targetKey == "site" && targetSiteId is not null ? Store.Catalog?.Find(targetSiteId) : null;
+        var kind = targetKey switch
+        {
+            "water" => TargetKind.ColdTrap,
+            "site" when site is not null => TargetKind.Point,
+            _ => TargetKind.None,
+        };
+        return new MissionProfile(
+            new DateTimeOffset(DateTime.SpecifyKind(landingDate.Date.AddHours(12), DateTimeKind.Utc)),
+            flexDays,
+            Math.Clamp(durationDays, 1, 60),
+            Lander,
+            maxSlope,
+            minEarth,
+            kind,
+            site?.LatitudeDeg,
+            site?.LongitudeEastDeg,
+            Math.Clamp(rangeKm, 0.5, 50),
+            new CriteriaWeights(wSun, wEarth, wWater, wSlope, wTarget).Clamp());
+    }
+
+    private async Task QuickProfile(string key)
+    {
+        ApplyProfile(key);
+        pins.Clear();
+        selCell = -1;
+        selZone = null;
+        await RunAsync();
+    }
+
+    private async Task RunAsync()
+    {
+        if (grid is null)
+        {
+            return;
+        }
+
+        computing = true;
+        StateHasChanged();
+        var next = Missions.Current with { PanelW = panelW, LoadW = loadW, BatteryWh = batteryKWh * 1000, DurationDays = durationDays, MinEarthShare = minEarth };
+        if (FinderPreset.All.FirstOrDefault(preset => preset.Key == profileKey) is { } chosen && chosen.Fits(next))
+        {
+            next = chosen.Apply(next);
+        }
+
+        await Missions.SetAsync(next);
+        await Task.Delay(30);
+        var profile = BuildProfile();
+        result = SiteFinder.Evaluate(grid, profile, minZoneCells);
+        await Task.Yield();
+        slopeCounts = SiteFinder.SlopeCounts(grid, result);
+        earthCounts = SiteFinder.EarthCounts(grid, result);
+        stability = SiteFinder.Stability(result);
+        pins.RemoveAll(pin => !grid.InDomain(pin.Cell));
+        if (pins.Count == 0)
+        {
+            foreach (var zone in result.Zones.Take(MaxPins))
+            {
+                pins.Add(new Pin(zone.BestCell, "Z" + zone.Rank));
+            }
+        }
+        if (selZone is null && selCell < 0 && result.Zones.Count > 0)
+        {
+            Select(result.Zones[0].BestCell);
+        }
+        else if (selCell >= 0)
+        {
+            Select(selCell);
+        }
+
+        computing = false;
+        step = 2;
+        redraw = true;
+    }
+
+    private async Task SetSlope(double value)
+    {
+        maxSlope = value;
+        await RunAsync();
+    }
+
+    private async Task SetEarth(double value)
+    {
+        minEarth = value;
+        await RunAsync();
+    }
+
+    private async Task SetArea(int cells)
+    {
+        minZoneCells = cells;
+        await RunAsync();
+    }
+
+    private void SetLayer(string key)
+    {
+        layer = key;
+        redraw = true;
+    }
+
+    private void GoStep(int target)
+    {
+        if (target == 2 && result is null || target == 3 && pins.Count == 0)
+        {
+            return;
+        }
+
+        if (step == 2 && target != 2)
+        {
+            DetachMap();
+        }
+
+        step = target;
+        redraw = target == 2;
+    }
+
+    private void Select(int cell)
+    {
+        selCell = cell;
+        selZone = result is not null && result.ZoneOf[cell] >= 0 ? result.ZoneOf[cell] : null;
+        if (selZone is { } z && result is not null)
+        {
+            selCell = result.Zones[z].BestCell;
+        }
+    }
+
+    [JSInvokable]
+    public void OnCellClick(int cell)
+    {
+        if (grid is null || result is null || cell < 0 || cell >= grid.Count || !grid.InDomain(cell))
+        {
+            return;
+        }
+
+        Select(cell);
+        redraw = true;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnCellHover(int cell)
+    {
+        hoverCell = cell;
+        StateHasChanged();
+    }
+
+    private void PinSelected()
+    {
+        if (selCell < 0 || pins.Count >= MaxPins || pins.Any(pin => pin.Cell == selCell))
+        {
+            return;
+        }
+
+        var label = selZone is { } z ? "Z" + (z + 1) : L["finder.point"] + " " + L.Lat(grid!.LatLon(selCell).LatitudeDeg, 1);
+        pins.Add(new Pin(selCell, label));
+    }
+
+    private void Unpin(int cell) => pins.RemoveAll(pin => pin.Cell == cell);
+
+    private void AddReference(ChangeEventArgs args)
+    {
+        if (grid is null || args.Value?.ToString() is not { Length: > 0 } id || Store.Catalog?.Find(id) is not { } site || pins.Count >= MaxPins)
+        {
+            return;
+        }
+
+        if (grid.CellAt(site.LatitudeDeg, site.LongitudeEastDeg) is { } cell && grid.InDomain(cell) && pins.All(pin => pin.Cell != cell))
+        {
+            pins.Add(new Pin(cell, L.Name(site)));
+        }
+    }
+
+    private CellInfo Info(int cell)
+    {
+        var (lat, lon) = grid!.LatLon(cell);
+        return new CellInfo(lat, lon, result!.Windows[cell], result.Utilities[cell]);
+    }
+
+    private double MissAt(int cell, double km) =>
+        SiteFinder.MissCurve(grid!, result!, cell, km).LastOrDefault()?.PassShare ?? 0;
+
+    private string FailText(FinderFail fail) =>
+        string.Join(", ", Enum.GetValues<FinderFail>().Where(flag => flag != FinderFail.None && fail.HasFlag(flag)).Select(flag => L["finder.fail." + flag]));
+
+    private string? Bad(int cell, FinderFail flag) => result is not null && result.Fail[cell].HasFlag(flag) ? "bad" : null;
+
+    private string Summary() =>
+        L.Format("finder.summary", L["finder.profile." + profileKey], L.ShortDate(new DateTimeOffset(DateTime.SpecifyKind(landingDate, DateTimeKind.Utc))), flexDays switch { 0 => string.Empty, > 60 => "· " + L["finder.flexYear"], _ => "±" + flexDays }, durationDays);
+
+    private string HoverText()
+    {
+        if (grid is null || result is null || hoverCell < 0 || !grid.InDomain(hoverCell))
+        {
+            return " ";
+        }
+
+        var (lat, lon) = grid.LatLon(hoverCell);
+        var w = result.Windows[hoverCell];
+        var head = L.Lat(lat, 2) + " · " + L.Lon(lon, 1) + " · ";
+        var fail = result.Fail[hoverCell];
+        return head + (fail == FinderFail.None ? F2(result.Score[hoverCell]) : L["finder.fails"] + ": " + FailText(fail))
+            + " · " + L.Format("explore.cardSun", Pct(w.SunShare)) + " · " + L.Format("explore.cardEarth", Pct(w.EarthShare));
+    }
+
+    private IEnumerable<FinderZone> LabelZones()
+    {
+        var placed = new List<(double X, double Y)>();
+        foreach (var zone in result!.Zones)
+        {
+            var p = CellPercent(zone.BestCell);
+            var near = placed.Any(q => Math.Abs(q.X - p.X) < 4.5 && Math.Abs(q.Y - p.Y) < 3.5);
+            if ((near && selZone != zone.Rank - 1) || (placed.Count >= 10 && selZone != zone.Rank - 1))
+            {
+                continue;
+            }
+
+            placed.Add(p);
+            yield return zone;
+        }
+    }
+
+    private (double X, double Y) CellPercent(int cell)
+    {
+        var row = cell / grid!.Size;
+        var col = cell % grid.Size;
+        return ((col + 0.5) / grid.Size * 100, (row + 0.5) / grid.Size * 100);
+    }
+
+    private (string Id, int Start) PinSite(int cell)
+    {
+        var (lat, lon) = grid!.LatLon(cell);
+        var id = CustomSite.Create(lat, lon).Id;
+        var t = Store.Manifest is null ? 0 : Math.Clamp(Store.Manifest.Grid.IndexOf(grid.At(result!.Windows[cell].StartStep)), 0, Store.Manifest.Grid.Count - 1);
+        return (id, t);
+    }
+
+    private string ExploreLink(int cell)
+    {
+        var (id, t) = PinSite(cell);
+        return $"?site={Uri.EscapeDataString(id)}&t={t}";
+    }
+
+    private string ReportLink(int cell)
+    {
+        var (id, t) = PinSite(cell);
+        return $"report?site={Uri.EscapeDataString(id)}&t={t}&w={durationDays * 24}";
+    }
+
+    private IReadOnlyList<FinderChart.Line> DateSeries()
+    {
+        var output = new List<FinderChart.Line>();
+        for (var i = 0; i < pins.Count; i++)
+        {
+            var curve = SiteFinder.DateCurve(grid!, result!, pins[i].Cell);
+            var points = curve.Select(p => ((p.Start - grid!.StartUtc).TotalDays, p.Score)).ToList();
+            var dots = curve.Where(p => p.Pass).Select(p => ((p.Start - grid!.StartUtc).TotalDays, p.Score)).ToList();
+            output.Add(new FinderChart.Line(pins[i].Label, Css[i % Css.Length], points, dots));
+        }
+
+        return output;
+    }
+
+    private IReadOnlyList<FinderChart.Line> MissSeries() =>
+        pins.Select((pin, i) => new FinderChart.Line(pin.Label, Css[i % Css.Length],
+            SiteFinder.MissCurve(grid!, result!, pin.Cell).Select(p => (p.RadiusKm, p.PassShare)).ToList())).ToList();
+
+    private (double, double)? WindowBand()
+    {
+        var (first, last, length) = SiteFinder.StartRange(grid!, result!.Profile);
+        return ((grid!.At(first) - grid.StartUtc).TotalDays, (grid.At(last + length) - grid.StartUtc).TotalDays);
+    }
+
+    private IReadOnlyList<FinderChart.Tick> MonthTicks()
+    {
+        var ticks = new List<FinderChart.Tick>();
+        var start = grid!.StartUtc;
+        var month = new DateTimeOffset(start.Year, start.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var names = L.Language == "uk" ? new[] { "січ", "лют", "бер", "кві", "тра", "чер", "лип", "сер", "вер", "жов", "лис", "гру" } : new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        for (var i = 0; i < 13; i += 2)
+        {
+            var m = month.AddMonths(i);
+            if (m >= start && m <= grid.EndUtc)
+            {
+                ticks.Add(new FinderChart.Tick((m - start).TotalDays, names[m.Month - 1]));
+            }
+        }
+
+        return ticks;
+    }
+
+    private RenderFragment WeightRow(string key, double value, Action<double> set) =>
+        @<div class="wslider">
+            <span class="wlabel">@L[key]</span>
+            <input type="range" min="0" max="100" step="1" value="@value.ToString("F0", CultureInfo.InvariantCulture)" aria-label="@L[key]" @oninput="args => set(Parse(args, value))" style="--fill: @F(value)%" />
+            <input type="number" min="0" max="100" step="1" value="@value.ToString("F0", CultureInfo.InvariantCulture)" aria-label="@L[key]" @onchange="args => set(Parse(args, value))" />
+        </div>;
+
+    private static double Parse(ChangeEventArgs args, double fallback) =>
+        double.TryParse(args.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, 0, 100) : fallback;
+
+    private string Hours(double hours) =>
+        double.IsPositiveInfinity(hours) ? "∞" : hours >= 48 ? L.Duration(TimeSpan.FromHours(hours)) : hours.ToString("F0", CultureInfo.InvariantCulture) + " " + L["common.unit.h"];
+
+    private static string Pct(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private static string F2(double value) => value.ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string F(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+
+    private (byte[] Values, byte[] States, byte[] Zones) Planes()
+    {
+        var g = grid!;
+        var r = result!;
+        var values = new byte[g.Count];
+        var states = new byte[g.Count];
+        var zones = new byte[g.Count];
+        for (var cell = 0; cell < g.Count; cell++)
+        {
+            zones[cell] = r.ZoneOf[cell] is >= 0 and < 254 ? (byte)r.ZoneOf[cell] : (byte)255;
+            if (!g.InDomain(cell))
+            {
+                continue;
+            }
+
+            var pass = r.Fail[cell] == FinderFail.None;
+            double v;
+            switch (layer)
+            {
+                case "sun":
+                    v = r.Windows[cell].SunShare;
+                    states[cell] = 2;
+                    break;
+                case "earth":
+                    v = r.Windows[cell].EarthShare;
+                    states[cell] = 2;
+                    break;
+                case "slope":
+                    v = 1 - Math.Min(1, g.SlopeHighDeg(cell) / 20.0);
+                    states[cell] = 2;
+                    break;
+                case "water":
+                    v = 1 - Math.Min(1, g.WaterDistanceKm(cell) / 10.0);
+                    states[cell] = 2;
+                    break;
+                default:
+                    v = r.Score[cell];
+                    states[cell] = pass ? (byte)2 : (byte)1;
+                    break;
+            }
+
+            values[cell] = (byte)Math.Clamp(Math.Round(v * 255), 0, 255);
+        }
+
+        return (values, states, zones);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!redraw || step != 2 || result is null || grid is null)
+        {
+            return;
+        }
+
+        redraw = false;
+        try
+        {
+            module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./js/finder.js");
+            self ??= DotNetObjectReference.Create(this);
+            attached ??= await module.InvokeAsync<IJSObjectReference>("attach", hit, self, grid.Size);
+            var (values, states, zones) = Planes();
+            await module.InvokeVoidAsync("draw", heat, lines, grid.Size, values, states, zones, selZone ?? -1, selCell);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private void DetachMap()
+    {
+        if (attached is not null)
+        {
+            _ = attached.InvokeVoidAsync("dispose").AsTask().ContinueWith(_ => { }, TaskScheduler.Default);
+            attached = null;
+        }
+    }
+
+    private async Task PrintAsync()
+    {
+        try
+        {
+            var files = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+            await files.InvokeVoidAsync("print");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (attached is not null)
+            {
+                await attached.InvokeVoidAsync("dispose");
+            }
+
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        self?.Dispose();
+    }
+}

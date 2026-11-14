@@ -1,0 +1,142 @@
+[
+  {
+    "id": "apollo11",
+    "site": "apollo11-lm",
+    "landingUtc": "1969-07-20T20:17:40Z",
+    "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C",
+    "title": {
+      "en": "Apollo 11 landing, 20 July 1969",
+      "uk": "Посадка Apollo 11, 20 липня 1969"
+    }
+  },
+  {
+    "id": "apollo12",
+    "site": "apollo12-lm",
+    "landingUtc": "1969-11-19T06:54:35Z",
+    "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099C",
+    "title": {
+      "en": "Apollo 12 landing, 19 November 1969",
+      "uk": "Посадка Apollo 12, 19 листопада 1969"
+    }
+  },
+  {
+    "id": "apollo14",
+    "site": "apollo14-lm",
+    "landingUtc": "1971-02-05T09:18:11Z",
+    "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1971-008C",
+    "title": {
+      "en": "Apollo 14 landing, 5 February 1971",
+      "uk": "Посадка Apollo 14, 5 лютого 1971"
+    }
+  },
+  {
+    "id": "apollo15",
+    "site": "apollo15-lm",
+    "landingUtc": "1971-07-30T22:16:29Z",
+    "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1971-063C",
+    "title": {
+      "en": "Apollo 15 landing, 30 July 1971",
+      "uk": "Посадка Apollo 15, 30 липня 1971"
+    }
+  },
+  {
+    "id": "apollo16",
+    "site": "apollo16-lm",
+    "landingUtc": "1972-04-21T02:23:35Z",
+    "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-031C",
+    "title": {
+      "en": "Apollo 16 landing, 21 April 1972",
+      "uk": "Посадка Apollo 16, 21 квітня 1972"
+    }
+  },
+  {
+    "id": "apollo17",
+    "site": "apollo17-lm",
+    "landingUtc": "1972-12-11T19:54:57Z",
+    "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-096C",
+    "title": {
+      "en": "Apollo 17 landing, 11 December 1972",
+      "uk": "Посадка Apollo 17, 11 грудня 1972"
+    }
+  },
+  {
+    "id": "chandrayaan3",
+    "site": "chandrayaan3-vikram",
+    "landingUtc": "2023-08-23T12:33:00Z",
+    "source": "https://www.space.com/india-chandrayaan-3-moon-landing-success",
+    "title": {
+      "en": "Chandrayaan-3 landing, 23 August 2023",
+      "uk": "Посадка Чандраян-3, 23 серпня 2023"
+    }
+  },
+  {
+    "id": "im1",
+    "site": "im1-odysseus",
+    "landingUtc": "2024-02-22T23:23:00Z",
+    "source": "https://www.nasa.gov/missions/lro/nasas-lro-images-intuitive-machines-odysseus-lander/",
+    "title": {
+      "en": "IM-1 Odysseus landing, 22 February 2024",
+      "uk": "Посадка IM-1 Odysseus, 22 лютого 2024"
+    }
+  },
+  {
+    "id": "im2",
+    "site": "im2-athena",
+    "landingUtc": "2025-03-06T17:28:50Z",
+    "source": "https://spaceflightnow.com/?p=68928",
+    "title": {
+      "en": "IM-2 Athena landing, 6 March 2025",
+      "uk": "Посадка IM-2 Athena, 6 березня 2025"
+    }
+  },
+  {
+    "id": "change4",
+    "site": "change4",
+    "landingUtc": "2019-01-03T02:26:00Z",
+    "source": "https://www.xinhuanet.com/english/2019-01/03/c_137717323.htm",
+    "title": {
+      "en": "Chang'e 4 landing, 3 January 2019",
+      "uk": "Посадка Чан'е-4, 3 січня 2019"
+    }
+  },
+  {
+    "id": "change5",
+    "site": "change5",
+    "landingUtc": "2020-12-01T15:11:00Z",
+    "source": "https://lroc.im-ldi.com/images/1172",
+    "title": {
+      "en": "Chang'e 5 landing, 1 December 2020",
+      "uk": "Посадка Чан'е-5, 1 грудня 2020"
+    }
+  },
+  {
+    "id": "slim",
+    "site": "slim",
+    "landingUtc": "2024-01-19T15:20:00Z",
+    "source": "https://www.nasa.gov/missions/lro/nasas-lro-spots-japans-moon-lander",
+    "title": {
+      "en": "SLIM landing, 19 January 2024",
+      "uk": "Посадка SLIM, 19 січня 2024"
+    }
+  },
+  {
+    "id": "change6",
+    "site": "change6",
+    "landingUtc": "2024-06-01T22:23:00Z",
+    "source": "https://www.space.com/china-change-6-lands-on-moon-far-side-sample-return-mission",
+    "title": {
+      "en": "Chang'e 6 landing, 1 June 2024",
+      "uk": "Посадка Чан'е-6, 1 червня 2024"
+    }
+  },
+  {
+    "id": "blueghost1",
+    "site": "blueghost1",
+    "landingUtc": "2025-03-02T08:34:00Z",
+    "source": "https://spaceflightnow.com/2025/03/02/firefly-aerospace-aces-moon-landing-on-first-attempt/",
+    "title": {
+      "en": "Blue Ghost Mission 1 landing, 2 March 2025",
+      "uk": "Посадка Blue Ghost Mission 1, 2 березня 2025"
+    }
+  }
+]

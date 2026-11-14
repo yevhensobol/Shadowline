@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "kind": "real",
+  "builtAtUtc": "2026-11-04T10:18:39Z",
+  "gridStartUtc": "2026-11-01T00:00:00Z",
+  "gridStepMinutes": 30,
+  "gridCount": 17520,
+  "sources": [
+    {
+      "name": "NAIF SPICE, DE440 planetary ephemeris and lunar frame kernels",
+      "url": "https://naif.jpl.nasa.gov/naif/data.html",
+      "citation": "Park, R. S. et al., The Astronomical Journal 161, 105 (2021)"
+    }
+  ]
+}

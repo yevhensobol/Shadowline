@@ -1,0 +1,105 @@
+{
+  "formatVersion": 1,
+  "photos": [
+    {
+      "site": "im2-athena",
+      "file": "img/sites/im2-athena.jpg",
+      "source": "https://lroc.im-ldi.com/images/1408",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "Athena seen obliquely by the LRO Narrow Angle Camera, image M1495922531LR, north to the right. The lander came to rest on its side in a small crater.",
+        "uk": "Athena, косий знімок вузькокутної камери LRO M1495922531LR, північ праворуч. Апарат опинився на боці в невеликому кратері."
+      }
+    },
+    {
+      "site": "im1-odysseus",
+      "file": "img/sites/im1-odysseus.jpg",
+      "source": "https://lroc.im-ldi.com/images/1360",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "Odysseus on the surface near Malapert A, LRO Narrow Angle Camera, 89 cm per pixel.",
+        "uk": "Odysseus на поверхні біля кратера Малаперт A, вузькокутна камера LRO, 89 см на піксель."
+      }
+    },
+    {
+      "site": "chandrayaan3-vikram",
+      "file": "img/sites/chandrayaan3-vikram.jpg",
+      "source": "https://lroc.im-ldi.com/images/1314",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "The Chandrayaan-3 landing site, LRO Narrow Angle Camera image M1447750764.",
+        "uk": "Місце посадки Чандраян-3, знімок вузькокутної камери LRO M1447750764."
+      }
+    },
+    {
+      "site": "apollo11-lm",
+      "file": "img/sites/apollo11-lm.jpg",
+      "source": "https://lroc.im-ldi.com/images/22",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "Tranquility Base, twice enlarged from LRO image M104362199R: the descent stage, experiments and the TV camera.",
+        "uk": "База Спокою, збільшено вдвічі зі знімка LRO M104362199R: посадковий ступінь, прилади і телекамера."
+      }
+    },
+    {
+      "site": "slim",
+      "file": "img/sites/slim.jpg",
+      "source": "https://www.lroc.im-ldi.com/images/1358",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "SLIM at 13.316° S, 25.251° E, five days after landing, LRO Narrow Angle Camera image M1460739214L, 880 m wide, north up.",
+        "uk": "SLIM на 13.316° пд. ш., 25.251° сх. д. через п'ять днів після посадки, знімок вузькокутної камери LRO M1460739214L, 880 м завширшки, північ угорі."
+      }
+    },
+    {
+      "site": "blueghost1",
+      "file": "img/sites/blueghost1.jpg",
+      "source": "https://lroc.im-ldi.com/images/1407",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "Blue Ghost landing site in Mare Crisium, LRO Narrow Angle Camera image M1495619099LR, 80 cm per pixel, north up.",
+        "uk": "Місце посадки Blue Ghost у Морі Криз, знімок вузькокутної камери LRO M1495619099LR, 80 см на піксель, північ угорі."
+      }
+    },
+    {
+      "site": "impact-luna25",
+      "file": "img/sites/impact-luna25.jpg",
+      "source": "https://lroc.im-ldi.com/images/1311",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "Luna 25 impact crater, about 10 m across, on the steep (>20°) inner rim of Pontécoulant G crater, LRO Narrow Angle Camera image M1447547309R, 1100 m wide, north up. The impact on 19 August 2023 lies about 400 km short of the intended landing point at 69.545° S, 43.544° E.",
+        "uk": "Кратер від падіння Луни-25 діаметром близько 10 м на крутому (>20°) внутрішньому схилі кратера Pontécoulant G, знімок вузькокутної камери LRO M1447547309R, 1100 м завширшки, північ угорі. Місце падіння 19 серпня 2023 лежить приблизно за 400 км від запланованої точки посадки 69.545° пд. ш., 43.544° сх. д."
+      }
+    },
+    {
+      "site": "impact-hakutor1",
+      "file": "img/sites/impact-hakutor1.jpg",
+      "source": "https://lroc.im-ldi.com/images/1302",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "HAKUTO-R Mission 1 impact site near Atlas crater, LRO Narrow Angle Camera image M1437131607R, taken on 26 April 2023, the day after the landing attempt; the box marks the debris field. The lander carried payloads funded by the Canadian Space Agency Lunar Exploration Accelerator Program: Canadensys cameras and a Mission Control Space Services AI flight computer.",
+        "uk": "Місце падіння HAKUTO-R Mission 1 біля кратера Atlas, знімок вузькокутної камери LRO M1437131607R від 26 квітня 2023, наступного дня після спроби посадки; рамка позначає поле уламків. Апарат ніс вантажі, профінансовані програмою LEAP Канадського космічного агентства: камери Canadensys і бортовий комп'ютер зі штучним інтелектом Mission Control Space Services."
+      }
+    },
+    {
+      "site": "impact-resilience",
+      "file": "img/sites/impact-resilience.jpg",
+      "source": "https://lroc.im-ldi.com/images/1456",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "RESILIENCE impact site in Mare Frigoris, a dark smudge with a faint bright halo (arrow), LRO Narrow Angle Camera mosaic M1504323448LR, north up. Hard landing on 5 June 2025.",
+        "uk": "Місце падіння RESILIENCE у Морі Холоду: темна пляма зі слабким світлим ореолом (стрілка), мозаїка вузькокутної камери LRO M1504323448LR, північ угорі. Жорстка посадка 5 червня 2025."
+      }
+    },
+    {
+      "site": "impact-beresheet",
+      "file": "img/sites/impact-beresheet.jpg",
+      "source": "https://lroc.im-ldi.com/images/1101",
+      "credit": "NASA/GSFC/Arizona State University",
+      "caption": {
+        "en": "Beresheet impact site in Mare Serenitatis (box), LRO Narrow Angle Camera image M1310536929R, 22 April 2019, eleven days after the impact. After a main engine failure late in the descent the lander struck the surface at less than 10° and about 1000 m/s faster than planned.",
+        "uk": "Місце падіння Beresheet у Морі Ясності (рамка), знімок вузькокутної камери LRO M1310536929R від 22 квітня 2019, через одинадцять днів після падіння. Після відмови головного двигуна наприкінці спуску апарат ударився об поверхню під кутом менше 10° зі швидкістю приблизно на 1000 м/с більшою за заплановану."
+      }
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+@using System.Globalization
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Incidents
+@using Shadowline.Core.Missions
+@using Shadowline.Core.Power
+@inherits Shadowline.Web.Services.LocalizedComponent
+@implements IAsyncDisposable
+@inject Shadowline.Web.Services.DataStore Store
+@inject Shadowline.Web.Services.SiteViewCache Views
+@inject Shadowline.Web.Services.MissionStore Missions
+@inject IJSRuntime Js
+
+<section class="hud tip-drop" aria-live="polite">
+    <header>
+        <h2>@L["drop.title"]</h2>
+        <button type="button" class="coach-close" aria-label="@L["coach.close"]" @onclick="Close">×</button>
+    </header>
+    <canvas @ref="canvas" aria-label="@L["drop.title"]"></canvas>
+    @if (outcome is { } o)
+    {
+        <p class="drop-attitude">@L.Format("drop.attitude", Deg(o.Attitude.TiltDeg), Deg(o.Attitude.TiltAzimuthDeg))</p>
+        <dl class="ro">
+            <div><dt>@L["drop.clock"]</dt><dd>@Hours(shownHours)</dd></div>
+            <div><dt>@L["drop.firstPower"]</dt><dd>@(o.HoursToPower is { } h ? Hours(h) : L["drop.never"])</dd></div>
+            <div><dt>@L["drop.battery"]</dt><dd>@Hours(o.BatteryHours)</dd></div>
+        </dl>
+        @if (finished)
+        {
+            <p class="drop-verdict @(o.Survives ? "ok" : "bad")">@L[o.Survives ? "drop.survives" : "drop.lost"]</p>
+            <p class="muted small">@L.Format("drop.context", Pct(share))</p>
+        }
+    }
+    <div class="action-row">
+        <button type="button" class="cta" disabled="@(!finished)" @onclick="DropAsync">@L["drop.again"]</button>
+    </div>
+    <p class="muted small">@L["drop.note"]</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string SiteId { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Start { get; set; }
+
+    [Parameter]
+    public EventCallback Closed { get; set; }
+
+    private sealed record Outcome(LanderAttitude Attitude, double? HoursToPower, double BatteryHours, bool Survives);
+
+    private ElementReference canvas;
+    private IJSObjectReference? module;
+    private IJSObjectReference? view;
+    private SunTrack? track;
+    private Outcome? outcome;
+    private double shownHours;
+    private double share;
+    private bool finished = true;
+    private bool disposed;
+    private readonly Random random = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await Missions.EnsureLoadedAsync();
+        var site = Views.Get(SiteId);
+        track = SunTrack.Build(new SiteFrame(site.Site), Store.Ephemeris!, site.Horizon);
+        share = PlanRobustness.Tip(track, Math.Clamp(Start, 0, track.Count - 1), Missions.Current).Share;
+        try
+        {
+            module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/landerview.js");
+            var samples = Enumerable.Range(0, 180).Select(k => site.Horizon.ElevationAt(k * 2.0)).ToArray();
+            view = await module.InvokeAsync<IJSObjectReference>("create", canvas, samples);
+        }
+        catch (JSException)
+        {
+            view = null;
+        }
+
+        await DropAsync();
+    }
+
+    private async Task DropAsync()
+    {
+        if (track is null)
+        {
+            return;
+        }
+
+        var mission = Missions.Current;
+        var options = mission.TipOptions();
+        var attitude = TipOverRisk.DrawAttitude(random, TipPrior.Uniform);
+        var normal = attitude.ToLocal(new Vec3(0, 0, 1));
+        var start = Math.Clamp(Start, 0, track.Count - 1);
+        var factor = options.TotalAreaM2 * options.Efficiency * options.SystemFactor;
+        int? first = null;
+        for (var i = start; i < track.Count; i++)
+        {
+            if (Power(i, normal, factor) >= options.LoadW)
+            {
+                first = i;
+                break;
+            }
+        }
+
+        var hours = first is { } f ? (f - start) * track.StepHours : (double?)null;
+        outcome = new Outcome(attitude, hours, options.BatteryHours, hours is { } h && h <= options.BatteryHours);
+        finished = false;
+        var end = Math.Min(hours ?? options.BatteryHours, options.BatteryHours * 1.25);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var duration = TimeSpan.FromSeconds(2.4);
+        while (!disposed)
+        {
+            var progress = Math.Min(1, clock.Elapsed / duration);
+            shownHours = end * progress;
+            var i = Math.Clamp(start + (int)Math.Round(shownHours / track.StepHours), 0, track.Count - 1);
+            await ShowAsync(i, attitude, normal, factor, options.LoadW);
+            StateHasChanged();
+            if (progress >= 1)
+            {
+                break;
+            }
+
+            await Task.Delay(40);
+        }
+
+        finished = true;
+        StateHasChanged();
+    }
+
+    private double Power(int i, Vec3 normal, double factor) =>
+        track!.Irradiance[i] > 0 ? Math.Max(0, Vec3.Dot(track.Direction[i], normal)) * track.Irradiance[i] * factor : 0;
+
+    private async Task ShowAsync(int i, LanderAttitude attitude, Vec3 normal, double factor, double load)
+    {
+        if (view is null || track is null)
+        {
+            return;
+        }
+
+        var earth = new SiteFrame(Views.Get(SiteId).Site).Observe(Store.Ephemeris!.Earth(i));
+        static double[] V(Vec3 v) => [v.X, v.Y, v.Z];
+        try
+        {
+            await view.InvokeVoidAsync("update", new
+            {
+                bodyX = V(attitude.ToLocal(new Vec3(1, 0, 0))),
+                bodyY = V(attitude.ToLocal(new Vec3(0, 1, 0))),
+                bodyZ = V(normal),
+                sunAz = LanderGeometry.Angles(track.Direction[i]).AzimuthDeg,
+                sunEl = LanderGeometry.Angles(track.Direction[i]).ElevationDeg,
+                sunVisible = track.Irradiance[i] > 0,
+                earthAz = earth.AzimuthDeg,
+                earthEl = earth.ElevationDeg,
+                light = Math.Min(1, Power(i, normal, factor) / Math.Max(1, load)),
+            });
+        }
+        catch (Exception exception) when (exception is JSException or TaskCanceledException or ObjectDisposedException)
+        {
+        }
+    }
+
+    private Task Close() => Closed.InvokeAsync();
+
+    private string Hours(double hours) => hours >= 48
+        ? (hours / 24).ToString("0.0", CultureInfo.InvariantCulture) + " " + L["common.unit.d"]
+        : hours.ToString("0", CultureInfo.InvariantCulture) + " " + L["common.unit.h"];
+
+    private static string Deg(double value) => value.ToString("0", CultureInfo.InvariantCulture) + "°";
+
+    private static string Pct(double share) => (share * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        try
+        {
+            if (view is not null)
+            {
+                await view.InvokeVoidAsync("dispose");
+                await view.DisposeAsync();
+            }
+
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or JSException or ObjectDisposedException)
+        {
+        }
+
+        Dispose();
+    }
+}

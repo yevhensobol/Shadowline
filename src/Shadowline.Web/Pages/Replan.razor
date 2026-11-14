@@ -1,0 +1,372 @@
+@page "/replan"
+@page "/plan/when/slip"
+@inherits LocalizedComponent
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Replan
+@using Shadowline.Core.Time
+@inject DataStore Store
+@inject NavigationManager Navigation
+@inject MissionStore Missions
+@inject SiteViewCache Views
+
+<PageTitle>@L["replan.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.PlanTabs Tab="when" Slip="true" ShowMission="true" />
+
+<header class="page-head">
+    <h1 class="page-title">@L["replan.title"]</h1>
+    <p class="lede">@L["replan.lede"]</p>
+</header>
+
+@if (error is not null)
+{
+    <p class="error">@error</p>
+}
+else if (Store.Catalog is null || Store.Manifest is null)
+{
+    <p class="muted">@L["common.loading"]</p>
+}
+else
+{
+    <div class="replan">
+        <form class="panel replan-form" @onsubmit="Run" @onsubmit:preventDefault>
+            <fieldset>
+                <legend>@L["replan.groupSite"]</legend>
+                <label class="full">
+                    <span>@L["replan.site"]</span>
+                    <select @bind="siteId">
+                        @foreach (var site in Store.Catalog.Sites)
+                        {
+                            <option value="@site.Id">@L.Name(site)</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    <span>@L["replan.start"] <output>@StartLabel()</output></span>
+                    <input type="range" min="0" max="@(MaxDay)" @bind="plannedDay" @bind:event="oninput" />
+                </label>
+            </fieldset>
+            <fieldset>
+                <legend>@L["replan.groupSearch"]</legend>
+                <label>
+                    <span>@L["replan.maxDelay"] <output>@maxDelayDays</output></span>
+                    <input type="range" min="0" max="60" @bind="maxDelayDays" @bind:event="oninput" />
+                </label>
+                <label>
+                    <span>@L["replan.radius"] <output>@radiusKm</output></span>
+                    <input type="range" min="0" max="3000" step="50" @bind="radiusKm" @bind:event="oninput" />
+                </label>
+            </fieldset>
+            <button type="submit" class="primary">@L["replan.run"]</button>
+            @if (formError is not null)
+            {
+                <p class="error">@L[formError]</p>
+            }
+        </form>
+
+        <div class="replan-results">
+            @if (result is null)
+            {
+                <p class="muted">@L["replan.lede"]</p>
+            }
+            else
+            {
+                var all = result.Variants.Concat(result.Rejected).ToList();
+                var rows = all.GroupBy(c => c.Site.Id).Select(g => g.OrderBy(c => c.Delay).ToList()).OrderBy(g => g[0].DistanceKm).ThenBy(g => g[0].Site.Name).ToList();
+                var days = all.Count == 0 ? 1 : (int)Math.Round(all.Max(c => c.Delay.TotalDays)) + 1;
+                var hinted = result.Hints.Select(h => (h.Candidate.Site.Id, h.Candidate.Start)).ToHashSet();
+                <div class="replan-head">
+                    <h2>@L.Format("replan.count", result.Variants.Count)</h2>
+                    <p class="muted">@L.Format("replan.searched", rows.Count, days, all.Count)</p>
+                </div>
+                @if (rows.Count > 0)
+                {
+                    var cell = Math.Clamp(560.0 / days, 7, 26);
+                    var width = MatrixLeft + days * cell;
+                    <figure class="search-map">
+                        <svg viewBox="0 0 @F(width) @(rows.Count * MatrixRow + 44)" style="max-width: @F(width)px" role="img" aria-label="@L["replan.map.alt"]">
+                            <text x="@F(MatrixLeft + days * cell / 2)" y="@(rows.Count * MatrixRow + 38)" text-anchor="middle" class="axis-title">@L["axis.delayDays"]</text>
+                            @for (var r = 0; r < rows.Count; r++)
+                            {
+                                var y = r * MatrixRow;
+                                var site = rows[r][0];
+                                <g>
+                                    <text x="0" y="@(y + 13)" class="map-site">@Short(L.Name(site.Site))</text>
+                                    <text x="@(MatrixLeft - 8)" y="@(y + 13)" text-anchor="end" class="map-km">@(site.DistanceKm < 0.5 ? L["replan.map.planned"] : site.DistanceKm.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) + " " + L["common.unit.km"])</text>
+                                    @foreach (var c in rows[r])
+                                    {
+                                        var d = (int)Math.Round(c.Delay.TotalDays);
+                                        <rect x="@F(MatrixLeft + d * cell + 1)" y="@(y + 2)" width="@F(cell - 2)" height="@(MatrixRow - 4)" rx="2" class="@CellClass(c, hinted)"><title>@CellTitle(c)</title></rect>
+                                    }
+                                </g>
+                            }
+                            @for (var d = 0; d < days; d += Math.Max(1, days / 10))
+                            {
+                                <g><text x="@F(MatrixLeft + d * cell + cell / 2)" y="@(rows.Count * MatrixRow + 16)" text-anchor="middle" class="map-km">@d</text></g>
+                            }
+                        </svg>
+                        <figcaption class="map-key">
+                            <span class="k pass">@L["replan.map.pass"]</span>
+                            <span class="k hint">@L["replan.map.hint"]</span>
+                            <span class="k sun">@L["replan.map.sun"]</span>
+                            <span class="k earth">@L["replan.map.earth"]</span>
+                            <span class="muted">@L["replan.map.axis"]</span>
+                        </figcaption>
+                    </figure>
+                }
+                @if (result.Variants.Count == 0)
+                {
+                    <p class="notice">@L["replan.none"]</p>
+                }
+                <ol class="options">
+                    @for (var i = 0; i < result.Variants.Count; i++)
+                    {
+                        var variant = result.Variants[i];
+                        var startIndex = Store.Manifest.Grid.IndexOf(variant.Start);
+                        <li class="panel option @(i == 0 ? "best" : null)">
+                            <header>
+                                <div>
+                                    @if (i == 0)
+                                    {
+                                        <span class="badge">@L["replan.best"]</span>
+                                    }
+                                    <h3>@L.Name(variant.Site)</h3>
+                                    <p class="coords">@variant.Start.ToString("yyyy-MM-dd HH:mm") UTC</p>
+                                </div>
+                                <dl class="chips">
+                                    <div><dt>@L["replan.col.delay"]</dt><dd>@L.Days(variant.Delay)</dd></div>
+                                    <div><dt>@L["replan.col.distance"]</dt><dd>@variant.DistanceKm.ToString("F0") @L["common.unit.km"]</dd></div>
+                                </dl>
+                            </header>
+                            <figure class="option-lanes">
+                                <figcaption>@L["replan.window"]</figcaption>
+                                <svg viewBox="0 0 @LaneWidth 26" preserveAspectRatio="none" aria-hidden="true">
+                                    <rect x="0" y="0" width="@LaneWidth" height="10" rx="2" class="lane" />
+                                    <rect x="0" y="14" width="@LaneWidth" height="10" rx="2" class="lane" />
+                                    @foreach (var run in Clip(Views.Get(variant.Site.Id).Tracks.SunVisible, startIndex))
+                                    {
+                                        <rect x="@Format(run.X)" y="0" width="@Format(run.W)" height="10" class="lane-sun" />
+                                    }
+                                    @foreach (var run in Clip(Views.Get(variant.Site.Id).Tracks.EarthVisible, startIndex))
+                                    {
+                                        <rect x="@Format(run.X)" y="14" width="@Format(run.W)" height="10" class="lane-earth" />
+                                    }
+                                </svg>
+                            </figure>
+                            <div class="meters">
+                                @Meter(L["metric.sun"], variant.Metrics!.SunFraction, 1.0, Missions.Current.RequiredSunShare, true, Percent(variant.Metrics.SunFraction), "sun")
+                                @Meter(L["metric.darkness"], variant.Metrics.LongestDarkness.TotalHours, Math.Max(1, durationHours), maxDarknessHours, false, L.Duration(variant.Metrics.LongestDarkness), "sun")
+                                @Meter(L["metric.earth"], variant.Metrics.EarthFraction, 1.0, Missions.Current.MinEarthShare, true, Percent(variant.Metrics.EarthFraction), "earth")
+                                @Meter(L["metric.gap"], variant.Metrics.LongestEarthGap.TotalHours, Math.Max(1, durationHours), maxEarthGapHours, false, L.Duration(variant.Metrics.LongestEarthGap), "earth")
+                            </div>
+                            @{ var power = Views.Get(variant.Site.Id).Power(Store.Manifest.Grid, startIndex, Math.Max(1, (int)(TimeSpan.FromHours(durationHours) / Store.Manifest.Grid.Step))); }
+                            <p class="option-power">@L.Format("power.short", power.VerticalKWhPerDay.ToString("F1", System.Globalization.CultureInfo.InvariantCulture), power.BatteryKWh.ToString("F0", System.Globalization.CultureInfo.InvariantCulture))</p>
+                            <div class="row">
+                                <a class="button primary" href="@ExploreLink(variant.Site.Id, startIndex)">@L["replan.explore"]</a>
+                                <a class="button" href="@PlannerLink(variant.Site.Id, startIndex)">@L["replan.planner"]</a>
+                                <a class="button" href="@ReportLink(variant.Site.Id, startIndex)">@L["report.open"]</a>
+                            </div>
+                        </li>
+                    }
+                </ol>
+
+                @if (result.Hints.Count > 0)
+                {
+                    <details class="panel">
+                        <summary>@L["replan.hints"]</summary>
+                        <p class="muted">@L["replan.hintsNote"]</p>
+                        <ul class="hints">
+                            @foreach (var hint in result.Hints)
+                            {
+                                <li>
+                                    <strong>@L.Name(hint.Candidate.Site), @hint.Candidate.Start.ToString("yyyy-MM-dd HH:mm"), @L.Format("replan.hintDelay", L.Days(hint.Candidate.Delay))</strong>
+                                    <ul>
+                                        @foreach (var adjustment in hint.Adjustments)
+                                        {
+                                            <li>@ViolationText.Describe(L, adjustment)</li>
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                        </ul>
+                    </details>
+                }
+
+                @if (result.Rejected.Count > 0)
+                {
+                    <details class="panel">
+                        <summary>@L["replan.rejected"]</summary>
+                        <p class="muted">@L.Format("replan.shown", Math.Min(RejectedLimit, result.Rejected.Count), result.Rejected.Count)</p>
+                        <div class="results-wrap">
+                            <table class="results">
+                                <thead>
+                                    <tr><th>@L["replan.col.site"]</th><th>@L["replan.col.start"]</th><th>@L["replan.col.delay"]</th><th>@L["replan.col.reasons"]</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var candidate in result.Rejected.Take(RejectedLimit))
+                                    {
+                                        <tr>
+                                            <td>@L.Name(candidate.Site)</td>
+                                            <td>@candidate.Start.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>@L.Days(candidate.Delay)</td>
+                                            <td>
+                                                @foreach (var violation in candidate.Violations)
+                                                {
+                                                    <div>@ViolationText.Describe(L, violation)</div>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private const int RejectedLimit = 15;
+
+    private string? error;
+    private string? formError;
+    private ReplanResult? result;
+    private string siteId = string.Empty;
+    private int plannedDay = 2;
+    private int durationHours => Missions.Current.DurationDays * 24;
+    private double maxDarknessHours => Math.Min(24 * 60, Missions.Current.MaxDarkHours);
+    private double maxEarthGapHours => Missions.Current.MaxEarthGapHours;
+    private int maxDelayDays = 10;
+    private int radiusKm = 500;
+
+    private int MaxDay => Store.Manifest is null ? 0 : (int)(Store.Manifest.Grid.Count * Store.Manifest.Grid.Step / TimeSpan.FromDays(1));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Store.ApplyYearAsync(new Uri(Navigation.Uri));
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        await Views.EnsureLoadedAsync();
+        await Missions.EnsureLoadedAsync();
+        Missions.Changed += OnMission;
+
+        siteId = Store.Catalog!.Sites[0].Id;
+        Run();
+    }
+
+    private void Run()
+    {
+        formError = null;
+        if (maxDelayDays < 0 || plannedDay < 0 || radiusKm < 0)
+        {
+            formError = "replan.formError";
+            return;
+        }
+
+        var grid = Store.Manifest!.Grid;
+        var preferred = Store.Catalog!.Find(siteId)!;
+        var sites = Store.Catalog.Sites
+            .Where(site => site.Id == siteId || SiteDistance.Km(preferred, site) <= radiusKm)
+            .Select(site => new SiteTracks(site, Views.Get(site.Id).Tracks))
+            .ToArray();
+        var requirements = Missions.Current.Requirements();
+        var request = new ReplanRequest(
+            grid,
+            sites,
+            siteId,
+            grid.Start + TimeSpan.FromDays(plannedDay),
+            requirements,
+            TimeSpan.FromDays(maxDelayDays),
+            TimeSpan.FromDays(1));
+
+        result = new Replanner().Plan(request);
+    }
+
+    private void OnMission() => _ = InvokeAsync(() =>
+    {
+        Run();
+        StateHasChanged();
+    });
+
+    public override void Dispose()
+    {
+        Missions.Changed -= OnMission;
+        base.Dispose();
+    }
+
+    private const int LaneWidth = 300;
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("F0") + "%";
+
+    private static string Format(double value) => value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string StartLabel() => Store.Manifest is null ? string.Empty : (Store.Manifest.Grid.Start + TimeSpan.FromDays(plannedDay)).ToString("yyyy-MM-dd");
+
+    private int WindowSteps() => Math.Max(1, (int)Math.Round(TimeSpan.FromHours(durationHours) / Store.Manifest!.Grid.Step));
+
+    private IEnumerable<(double X, double W)> Clip(Shadowline.Core.Tracks.BitTrack track, int start)
+    {
+        var length = WindowSteps();
+        var end = start + length;
+        foreach (var run in track.Runs(true))
+        {
+            var a = Math.Max(run.Start, start);
+            var b = Math.Min(run.Start + run.Length, end);
+            if (b > a)
+            {
+                yield return ((a - start) * (double)LaneWidth / length, Math.Max(0.8, (b - a) * (double)LaneWidth / length));
+            }
+        }
+    }
+
+    private RenderFragment Meter(string label, double value, double scale, double threshold, bool higherIsBetter, string text, string tone) => __builder =>
+    {
+        var fill = Math.Clamp(value / scale, 0, 1) * 100;
+        var tick = Math.Clamp(threshold / scale, 0, 1) * 100;
+        var pass = higherIsBetter ? value >= threshold : value <= threshold;
+        <div class="meter @tone @(pass ? "pass" : "fail")">
+            <div class="meter-head"><span>@label</span><b>@text</b></div>
+            <div class="meter-bar"><i style="width: @Format(fill)%"></i><em style="left: @Format(tick)%"></em></div>
+        </div>
+    };
+
+    private const int MatrixLeft = 230;
+    private const int MatrixRow = 20;
+
+    private static string F(double value) => value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Short(string name) => name.Length > 26 ? name[..25] + "…" : name;
+
+    private static string CellClass(Candidate c, HashSet<(string, DateTimeOffset)> hinted)
+    {
+        if (c.Accepted)
+        {
+            return "cell pass";
+        }
+
+        if (hinted.Contains((c.Site.Id, c.Start)))
+        {
+            return "cell hint";
+        }
+
+        return c.Violations.Any(v => v.Kind is RequirementKind.SunFraction or RequirementKind.Darkness) ? "cell sun" : c.Violations.Any(v => v.Kind is RequirementKind.EarthFraction or RequirementKind.EarthGap) ? "cell earth" : "cell off";
+    }
+
+    private string CellTitle(Candidate c) => $"{L.Name(c.Site)}, {c.Start:yyyy-MM-dd HH:mm} UTC, " + (c.Accepted ? L["replan.map.pass"] : string.Join("; ", c.Violations.Select(v => ViolationText.Describe(L, v))));
+
+    private string ReportLink(string siteId, int index) => $"report?site={Uri.EscapeDataString(siteId)}&t={index}&w={Math.Max(24, durationHours)}{Store.YearQuery}";
+
+    private string ExploreLink(string siteId, int index) => $"./?site={Uri.EscapeDataString(siteId)}&t={index}{Store.YearQuery}";
+
+    private string PlannerLink(string siteId, int index) => $"plan/sky?site={Uri.EscapeDataString(siteId)}&t={index}&w={Math.Clamp(durationHours, 24, 336)}{Store.YearQuery}";
+}

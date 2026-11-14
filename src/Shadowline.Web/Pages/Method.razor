@@ -1,0 +1,368 @@
+@page "/method"
+@page "/science"
+@page "/science/method"
+@using System.Globalization
+@using System.Text.Json
+@using Shadowline.Core.Comms
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Power
+@using Shadowline.Core.Reports
+@using Shadowline.Core.Thermal
+@inherits LocalizedComponent
+@inject HttpClient Http
+
+<PageTitle>@L["method.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.ScienceTabs Tab="method" />
+
+<article class="method">
+    <header>
+        <h1 class="page-title">@L["method.title"]</h1>
+        <p class="lede">@L["method.lede"]</p>
+        <nav class="method-toc" aria-label="@L["method.toc"]">
+            @foreach (var id in Sections)
+            {
+                <a href="science/method#@id">@L[id == "refs" ? "report.sources" : "method." + id + ".title"]</a>
+            }
+        </nav>
+    </header>
+
+    <section id="geometry">
+        <h2>@L["method.geometry.title"] <sup class="cite">@Cite("de440", "spice", "iau2015", "horizons")</sup></h2>
+        <p>@L["method.geometry.text"]</p>
+        <pre class="formula">r_body,site = r_body,MOON_ME − (R + h)·û
+el = asin(r̂ · û),  az = atan2(r̂ · ê, r̂ · n̂)
+R = @Bodies.MoonRadiusKm @L["common.unit.km"],  Δt = 30 @L["common.unit.min"]</pre>
+        <p class="muted small">@L["method.geometry.corr"]</p>
+        <p class="muted small">@L["method.geometry.acc"] <a href="science/validation">@L["nav.validation"]</a></p>
+    </section>
+
+    <section id="horizon">
+        <h2>@L["method.horizon.title"] <sup class="cite">@Cite("barker2021", "barker2023", "lola2017", "mazarico2011")</sup></h2>
+        <p>@L["method.horizon.text"]</p>
+        <pre class="formula">h(az) = max_d atan( (z(d, az) − z₀ − 2 m − d² / 2R) / d )
+@L["method.f.sunUp"] ⇔ el_sun + r_sun > h(az_sun),   r_sun = asin(695 700 km / d_sun)
+@L["method.f.earthUp"] ⇔ el_earth > h(az_earth)</pre>
+        <p class="muted small">@L["method.horizon.acc"]</p>
+        <p class="muted small">@L["method.horizon.dem"] <sup class="cite">@Cite("santorelli2026")</sup></p>
+    </section>
+
+    <section id="radio">
+        <h2>@L["method.radio.title"] <sup class="cite">@Cite("santorelli2026", "lunarrf2026", "barker2023")</sup></h2>
+        <p>@L["method.radio.text"]</p>
+        <pre class="formula">s(d, az) = (z(d, az) − d² / 2R − z₀ − 4 m) / d
+@L["method.f.radioVisible"] ⇔ s(d, az) + 1.5 m / d ≥ max_(d′ &lt; d) s(d′, az)</pre>
+        <p>@L["method.radio.coverage"]</p>
+        <p>@L["method.radio.check"]</p>
+        <table class="report-table params">
+            <thead><tr><th>@L["method.radio.quantity"]</th><th>@L["method.radio.class"]</th><th>n</th><th>@L["method.radio.ours"]</th><th>@L["method.radio.theirs"]</th><th>@L["method.radio.r"]</th><th>@L["method.radio.mae"]</th></tr></thead>
+            <tbody>
+                @foreach (var row in RadioCheck)
+                {
+                    <tr><td>@L[row.Quantity]</td><td>@L[row.Class]</td><td>@row.Count</td><td>@row.Ours</td><td>@row.Theirs</td><td>@row.R</td><td>@row.Mae</td></tr>
+                }
+            </tbody>
+        </table>
+        <p class="muted small">@L["method.radio.acc"]</p>
+    </section>
+
+    <section id="dsn">
+        <h2>@L["method.dsn.title"] <sup class="cite">@Cite("dsn810", "wgs84", "lieske1977", "aoki1982")</sup></h2>
+        <p>@L["method.dsn.text"]</p>
+        <table class="report-table">
+            <thead><tr><th>@L["validation.dsn.station"]</th><th>@L["report.route.lat"]</th><th>@L["report.route.lon"]</th><th>@L["method.height"]</th></tr></thead>
+            <tbody>
+                @foreach (var station in DeepSpaceNetwork.Stations)
+                {
+                    <tr><td>@L.Place(station.Name)</td><td>@station.LatitudeDeg.ToString("F4", CultureInfo.InvariantCulture)°</td><td>@station.LongitudeEastDeg.ToString("F4", CultureInfo.InvariantCulture)°</td><td>@station.HeightKm.ToString("F3", CultureInfo.InvariantCulture) @L["common.unit.km"]</td></tr>
+                }
+            </tbody>
+        </table>
+        <p class="muted small">@L.Format("method.dsn.acc", DeepSpaceNetwork.MinElevationDeg.ToString("F0", CultureInfo.InvariantCulture))</p>
+    </section>
+
+    <section id="power">
+        <h2>@L["method.power.title"] <sup class="cite">@Cite("kopp2011", "iau2012", "fincannon2020")</sup></h2>
+        <p>@L["method.power.text"]</p>
+        <pre class="formula">G = 1361 W/m² · (1 au / d_sun)² · f_disc
+P = G · cos i · A · η(T) · k_sys · k_dust
+η(T) = η₀ + β (T − T₀)
+(α − η) G cos i + ε σ T_ground⁴ = 2 ε σ T⁴</pre>
+        <table class="report-table params">
+            <thead><tr><th>@L["method.param"]</th><th>@L["method.value"]</th><th>@L["method.basis"]</th></tr></thead>
+            <tbody>
+                <tr><td>η₀</td><td>@Pct(P.Efficiency) @@ @P.ReferenceC.ToString("F0", CultureInfo.InvariantCulture) °C</td><td>@L["method.basis.eff"]</td></tr>
+                <tr><td>β</td><td>@((P.TemperatureCoefficient * 100).ToString("F4", CultureInfo.InvariantCulture)) @L["method.unit.ptsPerK"]</td><td>@L["method.basis.beta"]</td></tr>
+                <tr><td>k_sys</td><td>@P.SystemFactor.ToString("F3", CultureInfo.InvariantCulture)</td><td>@L["method.basis.sys"]</td></tr>
+                <tr><td>α, ε</td><td>@P.Absorptance.ToString("F2", CultureInfo.InvariantCulture), @P.Emittance.ToString("F2", CultureInfo.InvariantCulture)</td><td>@L["method.basis.optics"]</td></tr>
+                <tr><td>k_dust</td><td>@P.DustFactor.ToString("F2", CultureInfo.InvariantCulture)</td><td>@L["method.basis.dust"]</td></tr>
+                <tr><td>@L["method.battery"]</td><td>@Pct(P.UsableDepth), @Pct(P.ChargeEfficiency) / @Pct(P.DischargeEfficiency)</td><td>@L["method.basis.battery"]</td></tr>
+                <tr><td>@L["method.load"]</td><td>@P.LoadW.ToString("F0", CultureInfo.InvariantCulture) @L["report.unit.w"]</td><td>@L["method.basis.load"]</td></tr>
+            </tbody>
+        </table>
+        <p class="muted small">@L["method.power.acc"]</p>
+    </section>
+
+    <section id="thermal">
+        <h2>@L["method.thermal.title"] <sup class="cite">@Cite("hayne2017", "vasavada2012", "williams2017")</sup></h2>
+        <p>@L["method.thermal.text"]</p>
+        <pre class="formula">ρ c_p(T) ∂T/∂t = ∂/∂z ( K(z, T) ∂T/∂z )
+ρ(z) = ρ_d − (ρ_d − ρ_s) e^(−z/H),  K_c(z) = K_d − (K_d − K_s) e^(−z/H),  K = K_c (1 + χ (T/350)³)
+c_p(T) = −3.6125 + 2.7431 T + 2.3616e−3 T² − 1.2340e−5 T³ + 8.9093e−9 T⁴
+ε σ T_s⁴ = S (1 au / d)² (1 − A(θ)) cos θ · f_disc · (1 − f_Earth) + K ∂T/∂z|₀,   A(θ) = A₀ + a (θ/45°)³ + b (θ/90°)⁸
+K ∂T/∂z|bottom = Q_b</pre>
+        <p class="muted small">@L["method.thermal.axis"]</p>
+        <table class="report-table params">
+            <thead><tr><th>@L["method.param"]</th><th>@L["method.value"]</th></tr></thead>
+            <tbody>
+                <tr><td>ρ_s, ρ_d</td><td>@R.SurfaceDensity.ToString("F0", CultureInfo.InvariantCulture), @R.DeepDensity.ToString("F0", CultureInfo.InvariantCulture) kg/m³</td></tr>
+                <tr><td>K_s, K_d</td><td>@R.SurfaceConductivity.ToString("0.0e0", CultureInfo.InvariantCulture), @R.DeepConductivity.ToString("0.0e0", CultureInfo.InvariantCulture) W/m/K</td></tr>
+                <tr><td>H, χ</td><td>@R.HParameterM.ToString("F2", CultureInfo.InvariantCulture) m, @R.Chi.ToString("F1", CultureInfo.InvariantCulture)</td></tr>
+                <tr><td>A₀, a, b, ε</td><td>@R.Albedo0.ToString("F2", CultureInfo.InvariantCulture), @R.AlbedoA.ToString("F2", CultureInfo.InvariantCulture), @R.AlbedoB.ToString("F2", CultureInfo.InvariantCulture), @R.Emissivity.ToString("F2", CultureInfo.InvariantCulture)</td></tr>
+                <tr><td>Q_b</td><td>@R.GeothermalFlux.ToString("F3", CultureInfo.InvariantCulture) W/m²</td></tr>
+            </tbody>
+        </table>
+        <p class="muted small">@L["method.thermal.acc"]</p>
+    </section>
+
+    <section id="mission">
+        <h2>@L["method.mission.title"] <sup class="cite">@Cite("jones1967", "viper2022", "ochmo2023", "null2023")</sup></h2>
+        <dl class="report-facts method-defs">
+            @foreach (var key in MissionKeys)
+            {
+                <div><dt>@L["report.quantity." + key]</dt><dd>@L["report.method." + key]</dd></div>
+            }
+        </dl>
+    </section>
+
+    <section id="metrics">
+        <h2>@L["method.metrics.title"]</h2>
+        <dl class="report-facts method-defs">
+            @foreach (var key in MetricKeys)
+            {
+                <div><dt>@L["method.metric." + key]</dt><dd>@L["method.metric." + key + ".def"]</dd></div>
+            }
+        </dl>
+    </section>
+
+    <section id="ml">
+        <h2>@L["method.ml.title"] <sup class="cite">@Cite("wueller2026", "barker2023", "paige2010", "hayne2017", "pedregosa2011")</sup></h2>
+        <p>@L["method.ml.intro"]</p>
+        @if (ml is { } card)
+        {
+            <h3 class="method-sub">@L["method.ml.artemis.title"]</h3>
+            <div class="report-figures ml-figures">
+                <div><strong>@card.Sites</strong><span>@L["method.ml.sites"]</span></div>
+                <div><strong>@card.Regions</strong><span>@L["method.ml.regions"]</span></div>
+                <div><strong>@F2(card.MeanAuc)</strong><span>@L["method.ml.auc"]</span></div>
+                <div><strong>@F2(card.MinAuc)–@F2(card.MaxAuc)</strong><span>@L["method.ml.range"]</span></div>
+            </div>
+            <dl class="report-facts method-defs">
+                <div><dt>@L["method.card.purpose"]</dt><dd>@L["method.ml.artemis.purpose"]</dd></div>
+                <div><dt>@L["method.card.data"]</dt><dd>@L.Format("method.ml.artemis.data", card.Sites, card.Regions, card.Background.ToString("N0", CultureInfo.InvariantCulture).Replace(",", " "), card.CurrentSites, card.CurrentRegions)</dd></div>
+                <div><dt>@L["method.card.prep"]</dt><dd>@L["method.ml.artemis.prep"]</dd></div>
+                <div><dt>@L["method.card.inputs"]</dt><dd>@L["method.ml.artemis.inputs"]</dd></div>
+                <div><dt>@L["method.card.model"]</dt><dd>@L["method.ml.artemis.model"]</dd></div>
+                <div><dt>@L["method.card.training"]</dt><dd>@L["method.ml.artemis.training"]</dd></div>
+                <div><dt>@L["method.card.evaluation"]</dt><dd>@L.Format("method.ml.artemis.evaluation", card.Folds.Count)</dd></div>
+                <div><dt>@L["method.card.result"]</dt><dd>@L.Format("method.ml.artemis.result", F2(card.MeanAuc), F2(card.MinAuc), F2(card.MaxAuc), F2(card.LogisticAuc), F2(card.BoostingAuc), F2(Math.Max(0, Math.Max(card.LogisticAuc, card.BoostingAuc) - card.MeanAuc)), (card.SitesPercentile * 100).ToString("F1", CultureInfo.InvariantCulture), F2(card.CurrentMeanAuc), card.CurrentRegions, F2(card.Baseline("elevation")), F2(card.Baseline("sun")), F2(card.Baseline("slope")))</dd></div>
+                <div><dt>@L["method.card.limits"]</dt><dd>@L.Format("method.ml.artemis.limits", F2(card.Baseline("elevation")))</dd></div>
+            </dl>
+            <div class="report-two even">
+                <div>
+                    <h3 class="numbers-head">@L["method.ml.features"]</h3>
+                    <ul class="bars">
+                        @foreach (var f in card.Features.OrderByDescending(f => f.Importance))
+                        {
+                            <li><span>@L["method.ml.f." + f.Id]</span><i style="--w: @((100 * Math.Max(0, f.Importance) / Math.Max(1e-9, card.Features.Max(x => x.Importance))).ToString("F0", CultureInfo.InvariantCulture))"></i><b>@f.Importance.ToString("F3", CultureInfo.InvariantCulture)</b></li>
+                        }
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="numbers-head">@L["method.ml.folds"]</h3>
+                    <table class="report-table">
+                        <thead><tr><th>@L["method.ml.region"]</th><th>@L["method.ml.held"]</th><th>@L["method.ml.trees"]</th><th>@L["method.ml.linear"]</th><th>@L["method.ml.elevationOnly"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var fold in card.Folds)
+                            {
+                                <tr><td>@(regionNames.TryGetValue(fold.Region, out var regionName) ? regionName : fold.Region)</td><td>@fold.Sites</td><td class="@(fold.Main < 0.8 ? "down" : null)">@F2(fold.Main)</td><td>@F2(fold.Linear)</td><td>@F2(fold.Elevation)</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="muted">@L["common.loading"]</p>
+        }
+
+        @if (residual is { } res)
+        {
+            <h3 class="method-sub">@L["method.ml.thermal.title"]</h3>
+            <dl class="report-facts method-defs">
+                <div><dt>@L["method.card.purpose"]</dt><dd>@L["method.ml.thermal.purpose"]</dd></div>
+                <div><dt>@L["method.card.data"]</dt><dd>@L.Format("method.ml.thermal.data", res.Cells)</dd></div>
+                <div><dt>@L["method.card.prep"]</dt><dd>@L["method.ml.thermal.prep"]</dd></div>
+                <div><dt>@L["method.card.inputs"]</dt><dd>@L["method.ml.thermal.inputs"]</dd></div>
+                <div><dt>@L["method.card.model"]</dt><dd>@L["method.ml.thermal.model"]</dd></div>
+                <div><dt>@L["method.card.evaluation"]</dt><dd>@L["method.ml.thermal.evaluation"]</dd></div>
+                <div>
+                    <dt>@L["method.card.result"]</dt>
+                    <dd>
+                        <table class="report-table">
+                            <thead><tr><th>@L["method.ml.thermal.metric"]</th><th>@L["method.ml.thermal.physics"]</th><th>@L["method.ml.thermal.offset"]</th><th>@L["method.ml.thermal.corrected"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var row in res.Rows)
+                                {
+                                    <tr><th scope="row">@L[row.Key]</th><td>@K(row.Physics.Bias) @L["method.ml.thermal.bias"], RMSE @Ku(row.Physics.Rmse), r @F2(row.Physics.R)</td><td>RMSE @Ku(row.Offset.Rmse)</td><td>@K(row.Corrected.Bias) @L["method.ml.thermal.bias"], RMSE @Ku(row.Corrected.Rmse), r @F2(row.Corrected.R)</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </dd>
+                </div>
+                <div><dt>@L["method.card.limits"]</dt><dd>@L["method.ml.thermal.limits"]</dd></div>
+            </dl>
+        }
+    </section>
+
+    <section id="incidents">
+        <h2>@L["method.incidents.title"]</h2>
+        <p>@L["method.incidents.text"] <a href="science/landings">@L["nav.incidents"]</a></p>
+    </section>
+
+    <section id="errors">
+        <h2>@L["method.errors.title"]</h2>
+        <table class="report-table method-table">
+            <thead><tr><th>@L["report.method.quantity"]</th><th>@L["report.method.accuracy"]</th><th>@L["method.errors.check"]</th></tr></thead>
+            <tbody>
+                @foreach (var key in ErrorKeys)
+                {
+                    <tr><th scope="row">@L["method.err." + key]</th><td>@L["method.err." + key + ".size"]</td><td>@L["method.err." + key + ".check"]</td></tr>
+                }
+            </tbody>
+        </table>
+    </section>
+
+    <section id="refs">
+        <h2>@L["report.sources"]</h2>
+        <ol class="report-refs">
+            @foreach (var reference in References.All)
+            {
+                <li id="ref-@reference.Id">@reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
+                {
+                    @(" ")<a href="@link" target="_blank" rel="noopener">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
+                }</li>
+            }
+        </ol>
+    </section>
+</article>
+
+@code {
+    private static readonly string[] Sections = ["geometry", "horizon", "radio", "dsn", "power", "thermal", "mission", "metrics", "ml", "incidents", "errors", "refs"];
+    private static readonly string[] MissionKeys = ["landing", "battery", "safehaven", "slope", "dispersion", "monthly", "eva", "verdicts"];
+    private static readonly string[] MetricKeys = ["sun", "darkness", "earth", "gap", "link", "eclipse"];
+    private static readonly string[] ErrorKeys = ["ephemeris", "years", "dsn", "horizonPolar", "horizonGlobal", "time", "power", "thermal", "ml"];
+
+    private static PowerOptions P => PowerOptions.Default;
+
+    private sealed record RadioRow(string Quantity, string Class, int Count, string Ours, string Theirs, string R, string Mae);
+
+    private static readonly RadioRow[] RadioCheck =
+    [
+        new("radio.eva", "method.radio.landing", 1328, "0.359", "0.328", "0.988", "0.031"),
+        new("radio.near", "method.radio.landing", 1328, "0.116", "0.110", "0.995", "0.009"),
+        new("radio.area", "method.radio.landing", 1328, "67.7 km²", "62.0 km²", "0.992", "5.7 km²"),
+        new("radio.eva", "method.radio.ridge", 532, "0.388", "0.389", "0.958", "0.030"),
+        new("radio.near", "method.radio.ridge", 532, "0.249", "0.248", "0.980", "0.015"),
+        new("radio.area", "method.radio.ridge", 532, "267.0 km²", "261.4 km²", "0.986", "14.1 km²"),
+    ];
+
+    private static RegolithParameters R => RegolithParameters.Hayne2017;
+
+    private sealed record Fold(string Region, int Sites, double Main, double Linear, double Elevation);
+
+    private sealed record MlFeature(string Id, double Importance);
+
+    private sealed record MlCard(int Sites, int Regions, int Background, double MeanAuc, double MinAuc, double MaxAuc, double LogisticAuc, double BoostingAuc, double SitesPercentile, IReadOnlyList<MlFeature> Features, IReadOnlyList<Fold> Folds, int CurrentSites, int CurrentRegions, double CurrentMeanAuc, IReadOnlyDictionary<string, double> Baselines)
+    {
+        public double Baseline(string id) => Baselines.TryGetValue(id, out var value) ? value : double.NaN;
+    }
+
+    private sealed record Fit(double Bias, double Rmse, double R);
+
+    private sealed record ResidualRow(string Key, Fit Physics, Fit Offset, Fit Corrected);
+
+    private sealed record Residual(int Cells, IReadOnlyList<ResidualRow> Rows);
+
+    private MlCard? ml;
+    private Residual? residual;
+    private Dictionary<string, string> regionNames = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(await Http.GetStringAsync("data/ml_artemis.json"));
+            var root = doc.RootElement;
+            var model = root.GetProperty("model").GetString() ?? "monotonic";
+            var stats = root.GetProperty("models").GetProperty(model);
+            var folds = root.GetProperty("validation").GetProperty("folds").EnumerateArray()
+                .Select(f => new Fold(f.GetProperty("region").GetString() ?? "", f.GetProperty("sites").GetInt32(), f.GetProperty(model).GetProperty("localAuc").GetDouble(), f.GetProperty("logistic").GetProperty("localAuc").GetDouble(), f.GetProperty("baselines").GetProperty("elevation").GetDouble()))
+                .ToList();
+            var features = root.GetProperty("features").EnumerateArray().Select(f => new MlFeature(f.GetProperty("id").GetString() ?? "", f.GetProperty("importance").GetDouble())).ToList();
+            var labels = root.GetProperty("labels");
+            var models = root.GetProperty("models");
+            ml = new MlCard(labels.GetProperty("sites").GetInt32(), labels.GetProperty("regions").GetInt32(), labels.GetProperty("backgroundCells").GetInt32(), stats.GetProperty("meanAuc").GetDouble(), stats.GetProperty("minAuc").GetDouble(), stats.GetProperty("maxAuc").GetDouble(), models.GetProperty("logistic").GetProperty("meanAuc").GetDouble(), models.GetProperty("boosting").GetProperty("meanAuc").GetDouble(), root.GetProperty("output").GetProperty("sitesMedianPercentile").GetDouble(), features, folds,
+                labels.GetProperty("sitesInCurrentRegions").GetInt32(), labels.GetProperty("currentRegions").GetInt32(), root.GetProperty("currentRegionFolds").GetProperty("meanAuc").GetDouble(),
+                root.GetProperty("baselines").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetProperty("meanAuc").GetDouble()));
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            ml = null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(await Http.GetStringAsync("data/thermal_validation.json"));
+            var root = doc.RootElement;
+            var physics = root.GetProperty("regolith");
+            var corrected = root.GetProperty("mlCorrection").GetProperty("results");
+            var offset = root.GetProperty("mlCorrection").GetProperty("offsetBaseline");
+            static Fit Read(JsonElement e) => new(e.GetProperty("biasK").GetDouble(), e.GetProperty("rmseK").GetDouble(), e.GetProperty("r").GetDouble());
+            residual = new Residual(root.GetProperty("cells").GetInt32(),
+            [
+                new ResidualRow("method.ml.thermal.max", Read(physics.GetProperty("max").GetProperty("all")), Read(offset.GetProperty("max").GetProperty("all")), Read(corrected.GetProperty("max").GetProperty("all"))),
+                new ResidualRow("method.ml.thermal.avg", Read(physics.GetProperty("avg2cm").GetProperty("all")), Read(offset.GetProperty("avg2cm").GetProperty("all")), Read(corrected.GetProperty("avg2cm").GetProperty("all"))),
+            ]);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            residual = null;
+        }
+
+        try
+        {
+            using var artemis = JsonDocument.Parse(await Http.GetStringAsync("data/artemis.json"));
+            regionNames = artemis.RootElement.GetProperty("regions").EnumerateArray().ToDictionary(r => r.GetProperty("code").GetString() ?? "", r => r.GetProperty("name").GetString() ?? "");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException)
+        {
+            regionNames = [];
+        }
+    }
+
+    private static string Cite(params string[] ids)
+    {
+        var numbers = ids.Select(id => References.All.ToList().FindIndex(r => r.Id == id) + 1).Where(n => n > 0).OrderBy(n => n);
+        return "[" + string.Join(", ", numbers) + "]";
+    }
+
+    private static string F2(double v) => v.ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string K(double v) => v.ToString("+0.0;−0.0;0.0", CultureInfo.InvariantCulture) + " K";
+
+    private static string Ku(double v) => v.ToString("F1", CultureInfo.InvariantCulture) + " K";
+
+    private static string Pct(double f) => (f * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+}

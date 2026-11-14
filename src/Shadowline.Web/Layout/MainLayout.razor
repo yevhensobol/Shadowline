@@ -1,3 +1,80 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject Localizer L
+@inject NavigationManager Navigation
 
-@Body
+<div class="shell">
+    <header class="bar">
+        <a class="brand" href=""><svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 20.5C16.2467 20.5 20.5 16.2467 20.5 11C20.5 5.75329 16.2467 1.5 11 1.5C5.75329 1.5 1.5 5.75329 1.5 11C1.5 16.2467 5.75329 20.5 11 20.5Z" stroke="#E8ECF2" stroke-width="1.5" /><path d="M11 1.5C13.5196 1.5 15.9359 2.50089 17.7175 4.28249C19.4991 6.06408 20.5 8.48044 20.5 11C20.5 13.5196 19.4991 15.9359 17.7175 17.7175C15.9359 19.4991 13.5196 20.5 11 20.5V1.5Z" fill="#F2A33A" /></svg><span>Shadowline</span></a>
+        <nav class="links" aria-label="Main">
+            @foreach (var (section, href, key) in Sections)
+            {
+                <a href="@href" class="@(section == current ? "active" : null)" aria-current="@(section == current ? "page" : null)">@L[key]</a>
+            }
+        </nav>
+        <div class="toggles">
+            <div class="seg" role="group" aria-label="@L["nav.language"]">
+                <button type="button" aria-pressed="@(L.Language == "en" ? "true" : "false")" @onclick='() => L.SetAsync("en")'>EN</button>
+                <button type="button" aria-pressed="@(L.Language == "uk" ? "true" : "false")" @onclick='() => L.SetAsync("uk")'>UA</button>
+            </div>
+        </div>
+    </header>
+    <main class="page">
+        @Body
+    </main>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        L.Changed += OnChanged;
+        Navigation.LocationChanged += OnLocation;
+    }
+
+    public void Dispose()
+    {
+        L.Changed -= OnChanged;
+        Navigation.LocationChanged -= OnLocation;
+    }
+
+    private static readonly (string Section, string Href, string Key)[] Sections =
+    [
+        ("explore", "", "nav.explore"),
+        ("plan", "plan/where", "nav.plan"),
+        ("science", "science/method", "nav.science"),
+        ("sources", "sources", "nav.sources"),
+    ];
+
+    private string current = "explore";
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    protected override void OnParametersSet() => current = SectionOf(Navigation.ToBaseRelativePath(Navigation.Uri));
+
+    private void OnLocation(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs args)
+    {
+        var next = SectionOf(Navigation.ToBaseRelativePath(args.Location));
+        if (next != current)
+        {
+            current = next;
+            OnChanged();
+        }
+    }
+
+    private static string SectionOf(string relative)
+    {
+        var path = relative.Split('?', '#')[0].Trim('/');
+        var first = path.Split('/')[0];
+        return first switch
+        {
+            "plan" or "planner" or "finder" or "windows" or "replan" or "report" or "compare" => "plan",
+            "tipover" when path.StartsWith("tipover/case", StringComparison.Ordinal) => "science",
+            "tipover" or "tiprisk" => "plan",
+            "incidents" => "science",
+            "sources" or "credits" => "sources",
+            "science" when path.EndsWith("/sources", StringComparison.Ordinal) => "sources",
+            "science" or "method" or "validation" or "about" => "science",
+            _ => "explore",
+        };
+    }
+}

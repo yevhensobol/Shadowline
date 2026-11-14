@@ -1,0 +1,43 @@
+@using Shadowline.Core.Localization
+@using Shadowline.Data
+@inherits LocalizedComponent
+
+<aside class="tour">
+    <p class="muted">@L.Format("tour.progress", Index + 1, Steps.Count)</p>
+    <h3>@Pick(Current.Title)</h3>
+    <p>@Pick(Current.Text)</p>
+    @if (Current.Link is { Length: > 0 } link)
+    {
+        <p><a href="@link">@L["tour.open"]</a></p>
+    }
+    <p class="tour-buttons">
+        <button type="button" @onclick="Previous" disabled="@(Index == 0)">@L["tour.previous"]</button>
+        <button type="button" @onclick="Next" disabled="@(Index >= Steps.Count - 1)">@L["tour.next"]</button>
+        <button type="button" @onclick="Closed">@L["tour.close"]</button>
+    </p>
+</aside>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TourStep> Steps { get; set; } = [];
+
+    [Parameter]
+    public int Index { get; set; }
+
+    [Parameter]
+    public EventCallback<int> IndexChanged { get; set; }
+
+    [Parameter]
+    public EventCallback Closed { get; set; }
+
+    private TourStep Current => Steps[Math.Clamp(Index, 0, Steps.Count - 1)];
+
+    private string Pick(IReadOnlyDictionary<string, string>? values) =>
+        values is null ? string.Empty
+        : values.TryGetValue(L.Language, out var text) ? text
+        : values.GetValueOrDefault(Strings.English, string.Empty);
+
+    private Task Previous() => IndexChanged.InvokeAsync(Math.Max(0, Index - 1));
+
+    private Task Next() => IndexChanged.InvokeAsync(Math.Min(Steps.Count - 1, Index + 1));
+}

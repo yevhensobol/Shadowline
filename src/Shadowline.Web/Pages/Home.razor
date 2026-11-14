@@ -1,4 +1,2032 @@
-﻿@page "/"
+@page "/"
+@page "/explore"
+@using System.Globalization
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Metrics
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Tracks
+@using Shadowline.Web.Components
+@inherits LocalizedComponent
+@using Shadowline.Core.Finder
+@inject DataStore Store
+@inject SiteViewCache Views
+@using Shadowline.Core.Ephemeris
+@using Shadowline.Core.Time
+@inject NavigationManager Navigation
+@inject MissionStore Missions
+@inject CommsCache Comms
+@inject RouteStore Routes
+@inject FinderStore FinderData
 
-<PageTitle>Home</PageTitle>
+<PageTitle>@L["explore.title"] - Shadowline</PageTitle>
 
+<div class="explore @(surface ? "surface" : null) @(cardHidden ? "card-hidden" : null)">
+    @if (error is not null)
+    {
+        <p class="error page-note">@error</p>
+    }
+    else if (Store.Catalog is null || Store.Manifest is null || Store.Ephemeris is null)
+    {
+        <p class="globe-status">@L["common.loading"]</p>
+    }
+    else
+    {
+        <MoonGlobe @ref="globe"
+                   Sites="SceneSites()"
+                   Selected="view?.Site"
+                   Cursor="cursor"
+                   Ephemeris="Eph"
+                   Grid="Grid"
+                   SiteSelected="OnSitePicked"
+                   Regions="Store.Artemis?.Regions"
+                   ShowRegions="showRegions"
+                   RegionSelected="OnRegionPicked"
+                   PointSelected="OnPointPicked"
+                   Ready="OnGlobeReady"
+                   RouteChanged="OnRouteChanged" />
+
+        <div class="ribbon" role="status" aria-live="off"><span>@L["explore.simTime"]</span><time>@SimTime()</time></div>
+
+        @if (Store.Tour is { Steps: { Count: > 0 } tourSteps } && tourIndex is { } currentStep)
+        {
+            <div class="hud hud-tour">
+                <TourPanel Steps="tourSteps" Index="currentStep" IndexChanged="OnTourStep" Closed="CloseTour" />
+            </div>
+        }
+        else if (!surface)
+        {
+        <aside class="hud hud-sites @(sitesOpen ? "open" : null)">
+            <button type="button" class="hud-toggle" aria-expanded="@(sitesOpen ? "true" : "false")" @onclick="() => sitesOpen = !sitesOpen">@L["planner.site"]</button>
+            <div class="hud-body">
+                <label class="hud-search">
+                    <span class="cap">@L["explore.find"]</span>
+                    <span class="field">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M7 12C9.76142 12 12 9.76142 12 7C12 4.23858 9.76142 2 7 2C4.23858 2 2 4.23858 2 7C2 9.76142 4.23858 12 7 12Z" stroke="#9FB3D1" stroke-width="1.5" /><path d="M11 11L14.5 14.5" stroke="#9FB3D1" stroke-width="1.5" /></svg>
+                        <input type="text" placeholder="@L["explore.search"]" value="@query" @oninput="OnSearch" />
+                    </span>
+                </label>
+                @if (query.Trim().Length > 0)
+                {
+                    if (SearchPoint() is { } point)
+                    {
+                        <button type="button" class="hud-site" @onclick="() => SelectPoint(point.Lat, point.Lon, true)">
+                            <span>@L["explore.custom"]</span><span class="coords">@FormatLat(point.Lat), @FormatLon(point.Lon)</span>
+                        </button>
+                    }
+                    else if (Groups().Count == 0)
+                    {
+                        <p class="muted small">@L["explore.nothing"]</p>
+                    }
+                }
+                <div class="rec">
+                    <button type="button" class="rec-toggle" aria-expanded="@(recOpen ? "true" : "false")" @onclick="ToggleRec">@L["rec.title"] <span aria-hidden="true">@(recOpen ? "▴" : "▾")</span></button>
+                    @if (recOpen)
+                    {
+                        <div class="rec-body">
+                            <span class="cap">@L["finder.profile"]</span>
+                            <div class="chips">
+                                @foreach (var preset in FinderPreset.All)
+                                {
+                                    <button type="button" class="chip" aria-pressed="@(recKey == preset.Key ? "true" : "false")" disabled="@recBusy" @onclick="() => RecPreset(preset.Key)">@L.Profile(preset.Key)</button>
+                                }
+                                @if (recKey == FinderPreset.Custom)
+                                {
+                                    <button type="button" class="chip" aria-pressed="true" disabled>@L["finder.profile.custom"]</button>
+                                }
+                            </div>
+                            @if (recGrid is { } dg)
+                            {
+                                <label class="rec-date">
+                                    <span class="cap">@L["rec.date"]</span>
+                                    <input type="date" value="@RecDateValue(dg)" min="@dg.StartUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" max="@dg.EndUtc.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" disabled="@recBusy" @onchange="OnRecDate" />
+                                </label>
+                            }
+                            <p class="muted small">@RecSummary()</p>
+                            @if (recKey != FinderPreset.Custom)
+                            {
+                                <p class="muted small">@L["finder.lander." + FinderPreset.Get(recKey).LanderKey] <a href="sources">@L["rec.sources"] ›</a></p>
+                            }
+                            @if (recBusy)
+                            {
+                                <p class="muted small">@L["finder.computing"]…</p>
+                            }
+                            else if (recFailed)
+                            {
+                                <p class="error small">@L["finder.noData"]</p>
+                            }
+                            else if (recResult is { } found && recGrid is { } fg)
+                            {
+                                if (found.Zones.Count == 0)
+                                {
+                                    <p class="muted small">@L["finder.none"]</p>
+                                }
+                                else
+                                {
+                                    <ol class="rec-list">
+                                        @foreach (var zone in found.Zones.Take(RecCount))
+                                        {
+                                            <li>
+                                                <button type="button" class="rec-site @(view?.Site.Id == RecId(zone) ? "selected" : null)" @onclick="() => PickRec(zone)">
+                                                    <span class="rec-head"><b>Z@(zone.Rank)</b><span class="coords">@L.Lat(zone.LatitudeDeg, 2) · @L.Lon(zone.LongitudeEastDeg, 1)</span></span>
+                                                    <span class="rec-line">@L["finder.score"] @F2(zone.MaxScore) · @L.Format("finder.startOn", L.ShortDate(fg.At(zone.Window.StartStep)))</span>
+                                                    <span class="rec-line">@L.Format("rec.stats", Percent(zone.Window.SunShare), Percent(zone.Window.EarthShare), RecHours(zone.Window.LongestDarkHours), zone.WaterKm.ToString("F1", CultureInfo.InvariantCulture))</span>
+                                                    @if (recStability is not null && recStability.TryGetValue(zone.Rank - 1, out var share))
+                                                    {
+                                                        <span class="rec-line">@L["finder.stable"]: @Percent(share)</span>
+                                                    }
+                                                </button>
+                                            </li>
+                                        }
+                                    </ol>
+                                }
+                            }
+                            <p class="muted small">@L["rec.note"]</p>
+                            <a class="ro-link" href="@RecPlanLink()">@L["rec.more"] ›</a>
+                        </div>
+                    }
+                </div>
+                <div class="layer-pick" role="group" aria-label="@L["layer.title"]">
+                    <span class="cap">@L["layer.title"]</span>
+                    @foreach (var (groupKey, modes) in ChipGroups)
+                    {
+                        <span class="layer-group">@L[groupKey]</span>
+                        <div class="chips">
+                            @foreach (var mode in modes)
+                            {
+                                <button type="button" class="chip" aria-pressed="@(layer == mode ? "true" : "false")" @onclick="() => ToggleChip(mode)">@ChipLabel(mode)</button>
+                            }
+                        </div>
+                    }
+                    <span class="layer-group">@L["layer.group.grid"]</span>
+                    <div class="chips">
+                        <button type="button" class="chip" aria-pressed="@(grid ? "true" : "false")" @onclick="ToggleGrid">@L["layer.grid"]</button>
+                    </div>
+                    @if (grid)
+                    {
+                        <p class="legend-note">@L["layer.gridNote"]</p>
+                    }
+                    @if (layer != "none")
+                    {
+                        <div class="layer-legend" role="note">
+                            @if (layer is "sun" or "earth")
+                            {
+                                <div class="seg legend-mode" role="group" aria-label="@L["layer.mode"]">
+                                    <button type="button" aria-pressed="@(layerNow ? "true" : "false")" @onclick="() => SetLayerNow(true)">@L["layer.now"]</button>
+                                    <button type="button" aria-pressed="@(layerNow ? "false" : "true")" @onclick="() => SetLayerNow(false)">@L["layer.yearMode"]</button>
+                                </div>
+                            }
+                            @if (layer is "sun" or "earth" && layerNow && nowShown)
+                            {
+                                <span class="legend-title">@L["layer.nowLegend." + layer]</span>
+                                <div class="legend-now @layer"><span><i class="on"></i>@L["layer.nowOn." + layer]</span><span><i class="off"></i>@L["layer.nowOff." + layer]</span></div>
+                                <p class="legend-note">@L["layer.nowNote"]</p>
+                            }
+                            else
+                            {
+                            @if (layer is "sun" or "earth" && layerNow)
+                            {
+                                <p class="legend-note">@L[nowLoading ? "layer.nowLoading" : "layer.nowNone"]</p>
+                            }
+                            <span class="legend-title">@L["layer.legend." + layer]</span>
+                            <div class="legend-bar @layer"></div>
+                            <div class="legend-scale">
+                                @if (layer == "slope")
+                                {
+                                    <span>0°</span><span>5°</span><span>10°</span><span>15°</span><span>25°+</span>
+                                }
+                                else if (layer == "artemis")
+                                {
+                                    <span>0</span><span>50</span><span>80</span><span>95</span><span>100</span>
+                                }
+                                else if (layer == "diviner")
+                                {
+                                    <span>40 K</span><span>100</span><span>200</span><span>300</span><span>400 K</span>
+                                }
+                                else if (layer == "ice")
+                                {
+                                    <span>0 @L["common.unit.m"]</span><span>0.1</span><span>0.5</span><span>1</span><span>2.9 @L["common.unit.m"]</span>
+                                }
+                                else
+                                {
+                                    <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                                }
+                            </div>
+                            @if (layer == "sun")
+                            {
+                                <p class="legend-dark"><i aria-hidden="true"></i>@L["layer.dark"]</p>
+                            }
+                            }
+                            <details class="legend-more">
+                                <summary>@L["layer.about"]</summary>
+                                <p>@L["layer.note"] @(layer == "slope" ? L["layer.slopeNote"] : null) @(layer == "artemis" ? L["layer.artemisNote"] : null) @L["layer.hover"]</p>
+                                @if (layer == "diviner" || layer == "ice")
+                                {
+                                    <p>@L["layer.divinerNote"]</p>
+                                }
+                                @if (layer == "artemis")
+                                {
+                                    <a href="science/method#ml">@L["layer.artemisMore"] ›</a>
+                                }
+                            </details>
+                        </div>
+                    }
+                </div>
+                <div class="hud-links">
+                    <button type="button" class="link" aria-expanded="@(listOpen || query.Trim().Length > 0 ? "true" : "false")" @onclick="() => listOpen = !listOpen">@L.Format("explore.allSites", SiteCount()) <span aria-hidden="true">▾</span></button>
+                    @if (listOpen || query.Trim().Length > 0)
+                    {
+                        <div class="hud-list">
+                            @foreach (var group in Groups())
+                            {
+                                <div class="hud-group">
+                                    <span class="hud-label">@L[group.Key]</span>
+                                    @foreach (var site in group.Sites)
+                                    {
+                                        <button type="button" class="hud-site @(view?.Site.Id == site.Id ? "selected" : null)" @onclick="() => SelectSite(site.Id, true)">
+                                            <span>@ShortName(site)</span><span class="coords">@ShortLat(site.LatitudeDeg)</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (Store.Artemis is not null)
+                    {
+                        <button type="button" class="link" aria-pressed="@(showRegions ? "true" : "false")" @onclick="() => showRegions = !showRegions">@L["artemis.toggle"]</button>
+                    }
+                    @if (Store.Tour is not null)
+                    {
+                        <button type="button" class="link" @onclick="StartTour">@L["tour.start"] ›</button>
+                    }
+                </div>
+            </div>
+        </aside>
+        }
+
+        @if (routeMode && !surface)
+        {
+            <section class="hud hud-card hud-route" aria-live="polite">
+                <header>
+                    <h1>@L["route.title"]</h1>
+                </header>
+                @if (routeSummary is not { LengthKm: > 0 } summary || route is null)
+                {
+                    <p class="hud-hint">@L["route.hint"]</p>
+                }
+                else
+                {
+                    <dl class="route-stats">
+                        <div><dt>@L["route.length"]</dt><dd>@summary.LengthKm.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.km"]</dd></div>
+                        <div><dt>@L["route.climb"]</dt><dd>+@summary.ClimbM.ToString("F0", CultureInfo.InvariantCulture) / −@summary.DescentM.ToString("F0", CultureInfo.InvariantCulture) @L["common.unit.m"]</dd></div>
+                        <div class="@(summary.MaxGradeDeg >= 15 ? "bad" : summary.MaxGradeDeg >= 10 ? "warn" : null)"><dt>@L["route.grade"]</dt><dd>@summary.MaxGradeDeg.ToString("F0", CultureInfo.InvariantCulture)°</dd></div>
+                        <div class="@(summary.SteepFraction > 0 ? "warn" : null)"><dt>@L["route.steep"]</dt><dd>@Percent(summary.SteepFraction)</dd></div>
+                        <div><dt>@L["route.sun"]</dt><dd>@Percent(summary.SunMin) / @Percent(summary.SunMean)</dd></div>
+                        <div class="@(summary.DarkKm > 0 ? "cold" : null)"><dt>@L["route.dark"]</dt><dd>@summary.DarkKm.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.km"]</dd></div>
+                        <div><dt>@L["route.earth"]</dt><dd>@Percent(summary.EarthMean)</dd></div>
+                    </dl>
+                    <figure class="route-profile">
+                        <figcaption>@L["route.profile"]</figcaption>
+                        <svg viewBox="0 0 @ProfileWidth 132" role="img" aria-label="@L["route.profile"]">
+                            <path d="@ProfileArea()" class="profile-fill" />
+                            <path d="@ProfileLine()" class="profile-line" />
+                            @for (var i = 0; i < route.DistanceKm.Length; i++)
+                            {
+                                if (route.Waypoint[i])
+                                {
+                                    <circle cx="@Format(ProfileX(route.DistanceKm[i]))" cy="@Format(ProfileY(route.ElevationM[i]))" r="3" class="profile-dot" />
+                                }
+                            }
+                            <g class="strip">
+                                @for (var i = 1; i < route.DistanceKm.Length; i++)
+                                {
+                                    var x0 = ProfileX(route.DistanceKm[i - 1]);
+                                    var w = Math.Max(0.5, ProfileX(route.DistanceKm[i]) - x0);
+                                    <rect x="@Format(x0)" y="96" width="@Format(w + 0.3)" height="12" fill="@SunColor(i)" />
+                                    <rect x="@Format(x0)" y="114" width="@Format(w + 0.3)" height="12" fill="@SlopeColor(route.SlopeDeg[i])" />
+                                }
+                            </g>
+                        </svg>
+                        <p class="spark-caption"><span>0</span><span>@L["route.sunStrip"] / @L["route.slopeStrip"]</span><span>@summary.LengthKm.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.km"]</span></p>
+                    </figure>
+                    <p class="muted small">@L["route.note"]</p>
+                }
+                <div class="hud-actions">
+                    <button type="button" @onclick="UndoPoint" disabled="@(route is not { Count: > 0 })">@L["route.undo"]</button>
+                    <button type="button" @onclick="ClearRoute" disabled="@(route is not { Count: > 0 })">@L["route.clear"]</button>
+                </div>
+                @if (routeSummary is { LengthKm: > 0 } && view is not null)
+                {
+                    <a class="button wide-link" href="@ReportLink()">@L["route.report"]</a>
+                }
+                <div class="hud-actions">
+                    <button type="button" class="primary" @onclick="ToggleRoute">@L["route.done"]</button>
+                    <button type="button" @onclick="Snapshot">@L["snapshot.save"]</button>
+                </div>
+            </section>
+        }
+        else if (view is not null && card is not null)
+        {
+            var coldTrap = probe?.Dark == true;
+            var sunNow = Change(view.Tracks.SunVisible, "explore.sunriseRow", "explore.sunsetRow", "explore.sun");
+            var earthNow = Change(view.Tracks.EarthVisible, "explore.earthriseRow", "explore.earthsetRow", "explore.earth");
+            <div class="readout-mini @(cardHidden ? "show" : null)">
+                <button type="button" class="readout-mini-expand" aria-expanded="false" @onclick="() => cardHidden = false">
+                    <span class="readout-mini-name">@(IsCustom ? customName ?? L["explore.custom"] : ShortName(view.Site))</span>
+                    <span class="readout-mini-line">@sunNow.Label @sunNow.Value</span>
+                    <span class="readout-mini-open">@L["explore.showCard"] ›</span>
+                </button>
+                @if (surface)
+                {
+                    <button type="button" class="cta readout-mini-orbit" @onclick="Leave">@L["explore.orbit"]</button>
+                }
+            </div>
+            <section class="hud hud-card readout @(cardOpen ? "open" : null) @(cardHidden ? "closed" : null)" aria-live="polite">
+                <header>
+                    <button type="button" class="card-close" aria-label="@L["explore.hideCard"]" aria-expanded="true" title="@L["explore.hideCard"]" @onclick="() => cardHidden = true">−</button>
+                    <h1>@(IsCustom ? customName ?? L["explore.custom"] : ShortName(view.Site))</h1>
+                    <p class="coords">@FormatLat(view.Site.LatitudeDeg) · @FormatLon(view.Site.LongitudeEastDeg)</p>
+                    @if (!surface && replay is null && Store.HistoryFor(view.Site.Id) is { } landing)
+                    {
+                        <button type="button" class="link replay-start" @onclick="() => StartReplay(landing)">@L["history.replay"] ›</button>
+                    }
+                    <button type="button" class="card-toggle" aria-expanded="@(cardOpen ? "true" : "false")" @onclick="() => cardOpen = !cardOpen">@L[cardOpen ? "explore.less" : "explore.more"]</button>
+                </header>
+                <dl class="ro">
+                    <div><dt>@sunNow.Label</dt><dd>@sunNow.Value</dd></div>
+                    <div><dt>@earthNow.Label</dt><dd>@earthNow.Value</dd></div>
+                    <div class="@(sunNow.Up ? "sun" : null)"><dt>@L["explore.sun"]</dt><dd>@L.Format(sunNow.Up ? "explore.above" : "explore.below", Deg(card.SunEl))</dd></div>
+                    <div class="@(earthNow.Up ? "earth" : null)"><dt>@L["explore.earth"]</dt><dd>@L.Format(earthNow.Up ? "explore.above" : "explore.below", Deg(card.EarthEl))</dd></div>
+                    @if (!coldTrap)
+                    {
+                        <div><dt>@L["explore.tempNow"]</dt><dd>@Celsius(card.Thermal.NowK)</dd></div>
+                    }
+                    @if (view.Site.RockAbundance is { } rocks)
+                    {
+                        <div title="@L["explore.rocksHint"]"><dt>@L["explore.rocks"]</dt><dd>@L.Format("explore.rocksValue", (rocks * 100).ToString("0.0#", CultureInfo.InvariantCulture))</dd></div>
+                    }
+                </dl>
+                @if (view.Site.Id.StartsWith("plan-", StringComparison.Ordinal))
+                {
+                    <p class="notice small">@L["explore.planned"]</p>
+                }
+                @if (view.Site.Id.StartsWith("impact-", StringComparison.Ordinal))
+                {
+                    <p class="notice small">@L["explore.impact"]</p>
+                }
+                @if (preparing)
+                {
+                    <p class="notice small">@L["explore.preparing"]</p>
+                }
+                else if (!view.HasTerrain)
+                {
+                    <p class="notice small">@L["explore.flat"]</p>
+                }
+                <div class="readout-block more">
+                    <SectionHeader Title="@L["explore.skyNow"]" />
+                    <SkyChart Snapshot="view.At(cursor)" Horizon="view.Horizon" Pan="surface" />
+                </div>
+                <div class="readout-block more">
+                    <SectionHeader Title="@L["explore.next30"]" />
+                    <ul class="verdicts compact">
+                        @foreach (var verdict in Shadowline.Core.Reports.SiteReportBuilder.Verdicts(card.Metrics, card.Link.Fraction, card.Power))
+                        {
+                            <li class="verdict @verdict.Level"><span class="verdict-topic">@L["report.verdict." + verdict.Topic]</span><strong>@L["report.level." + verdict.Level]</strong></li>
+                        }
+                    </ul>
+                    <Meter Label="@L["metric.sun"]" Fraction="card.Metrics.SunFraction" Tone="sun" />
+                    <Meter Label="@L["metric.earth"]" Fraction="card.Metrics.EarthFraction" Tone="earth" />
+                    <Meter Label="@L["explore.link"]" Fraction="card.Link.Fraction" Tone="earth" />
+                    <dl class="ro">
+                        <div><dt>@L["metric.darkness"]</dt><dd>@L.Duration(card.Metrics.LongestDarkness)</dd></div>
+                        <div><dt>@L["dsn.gap"]</dt><dd>@L.Duration(card.Link.LongestGap)</dd></div>
+                        @if (!coldTrap)
+                        {
+                            <div><dt>@L["explore.tempRange"]</dt><dd>@Celsius(card.Thermal.NightK) / @Celsius(card.Thermal.DayMaxK)</dd></div>
+                        }
+                    </dl>
+                </div>
+                <div class="readout-block more">
+                    <SectionHeader Title="@L["explore.energy"]" />
+                    <dl class="ro">
+                        <div><dt>@L["explore.vertical"]</dt><dd>@L.Format("explore.perDay", card.Power.VerticalKWhPerDay.ToString("F1", CultureInfo.InvariantCulture))</dd></div>
+                        <div><dt>@L["explore.horizontal"]</dt><dd>@L.Format("explore.perDay", card.Power.HorizontalKWhPerDay.ToString("F1", CultureInfo.InvariantCulture))</dd></div>
+                        <div><dt>@L["explore.battery"]</dt><dd>@(card.Power.LongestDarkHours > 0 ? L.Format("explore.kwh", card.Power.BatteryKWh.ToString("F0", CultureInfo.InvariantCulture)) : L["power.none"])</dd></div>
+                    </dl>
+                    <a class="ro-link" href="science/method#power">@L["explore.how"] ›</a>
+                </div>
+                @if (view.Site.LatitudeDeg <= -80 && replay is null)
+                {
+                    <div class="readout-block more">
+                        <RadioPanel SiteId="@view.Site.Id" LatitudeDeg="view.Site.LatitudeDeg" LongitudeDeg="view.Site.LongitudeEastDeg" />
+                    </div>
+                }
+                @if (replay is null && !surface)
+                {
+                    <div class="readout-block more">
+                        <RobustnessCard SiteId="@view.Site.Id" Start="cursor" Compact="true" />
+                    </div>
+                }
+                <details class="readout-more more">
+                    <summary>@L["explore.details"]</summary>
+                    @if (Shadowline.Data.PhotosReader.Find(Store.Photos, view.Site.Id) is { } photo)
+                    {
+                        <figure class="site-photo">
+                            <a href="@photo.Source" target="_blank" rel="noopener"><img src="@photo.File" alt="@Caption(photo)" loading="lazy" /></a>
+                            <figcaption>@Caption(photo) <span class="muted">@photo.Credit</span></figcaption>
+                        </figure>
+                    }
+                    @if (IsCustom && region is not null)
+                    {
+                        <p class="region-note @(region.Artemis3 ? "current" : null)">@L[region.Artemis3 ? "artemis.current" : "artemis.earlier"]</p>
+                        <div class="region-sites" role="group" aria-label="@L["artemis.sites"]">
+                            @foreach (var candidate in region.Sites!)
+                            {
+                                <button type="button" aria-pressed="@(customName == region.Name + " " + candidate.Name ? "true" : "false")" @onclick="() => SelectCandidate(region, candidate)">@candidate.Name</button>
+                            }
+                        </div>
+                        <p class="muted small">@L["artemis.source"]</p>
+                    }
+                    @if (probe is { } year)
+                    {
+                        <p class="year-line">
+                            <span>@L["layer.year"]:</span>
+                            @if (year.Dark)
+                            {
+                                <span class="dark">@L["layer.yearDark"]</span>
+                            }
+                            else
+                            {
+                                <span class="sun">@L.Format("layer.yearSun", Percent(year.Sun))</span>
+                            }
+                            <span class="earth">@L.Format("layer.yearEarth", Percent(year.Earth))</span>
+                            @if (year.Slope is { } slope)
+                            {
+                                <span>@L.Format("layer.yearSlope", slope.ToString("F0", CultureInfo.InvariantCulture))</span>
+                            }
+                            @if (year.MaxK is { } maxK)
+                            {
+                                <span>@L.Format("layer.yearMax", maxK.ToString("F0", CultureInfo.InvariantCulture))</span>
+                            }
+                            @if (year.Ice is { } ice)
+                            {
+                                <span class="earth">@(ice < 0 ? L["layer.yearNoIce"] : L.Format("layer.yearIce", ice.ToString("F2", CultureInfo.InvariantCulture)))</span>
+                            }
+                            @if (year.Ml is { } ml)
+                            {
+                                <span class="ml">@L.Format("layer.yearMl", (ml * 100).ToString("F0", CultureInfo.InvariantCulture))</span>
+                            }
+                        </p>
+                    }
+                    <dl class="metrics compact now-angles">
+                        <div class="@(card.SunEl > card.TerrainEl ? "lit" : "dark")"><dt>@L["explore.sunEl"]</dt><dd>@Deg(card.SunEl)</dd></div>
+                        <div><dt>@L["explore.terrainEl"]</dt><dd>@Deg(card.TerrainEl)</dd></div>
+                        <div><dt>@L["explore.earthEl"]</dt><dd>@Deg(card.EarthEl)</dd></div>
+                    </dl>
+                    <figure class="spark">
+                        <figcaption>@L["explore.next30"]</figcaption>
+                        <svg viewBox="0 0 @SparkWidth @SparkHeight" role="img" aria-label="@L["explore.sunAbove"]">
+                            <defs><clipPath id="spark-above"><rect x="0" y="0" width="@SparkWidth" height="@Format(SparkZero)" /></clipPath></defs>
+                            <path d="@(card.Spark) L@(SparkWidth) @Format(SparkZero) L0 @Format(SparkZero) Z" class="spark-fill" clip-path="url(#spark-above)" />
+                            <line x1="0" x2="@SparkWidth" y1="@Format(SparkZero)" y2="@Format(SparkZero)" class="spark-zero" />
+                            <path d="@card.Spark" class="spark-line" />
+                        </svg>
+                        <p class="spark-caption"><span>@L["explore.now"]</span><span>@L["explore.sunAbove"]</span><span>+30 @L["common.unit.d"]</span></p>
+                    </figure>
+                    <p class="muted small earth-phase"><svg viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11" class="earth-dark" /><path d="@EarthPhasePath(card.EarthLit / 100.0)" class="earth-lit" /></svg>@L.Format("explore.earthLit", card.EarthLit)</p>
+                    <PowerPanel Estimate="card.Power" />
+                    <ThermalPanel Estimate="card.Thermal" ColdTrap="coldTrap" />
+                    <DsnPanel Ephemeris="Eph" Cursor="cursor" Link="card.Link" DelaySeconds="card.DelaySeconds" />
+                    <div class="detail-links">
+                        @if (!surface)
+                        {
+                            <button type="button" class="link" @onclick="FlyToSelected">@L["explore.fly"] ›</button>
+                        }
+                        @if (replay is null)
+                        {
+                            <a class="link" href="@CompareLink()">@L["compare.open"] ›</a>
+                        }
+                        <button type="button" class="link" @onclick="Snapshot">@L["snapshot.save"]</button>
+                        <button type="button" class="link record-start" @onclick="Record" disabled="@recording">@L["record.start"]</button>
+                    </div>
+                </details>
+                @if (surface)
+                {
+                    <div class="surface-controls">
+                        <div class="action-row">
+                            <button type="button" class="action" @onclick='() => Turn("earth")'>@L["explore.lookEarth"]</button>
+                            <button type="button" class="action" @onclick='() => Turn("sun")'>@L["explore.lookSun"]</button>
+                        </div>
+                        @if (replay is null)
+                        {
+                            <button type="button" class="action drop-open" @onclick="() => dropOpen = true">@L["drop.open"] ›</button>
+                        }
+                        <div class="eye" role="group" aria-label="@L["explore.eye"]">
+                            <span class="cap">@L["explore.eye"]</span>
+                            <div class="seg">
+                                @foreach (var height in EyeHeights)
+                                {
+                                    <button type="button" aria-pressed="@(eye == height ? "true" : "false")" @onclick="() => SetEye(height)">@height @L["common.unit.m"]</button>
+                                }
+                            </div>
+                        </div>
+                        <p class="hud-hint more">@L["explore.surfaceHint"]</p>
+                    </div>
+                    <div class="readout-actions">
+                        <button type="button" class="cta" @onclick="Leave">@L["explore.orbit"]</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="readout-actions">
+                        @if (replay is null)
+                        {
+                            <a class="cta" href="@PlannerLink()">@L["explore.plan"] ›</a>
+                        }
+                        <div class="action-row">
+                            @if (replay is null)
+                            {
+                                <a class="action" href="@ReportLink()">@L["explore.report"]</a>
+                            }
+                            <button type="button" class="action" @onclick="Stand">@L["explore.stand"]</button>
+                            <a class="action" href="@QuickMapLink.For(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg)" target="_blank" rel="noopener" title="@L["explore.quickmapHint"]">@L["explore.quickmap"] ↗</a>
+                        </div>
+                    </div>
+                }
+            </section>
+        }
+
+        @if (dropOpen && surface && view is not null && replay is null)
+        {
+            <TipDrop SiteId="@view.Site.Id" Start="cursor" Closed="() => dropOpen = false" />
+        }
+
+        @if (recording)
+        {
+            <div class="hud hud-rec @(replay is not null ? "low" : null)" role="status">
+                <i aria-hidden="true"></i>
+                <span>@L["record.on"]</span>
+                <button type="button" @onclick="StopRecord">@L["record.stop"]</button>
+            </div>
+        }
+        else if (recordFailed)
+        {
+            <div class="hud hud-rec" role="status"><span>@L["record.none"]</span></div>
+        }
+
+
+        @if (replay is not null)
+        {
+            <div class="hud hud-replay" role="status">
+                <div>
+                    <strong>@HistoryTitle(replay)</strong>
+                    <span>@L.Format("history.landed", LongDate(replay.LandingUtc))</span>
+                </div>
+                <button type="button" @onclick="() => SetCursor(replay.Grid.IndexOf(replay.LandingUtc))">@L["history.toLanding"]</button>
+                <button type="button" class="primary" @onclick="EndReplay">@L.Format("history.back", DataStore.YearLabel(Store.Year ?? string.Empty))</button>
+            </div>
+        }
+
+        @if (!surface && !routeMode && replay is null && tourIndex is null && view is not null)
+        {
+            <div class="hud hud-compare" role="group" aria-label="@L["explore.compare"]">
+                <div class="tray-head">
+                    <span class="cap">@L["explore.compare"]</span>
+                    @if (pinned.Count >= 2)
+                    {
+                        <a class="link" href="@PinCompareLink()">@L["explore.compareOpen"] ›</a>
+                    }
+                </div>
+                @foreach (var id in pinned)
+                {
+                    var site = Views.Resolve(id);
+                    if (site is null)
+                    {
+                        continue;
+                    }
+
+                    var stats = PinStats(id);
+                    <div class="pin @(view.Site.Id == id ? "current" : null)">
+                        <button type="button" class="pin-main" @onclick="() => SelectSite(id, true)">
+                            <strong title="@PinLabel(id, site)">@PinLabel(id, site)</strong>
+                            <span class="pin-stats">
+                                <span class="sun">@L.Format("explore.cardSun", stats is null ? "—" : Percent(stats.SunFraction))</span>
+                                <span class="earth">@L.Format("explore.cardEarth", stats is null ? "—" : Percent(stats.EarthFraction))</span>
+                                <span class="dark">@L.Format("explore.cardDark", stats is null ? "—" : ShortSpan(stats.LongestDarkness))</span>
+                            </span>
+                        </button>
+                        <button type="button" class="pin-x" aria-label="@L["explore.compareRemove"]" @onclick="() => Unpin(id)">×</button>
+                    </div>
+                }
+                @if (!pinned.Contains(view.Site.Id))
+                {
+                    if (pinned.Count < MaxPins)
+                    {
+                        <button type="button" class="pin-add" @onclick="Pin">+ @L["explore.compareAdd"]</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="pin-add" disabled title="@L["explore.compareFull"]">@L["explore.compareFull"]</button>
+                    }
+                }
+            </div>
+        }
+
+        @if (!surface && !routeMode && layer == "none" && tourIndex is null)
+        {
+            <ControlsHint />
+        }
+
+        <footer class="hud hud-time @(replay is not null ? "replaying" : null)">
+            <button type="button" class="play" aria-label="@L[playing ? "planner.pause" : "planner.play"]" @onclick="TogglePlay">
+                <svg width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true">
+                    <circle cx="23" cy="23" r="22" stroke="#F2A33A" stroke-width="1.5" />
+                    @if (playing)
+                    {
+                        <rect x="17" y="15.5" width="4" height="15" fill="#F2A33A" /><rect x="25" y="15.5" width="4" height="15" fill="#F2A33A" />
+                    }
+                    else
+                    {
+                        <path d="M18 15.5V30.5L30 23L18 15.5Z" fill="#F2A33A" />
+                    }
+                </svg>
+            </button>
+            <div class="lanes">
+                <div class="lane-names" aria-hidden="true"><span class="sun">@L["explore.sun"]</span><span class="earth">@L["explore.earth"]</span></div>
+                <div class="lane-track">
+                    @if (view is not null)
+                    {
+                        var bins = LaneBins();
+                        <svg viewBox="0 0 @LaneWidth 24" preserveAspectRatio="none" role="img" aria-label="@L["explore.lanes"]">
+                            @for (var b = 0; b < bins.Sun.Length; b++)
+                            {
+                                var x = b * (double)LaneWidth / bins.Sun.Length;
+                                var w = (double)LaneWidth / bins.Sun.Length - LaneGap;
+                                <rect x="@Format(x)" y="0" width="@Format(w)" height="6" class="@BinClass("sun", bins.Sun[b])" />
+                                <rect x="@Format(x)" y="13" width="@Format(w)" height="6" class="@BinClass("earth", bins.Earth[b])" />
+                            }
+                            @foreach (var run in view.Tracks.EarthVisible.And(Comms.Dsn(Eph).Not()).Runs(true))
+                            {
+                                <rect x="@Format(LaneX(run.Start))" y="21" width="@Format(Math.Max(0.6, LaneX(run.Length)))" height="3" class="lane-dsn-gap"><title>@L["dsn.lane"]</title></rect>
+                            }
+                            @if (replay is not null)
+                            {
+                                var landed = replay.Grid.IndexOf(replay.LandingUtc);
+                                <path d="M@(Format(LaneX(landed) - 4)) -8 L@(Format(LaneX(landed) + 4)) -8 L@(Format(LaneX(landed))) -1 Z" class="landing-mark" />
+                            }
+                            <rect x="@Format(LaneX(cursor) - 1)" y="-4" width="2" height="32" class="cursor-bar" />
+                        </svg>
+                    }
+                    <input type="range" min="0" max="@(Grid.Count - 1)" value="@cursor" @oninput="OnScrub" aria-label="@L["explore.time"]" />
+                    <div class="months">
+                        @foreach (var month in Months())
+                        {
+                            <span style="left: @(Format(month.Fraction * 100))%">@month.Label</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="jumps">
+                @if (view is not null)
+                {
+                    <button type="button" @onclick="() => Jump(view.Tracks.SunVisible, true, true)">@L["jump.sunrise"] ›</button>
+                    <button type="button" @onclick="() => Jump(view.Tracks.SunVisible, true, false)">@L["jump.sunset"] ›</button>
+                    <button type="button" title="@L["jump.eclipse"]" @onclick="() => Jump(view.Tracks.EarthOverSun, true, true)">@L["jump.eclipseShort"] ›</button>
+                }
+                <i class="bar-divider" aria-hidden="true"></i>
+                @if (replay is null && Store.Years?.Years is { Count: > 1 } years)
+                {
+                    <select class="year-pick" value="@Store.Year" @onchange="OnYear" aria-label="@L["explore.year"]">
+                        @foreach (var entry in years)
+                        {
+                            <option value="@entry.Id">@DataStore.YearLabel(entry.Id)</option>
+                        }
+                    </select>
+                }
+                <select class="speed-pick" value="@speedIndex" @onchange="OnSpeed" aria-label="@L["planner.speed"]">
+                    @for (var i = 0; i < Speeds.Length; i++)
+                    {
+                        <option value="@i">@(Speeds[i] * 5) @L["common.unit.h"]/@L["common.unit.s"]</option>
+                    }
+                </select>
+            </div>
+        </footer>
+    }
+</div>
+
+@code {
+    private const int LaneWidth = 1000;
+    private const int SparkWidth = 300;
+    private const int SparkHeight = 64;
+    private const double SparkZero = 32;
+    private const double SparkScale = 3.6;
+    private const int TickMs = 100;
+    private const string DefaultSite = "im2-athena";
+
+    private static readonly int[] Speeds = [1, 4, 16];
+
+    private static readonly string[] MonthsEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    private static readonly string[] MonthsUk = ["січ", "лют", "бер", "кві", "тра", "чер", "лип", "сер", "вер", "жов", "лис", "гру"];
+
+    private static readonly int[] EyeHeights = [2, 50, 500];
+
+    private bool surface;
+    private bool cardOpen;
+    private bool cardHidden;
+    private int eye = 50;
+
+    private sealed record Card(string Sun, string Earth, string Spark, WindowMetrics Metrics, int EarthLit, double SunEl, double TerrainEl, double EarthEl, Shadowline.Core.Power.PowerEstimate Power, DsnPanel.LinkSummary Link, Shadowline.Core.Thermal.ThermalEstimate Thermal, double DelaySeconds);
+
+    private sealed record Group(string Key, List<Site> Sites);
+
+    private string? error;
+    private MoonGlobe? globe;
+    private SiteView? view;
+    private Card? card;
+    private int cursor;
+    private bool playing;
+    private int speedIndex;
+    private Timer? timer;
+    private string query = string.Empty;
+    private bool sitesOpen;
+    private bool pendingFly = true;
+
+    private static readonly (string Key, string[] Modes)[] ChipGroups =
+    [
+        ("layer.group.landing", ["sun", "earth", "slope"]),
+        ("layer.group.science", ["ice", "diviner", "artemis"]),
+    ];
+
+    private const int MaxPins = 3;
+    private const int LaneBinCount = 96;
+    private const double LaneGap = 2.5;
+
+    private static readonly string[] MonthsGenUk = ["січ.", "лют.", "бер.", "квіт.", "трав.", "черв.", "лип.", "серп.", "вер.", "жовт.", "лист.", "груд."];
+
+    private bool listOpen;
+    private bool dropOpen;
+    private readonly List<string> pinned = [];
+    private readonly Dictionary<string, WindowMetrics> pinStats = [];
+    private (SiteView View, double[] Sun, double[] Earth)? laneCache;
+
+    private readonly record struct NowRow(string Label, string Value, bool Up);
+
+    private string ChipLabel(string mode) => mode switch
+    {
+        "ice" => L["layer.iceShort"],
+        "diviner" => L["layer.tempChip"],
+        "artemis" => L["layer.artemisChip"],
+        _ => L["layer." + mode],
+    };
+
+    private string ShortSpan(TimeSpan span) =>
+        span.TotalHours >= 24
+            ? span.TotalDays.ToString("F1", CultureInfo.InvariantCulture) + " " + L["explore.dayShort"]
+            : span.TotalHours.ToString("F0", CultureInfo.InvariantCulture) + " " + L["common.unit.h"];
+
+    private Task ToggleChip(string mode) => SetLayer(layer == mode ? "none" : mode);
+
+    private int SiteCount() => Store.Catalog!.Sites.Count(site => !IsTest(site));
+
+    private NowRow Change(BitTrack track, string riseKey, string setKey, string bodyKey)
+    {
+        var countdown = Countdown.At(track, cursor);
+        if (countdown.StepsToChange is not { } steps)
+        {
+            return new NowRow(L[bodyKey], L["explore.noChange"], countdown.Active);
+        }
+
+        return new NowRow(L[countdown.Active ? setKey : riseKey], L.Format("explore.inSpan", L.Span(Grid.Step * steps)), countdown.Active);
+    }
+
+    private static string Celsius(double kelvin) =>
+        (kelvin - 273.15).ToString("F0", CultureInfo.InvariantCulture).Replace("-", "−", StringComparison.Ordinal) + " °C";
+
+    private string SimTime()
+    {
+        var moment = Grid.At(cursor);
+        var month = L.Language == "uk" ? MonthsGenUk[moment.Month - 1] : MonthsEn[moment.Month - 1];
+        return moment.Day.ToString(CultureInfo.InvariantCulture) + " " + month + " " + moment.Year.ToString(CultureInfo.InvariantCulture) + " · " + moment.ToString("HH:mm", CultureInfo.InvariantCulture) + " UTC";
+    }
+
+    private (double[] Sun, double[] Earth) LaneBins()
+    {
+        if (laneCache is { } cached && ReferenceEquals(cached.View, view))
+        {
+            return (cached.Sun, cached.Earth);
+        }
+
+        var sun = new double[LaneBinCount];
+        var earth = new double[LaneBinCount];
+        var count = view!.Tracks.SunVisible.Length;
+        for (var b = 0; b < LaneBinCount; b++)
+        {
+            var start = (int)((long)b * count / LaneBinCount);
+            var end = (int)((long)(b + 1) * count / LaneBinCount);
+            var length = Math.Max(1, end - start);
+            sun[b] = view.Tracks.SunVisible.Slice(start, length).Fraction();
+            earth[b] = view.Tracks.EarthVisible.Slice(start, length).Fraction();
+        }
+
+        laneCache = (view, sun, earth);
+        return (sun, earth);
+    }
+
+    private static string BinClass(string tone, double fraction) =>
+        fraction <= 0 ? "lane-off" : fraction < 0.5 ? "lane-" + tone + " part" : "lane-" + tone;
+
+    private WindowMetrics? PinStats(string id) => pinStats.TryGetValue(id, out var metrics) ? metrics : null;
+
+    private readonly Dictionary<string, string> pinLabels = [];
+
+    private void Pin()
+    {
+        if (view is null || pinned.Contains(view.Site.Id) || pinned.Count >= MaxPins)
+        {
+            return;
+        }
+
+        pinned.Add(view.Site.Id);
+        if (IsCustom)
+        {
+            pinLabels[view.Site.Id] = customName ?? L.Format("explore.pointName", ShortLat(view.Site.LatitudeDeg), L.Lon(view.Site.LongitudeEastDeg, 1));
+        }
+
+        RefreshPins();
+    }
+
+    private void Unpin(string id)
+    {
+        pinned.Remove(id);
+        pinStats.Remove(id);
+        pinLabels.Remove(id);
+    }
+
+    private string PinLabel(string id, Site site) =>
+        pinLabels.TryGetValue(id, out var label) ? label : ShortName(site);
+
+    private string PinCompareLink() =>
+        $"compare?a={Uri.EscapeDataString(pinned[0])}&b={Uri.EscapeDataString(pinned[1])}&t={cursor}{Store.YearQuery}";
+
+    private void RefreshPins()
+    {
+        if (replay is not null)
+        {
+            return;
+        }
+
+        var grid = Grid;
+        var length = Math.Max(1, Math.Min(30 * 48, grid.Count - cursor));
+        pinStats.Clear();
+        foreach (var id in pinned)
+        {
+            if (Views.Resolve(id) is null)
+            {
+                continue;
+            }
+
+            var other = ViewFor(id);
+            pinStats[id] = WindowEvaluator.Evaluate(other.Tracks, grid, cursor, length);
+        }
+    }
+
+    private string layer = "none";
+    private bool grid;
+    private bool layerNow = true;
+    private bool nowShown;
+    private bool nowLoading;
+    private bool nowDirty;
+    private bool nowRunning;
+    private string nowKey = string.Empty;
+    private MoonGlobe.LayerProbe? probe;
+    private string? probedId;
+
+    private object LayerLabels() => new
+    {
+        sun = L["layer.sunYear"],
+        earth = L["layer.earthYear"],
+        sunNow = L["layer.sunNow"],
+        earthNow = L["layer.earthNow"],
+        up = L["layer.up"],
+        down = L["layer.down"],
+        metre = L["common.unit.m"],
+        slope = L["layer.slope"],
+        artemis = L["layer.artemisShort"],
+        diviner = L["layer.divinerShort"],
+        ice = L["layer.iceShort"],
+        noIce = L["layer.noIce"],
+        dark = L["layer.never"],
+        cell = L["layer.cell"],
+        km = L["common.unit.km"],
+    };
+
+    private async Task ToggleGrid()
+    {
+        if (globe is null || !await globe.SetGridAsync(!grid))
+        {
+            return;
+        }
+
+        grid = !grid;
+        await globe.SetLayerAsync(layer, LayerLabels());
+        if (grid && layer == "none")
+        {
+            var polar = view is not null && view.Site.LatitudeDeg < -80;
+            await globe.FlyToAsync(polar ? view!.Site.LatitudeDeg : -89.2, polar ? view!.Site.LongitudeEastDeg : 0, polar ? 700 : 1300, 20);
+        }
+    }
+
+    private async Task SetLayer(string mode)
+    {
+        if (globe is null || !await globe.SetLayerAsync(mode, LayerLabels()))
+        {
+            return;
+        }
+
+        var wasOff = layer == "none";
+        layer = mode;
+        QueueNowMap();
+        if (wasOff && mode != "none")
+        {
+            var polar = view is not null && view.Site.LatitudeDeg < -80;
+            await globe.FlyToAsync(polar ? view!.Site.LatitudeDeg : -89.2, polar ? view!.Site.LongitudeEastDeg : 0, polar ? 700 : 1300, 20);
+        }
+    }
+
+    private async Task OnGlobeReady()
+    {
+        if (pendingFly && globe is not null && view is not null)
+        {
+            pendingFly = false;
+            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, view.Site.LatitudeDeg < -70 ? 2600 : 4200);
+        }
+
+        await UpdateProbe();
+    }
+
+    private async Task UpdateProbe()
+    {
+        if (globe is null || !globe.IsReady || view is null || view.Site.Id == probedId)
+        {
+            return;
+        }
+
+        probedId = view.Site.Id;
+        probe = view.Site.LatitudeDeg < -80 ? await globe.ProbeAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg) : null;
+        StateHasChanged();
+    }
+
+    private const int ProfileWidth = 300;
+
+    private bool routeMode;
+    private MoonGlobe.RouteData? route;
+    private Shadowline.Core.Routes.RouteSummary? routeSummary;
+
+    private async Task ToggleRoute()
+    {
+        if (globe is null)
+        {
+            return;
+        }
+
+        var next = !routeMode;
+        if (!await globe.SetRouteModeAsync(next))
+        {
+            return;
+        }
+
+        routeMode = next;
+        sitesOpen = false;
+        if (next)
+        {
+            if (layer == "none")
+            {
+                await SetLayer("slope");
+            }
+            else if (view is null || view.Site.LatitudeDeg > -80)
+            {
+                await globe.FlyToAsync(-89.2, 0, 1300, 20);
+            }
+        }
+    }
+
+    private Task OnRouteChanged(MoonGlobe.RouteData data)
+    {
+        route = data;
+        var samples = new List<Shadowline.Core.Routes.RouteSample>(data.DistanceKm.Length);
+        for (var i = 0; i < data.DistanceKm.Length; i++)
+        {
+            samples.Add(new Shadowline.Core.Routes.RouteSample(data.DistanceKm[i], data.ElevationM[i], data.SlopeDeg[i], data.Sun[i], data.Earth[i], data.Dark[i]));
+        }
+
+        routeSummary = Shadowline.Core.Routes.RouteStats.Summarize(samples);
+        Routes.Set(data, routeSummary, view?.Site.Id);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task UndoPoint()
+    {
+        if (globe is not null)
+        {
+            await globe.UndoWaypointAsync();
+        }
+    }
+
+    private async Task ClearRoute()
+    {
+        if (globe is not null)
+        {
+            await globe.ClearRouteAsync();
+        }
+    }
+
+    private double ProfileX(double km) =>
+        route is null || route.DistanceKm[^1] <= 0 ? 0 : km / route.DistanceKm[^1] * ProfileWidth;
+
+    private double ProfileY(double meters)
+    {
+        if (route is null)
+        {
+            return 0;
+        }
+
+        var min = route.ElevationM.Min();
+        var max = Math.Max(min + 50, route.ElevationM.Max());
+        return 84 - (meters - min) / (max - min) * 76;
+    }
+
+    private string ProfileLine()
+    {
+        if (route is null)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(' ', route.DistanceKm.Select((d, i) => (i == 0 ? "M" : "L") + Format(ProfileX(d)) + " " + Format(ProfileY(route.ElevationM[i]))));
+    }
+
+    private string ProfileArea() => route is null ? string.Empty : ProfileLine() + $" L{ProfileWidth} 88 L0 88 Z";
+
+    private string SunColor(int i)
+    {
+        if (route is null)
+        {
+            return "transparent";
+        }
+
+        if (route.Dark[i])
+        {
+            return "#2b73eb";
+        }
+
+        var alpha = (0.15 + 0.85 * route.Sun[i]).ToString("F2", CultureInfo.InvariantCulture);
+        return $"rgba(247, 191, 77, {alpha})";
+    }
+
+    private static string SlopeColor(double deg) => deg >= 15 ? "#e0453a" : deg >= 10 ? "#f0b43c" : "#7ee08a";
+
+    private HistoryEvent? replay;
+    private BodyEphemeris? replayEph;
+    private int liveCursor;
+
+    private TimeGrid Grid => replay?.Grid ?? Store.Manifest!.Grid;
+
+    private BodyEphemeris Eph => replayEph ?? Store.Ephemeris!;
+
+    private SiteView ViewFor(string id) => Views.Get(id, replay?.Id, replayEph);
+
+    private async Task StartReplay(HistoryEvent item)
+    {
+        if (await Store.LoadHistoryAsync(item) is not { } ephemeris || view is null)
+        {
+            return;
+        }
+
+        StopPlay();
+        if (replay is null)
+        {
+            liveCursor = cursor;
+        }
+
+        replay = item;
+        replayEph = ephemeris;
+        cursor = item.Grid.IndexOf(item.LandingUtc);
+        view = ViewFor(view.Site.Id);
+        Refresh();
+        UpdateUrl();
+        if (globe is not null && !surface)
+        {
+            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, 600, 60);
+        }
+    }
+
+    private void EndReplay()
+    {
+        if (replay is null)
+        {
+            return;
+        }
+
+        StopPlay();
+        replay = null;
+        replayEph = null;
+        cursor = Math.Clamp(liveCursor, 0, Grid.Count - 1);
+        if (view is not null)
+        {
+            view = ViewFor(view.Site.Id);
+        }
+
+        Refresh();
+        UpdateUrl();
+    }
+
+    private bool recording;
+    private bool recordFailed;
+
+    private async Task Record()
+    {
+        if (globe is null || view is null || recording)
+        {
+            return;
+        }
+
+        recording = true;
+        recordFailed = false;
+        var wasPlaying = playing;
+        if (!playing)
+        {
+            TogglePlay();
+        }
+
+        StateHasChanged();
+        var title = routeMode && routeSummary is { LengthKm: > 0 } ? L["route.title"] : IsCustom ? customName ?? L["explore.custom"] : ShortName(view.Site);
+        var lines = new List<string> { FormatLat(view.Site.LatitudeDeg) + ", " + FormatLon(view.Site.LongitudeEastDeg) };
+        if (replay is not null)
+        {
+            lines.Insert(0, HistoryTitle(replay));
+        }
+
+        var id = new string(view.Site.Id.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+        var result = await globe.RecordAsync(title, lines, $"shadowline-{id}-{Grid.At(cursor).ToString("yyyyMMdd-HHmm", CultureInfo.InvariantCulture)}", 12);
+        if (!wasPlaying)
+        {
+            StopPlay();
+        }
+
+        recording = false;
+        recordFailed = result is null;
+        StateHasChanged();
+    }
+
+    private async Task StopRecord()
+    {
+        if (globe is not null)
+        {
+            await globe.StopRecordingAsync();
+        }
+    }
+
+    private async Task Snapshot()
+    {
+        if (globe is null || view is null || card is null)
+        {
+            return;
+        }
+
+        var time = Grid.At(cursor);
+        var title = IsCustom ? customName ?? L["explore.custom"] : ShortName(view.Site);
+        var lines = new List<string>
+        {
+            FormatLat(view.Site.LatitudeDeg) + ", " + FormatLon(view.Site.LongitudeEastDeg) + "    " + time.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC",
+            card.Sun + "    " + card.Earth,
+        };
+        if (replay is not null)
+        {
+            lines.Insert(0, HistoryTitle(replay));
+        }
+
+        if (surface)
+        {
+            lines.Add(L.Format("snapshot.eye", eye));
+        }
+
+        if (routeMode && routeSummary is { LengthKm: > 0 } summary)
+        {
+            title = L["route.title"];
+            lines =
+            [
+                L["route.length"] + " " + summary.LengthKm.ToString("F1", CultureInfo.InvariantCulture) + " " + L["common.unit.km"] + "    " + L["route.grade"] + " " + summary.MaxGradeDeg.ToString("F0", CultureInfo.InvariantCulture) + "°",
+                L["route.sun"] + " " + Percent(summary.SunMin) + " / " + Percent(summary.SunMean) + "    " + L["route.earth"] + " " + Percent(summary.EarthMean),
+            ];
+        }
+
+        var id = new string(view.Site.Id.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+        await globe.SnapshotAsync(title, lines, $"shadowline-{id}-{time.ToString("yyyyMMdd-HHmm", CultureInfo.InvariantCulture)}.png");
+    }
+
+    private string HistoryTitle(HistoryEvent item) =>
+        item.Title is { } title && title.TryGetValue(L.Language, out var text) ? text : item.Title?["en"] ?? item.Id;
+
+    private string LongDate(DateTimeOffset moment)
+    {
+        var names = L.Language == "uk" ? MonthsUk : MonthsEn;
+        return moment.Day.ToString(CultureInfo.InvariantCulture) + " " + names[moment.Month - 1] + " " + moment.Year.ToString(CultureInfo.InvariantCulture) + ", " + moment.ToString("HH:mm", CultureInfo.InvariantCulture) + " UTC";
+    }
+
+    private bool IsCustom => view?.Site.Id.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Store.ApplyYearAsync(new Uri(Navigation.Uri));
+            await Views.EnsureLoadedAsync();
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        var grid = Store.Manifest!.Grid;
+        cursor = Math.Clamp(grid.IndexOf(DateTimeOffset.UtcNow), 0, grid.Count - 1);
+        string? historyId = null;
+        var uri = new Uri(Navigation.Uri);
+        var siteId = DefaultSite;
+        foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && parts[0] == "site")
+            {
+                siteId = Uri.UnescapeDataString(parts[1]);
+            }
+            else if (parts.Length == 2 && parts[0] == "t" && int.TryParse(parts[1], out var t))
+            {
+                cursor = Math.Clamp(t, 0, grid.Count - 1);
+            }
+            else if (parts.Length == 2 && parts[0] == "h")
+            {
+                historyId = Uri.UnescapeDataString(parts[1]);
+            }
+        }
+
+        if (historyId is not null && Store.FindHistory(historyId) is { } item && await Store.LoadHistoryAsync(item) is { } ephemeris)
+        {
+            var t = cursor;
+            liveCursor = Math.Clamp(grid.IndexOf(DateTimeOffset.UtcNow), 0, grid.Count - 1);
+            replay = item;
+            replayEph = ephemeris;
+            cursor = new Uri(Navigation.Uri).Query.Contains("t=", StringComparison.Ordinal) ? Math.Clamp(t, 0, item.GridCount - 1) : item.Grid.IndexOf(item.LandingUtc);
+        }
+
+        if (Views.Resolve(siteId) is null)
+        {
+            siteId = DefaultSite;
+        }
+
+        if (replay is null && !uri.Query.Contains("site=", StringComparison.Ordinal) && !uri.Query.Contains("t=", StringComparison.Ordinal))
+        {
+            (siteId, cursor) = LitStart(grid, cursor);
+        }
+
+        if (replay is null && siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) && Views.TerrainFor(siteId) is null)
+        {
+            preparing = true;
+            view = ViewFor(siteId);
+            Refresh();
+            StateHasChanged();
+            await Views.PrepareAsync(siteId);
+            preparing = false;
+        }
+
+        view = ViewFor(siteId);
+        if (replay is null && !siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+        {
+            pinned.Add(siteId);
+        }
+
+        Refresh();
+    }
+
+    private (string SiteId, int Cursor) LitStart(Shadowline.Core.Time.TimeGrid grid, int now)
+    {
+        var horizon = Math.Min(grid.Count - now, (int)(TimeSpan.FromDays(30) / grid.Step));
+        var best = Store.Catalog!.Sites
+            .Where(site => site.LatitudeDeg <= -80 && !IsTest(site) && !site.Id.StartsWith("plan-", StringComparison.Ordinal) && Views.Resolve(site.Id) is not null)
+            .Select(site => (site.Id, Tracks: Views.Get(site.Id).Tracks))
+            .Where(item => horizon > 0 && item.Tracks.SunVisible[now])
+            .Select(item => (item.Id, Share: item.Tracks.SunVisible.Slice(now, horizon).Fraction()))
+            .OrderByDescending(item => item.Share)
+            .FirstOrDefault();
+        if (best.Id is not null)
+        {
+            return (best.Id, now);
+        }
+
+        var sunrise = TrackNavigator.Find(Views.Get(DefaultSite).Tracks.SunVisible, now, true, true);
+        return (DefaultSite, sunrise is { } rise ? Math.Clamp(rise + (int)(TimeSpan.FromHours(6) / grid.Step), 0, grid.Count - 1) : now);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (view is not null && view.Site.Id != probedId && globe is not null)
+        {
+            await UpdateProbe();
+        }
+    }
+
+    private IReadOnlyList<MoonGlobe.SceneSite> SceneSites()
+    {
+        var sites = Store.Catalog!.Sites
+            .Where(site => !IsTest(site))
+            .Select(site => new MoonGlobe.SceneSite(site.Id, ShortName(site), site.LatitudeDeg, site.LongitudeEastDeg, IsTest(site) ? "test" : string.Empty))
+            .ToList();
+        sites.AddRange(RecZones().Select(zone => new MoonGlobe.SceneSite(RecId(zone), "Z" + zone.Rank.ToString(CultureInfo.InvariantCulture), zone.LatitudeDeg, zone.LongitudeEastDeg, "rec")));
+        return sites;
+    }
+
+    private const int RecCount = 3;
+
+    private bool recOpen;
+    private bool recBusy;
+    private bool recFailed;
+    private string recKey = FinderPreset.Water.Key;
+    private FinderGrid? recGrid;
+    private FinderResult? recResult;
+    private IReadOnlyDictionary<int, double>? recStability;
+    private DateTimeOffset? recDay;
+    private DateTimeOffset? recPicked;
+    private Shadowline.Core.Missions.Mission? recMission;
+
+    private IEnumerable<FinderZone> RecZones() => recOpen && recResult is { } found ? found.Zones.Take(RecCount) : [];
+
+    private static string RecId(FinderZone zone) => CustomSite.Create(zone.LatitudeDeg, zone.LongitudeEastDeg).Id;
+
+    private async Task ToggleRec()
+    {
+        recOpen = !recOpen;
+        if (recOpen)
+        {
+            await Missions.EnsureLoadedAsync();
+            recKey = FinderPreset.Match(Missions.Current)?.Key ?? FinderPreset.Custom;
+            await RunRec();
+        }
+    }
+
+    private async Task RecPreset(string key)
+    {
+        var preset = FinderPreset.Get(key);
+        await Missions.SetAsync(preset.Apply(Missions.Current));
+        recKey = preset.Key;
+        await RunRec();
+    }
+
+    private async Task RunRec()
+    {
+        recBusy = true;
+        recFailed = false;
+        StateHasChanged();
+        recGrid = await FinderData.LoadAsync();
+        if (recGrid is null)
+        {
+            recBusy = false;
+            recFailed = true;
+            recResult = null;
+            return;
+        }
+
+        await Task.Delay(30);
+        var mission = Missions.Current;
+        var day = recPicked ?? RecLandingDay(recGrid);
+        var preset = recKey == FinderPreset.Custom ? null : FinderPreset.Get(recKey);
+        var result = SiteFinder.Evaluate(recGrid, FinderPreset.Profile(mission, preset, day), FinderPreset.MinZoneCells);
+        await Task.Yield();
+        recStability = SiteFinder.Stability(result);
+        recResult = result;
+        recDay = day;
+        recMission = mission;
+        recBusy = false;
+    }
+
+    private DateTimeOffset RecLandingDay(FinderGrid finder)
+    {
+        var day = new DateTimeOffset(Grid.At(cursor).UtcDateTime.Date, TimeSpan.Zero);
+        return day < finder.StartUtc || day >= finder.EndUtc ? new DateTimeOffset(finder.StartUtc.UtcDateTime.Date.AddDays(120), TimeSpan.Zero) : day;
+    }
+
+    private string RecDateValue(FinderGrid finder) =>
+        (recDay ?? recPicked ?? RecLandingDay(finder)).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private async Task OnRecDate(ChangeEventArgs args)
+    {
+        if (recGrid is null || !DateTime.TryParseExact(args.Value?.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var picked))
+        {
+            return;
+        }
+
+        var day = new DateTimeOffset(DateTime.SpecifyKind(picked, DateTimeKind.Utc));
+        if (day < recGrid.StartUtc || day >= recGrid.EndUtc)
+        {
+            return;
+        }
+
+        recPicked = day;
+        await RunRec();
+    }
+
+    private async Task PickRec(FinderZone zone)
+    {
+        if (recGrid is null)
+        {
+            return;
+        }
+
+        var start = recGrid.At(zone.Window.StartStep);
+        if (start >= Grid.Start && start < Grid.End)
+        {
+            StopPlay();
+            cursor = Math.Clamp(Grid.IndexOf(start), 0, Grid.Count - 1);
+        }
+
+        await SelectPoint(zone.LatitudeDeg, zone.LongitudeEastDeg, true);
+        customName = L.Format("rec.zone", zone.Rank);
+    }
+
+    private string RecSummary()
+    {
+        var mission = recMission ?? Missions.Current;
+        var day = recDay ?? new DateTimeOffset(Grid.At(cursor).UtcDateTime.Date, TimeSpan.Zero);
+        return L.Format("rec.summary", L.ShortDate(day), FinderPreset.FlexDays, mission.DurationDays,
+            mission.PanelW.ToString("F0", CultureInfo.InvariantCulture), mission.LoadW.ToString("F0", CultureInfo.InvariantCulture), (mission.BatteryWh / 1000).ToString("0.#", CultureInfo.InvariantCulture));
+    }
+
+    private string RecPlanLink() =>
+        recDay is { } day ? "plan?date=" + day.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "plan";
+
+    private string RecHours(double hours) =>
+        double.IsPositiveInfinity(hours) ? "∞" : hours >= 48 ? L.Duration(TimeSpan.FromHours(hours)) : hours.ToString("F0", CultureInfo.InvariantCulture) + " " + L["common.unit.h"];
+
+    private static string F2(double value) => value.ToString("F2", CultureInfo.InvariantCulture);
+
+    private static bool IsTest(Site site) => site.Id.StartsWith("syn-", StringComparison.Ordinal);
+
+    private string ShortName(Site site)
+    {
+        var name = L.Name(site).Replace(" Lunar Module", string.Empty, StringComparison.Ordinal);
+        var bracket = name.IndexOf(" (", StringComparison.Ordinal);
+        return bracket > 0 && !IsTest(site) ? name[..bracket] : name;
+    }
+
+    private List<Group> Groups()
+    {
+        var text = query.Trim();
+        var sites = Store.Catalog!.Sites
+            .Where(site => !IsTest(site))
+            .Where(site => text.Length == 0 || site.Name.Contains(text, StringComparison.OrdinalIgnoreCase) || (site.NameUk?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) || (site.Mission?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false));
+        var groups = new List<Group>
+        {
+            new("explore.group.pole", []),
+            new("explore.group.apollo", []),
+            new("explore.group.luna", []),
+            new("explore.group.surveyor", []),
+            new("explore.group.other", []),
+            new("explore.group.test", []),
+            new("explore.group.planned", []),
+            new("explore.group.impact", []),
+        };
+        foreach (var site in sites)
+        {
+            var index = IsTest(site) ? 5
+                : site.Id.StartsWith("plan-", StringComparison.Ordinal) ? 6
+                : site.Id.StartsWith("impact-", StringComparison.Ordinal) ? 7
+                : site.LatitudeDeg < -60 ? 0
+                : site.Id.StartsWith("apollo", StringComparison.Ordinal) ? 1
+                : site.Id.StartsWith("luna", StringComparison.Ordinal) ? 2
+                : site.Id.StartsWith("surveyor", StringComparison.Ordinal) ? 3
+                : 4;
+            groups[index].Sites.Add(site);
+        }
+
+        return groups.Where(group => group.Sites.Count > 0).OrderBy(group => group.Key == "explore.group.test" ? 1 : 0).ToList();
+    }
+
+    private (double Lat, double Lon)? SearchPoint()
+    {
+        var parts = query.Split(',', StringSplitOptions.TrimEntries);
+        if (parts.Length == 2
+            && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var lat)
+            && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var lon)
+            && CustomSite.IsValid(lat, lon))
+        {
+            return (lat, lon > 180 ? lon - 360 : lon);
+        }
+
+        return null;
+    }
+
+    private void OnSearch(ChangeEventArgs args) => query = args.Value?.ToString() ?? string.Empty;
+
+    private string Caption(Shadowline.Data.SitePhoto photo) =>
+        photo.Caption is { } caption && caption.TryGetValue(L.Language, out var text) ? text : photo.Caption?["en"] ?? string.Empty;
+
+    private object SurfaceLabels() => new
+    {
+        sun = L["explore.sun"],
+        earth = L["explore.earth"],
+        directions = L["explore.dirs"].Split(','),
+    };
+
+    private async Task Stand()
+    {
+        if (globe is not null && view is not null && await globe.StandAsync(view.Site, eye, SurfaceLabels()))
+        {
+            surface = true;
+        }
+    }
+
+    private int? tourIndex;
+    private bool showRegions;
+    private bool preparing;
+    private string? customName;
+    private Shadowline.Data.ArtemisRegion? region;
+
+    private async Task OnRegionPicked(string code)
+    {
+        if (Store.Artemis?.Regions?.FirstOrDefault(item => item.Code == code) is not { } picked)
+        {
+            return;
+        }
+
+        await SelectPoint(picked.Lat, picked.Lon, false);
+        region = picked;
+        customName = picked.Name;
+        if (globe is not null)
+        {
+            await globe.FlyToAsync(picked.Lat, picked.Lon, 240, 50);
+        }
+    }
+
+    private async Task SelectCandidate(Shadowline.Data.ArtemisRegion owner, Shadowline.Data.ArtemisSite candidate)
+    {
+        await SelectPoint(candidate.Lat, candidate.Lon, false);
+        region = owner;
+        customName = owner.Name + " " + candidate.Name;
+        if (globe is not null)
+        {
+            await globe.FlyToAsync(candidate.Lat, candidate.Lon, 60, 55);
+        }
+    }
+
+    private async Task StartTour()
+    {
+        EndReplay();
+        if (!Store.IsBaseYear && Store.Years?.Years is { Count: > 0 } years)
+        {
+            await Store.SetYearAsync(years[0].Id);
+            if (view is not null)
+            {
+                view = ViewFor(view.Site.Id);
+            }
+        }
+
+        tourIndex = 0;
+        await ApplyTourStep();
+    }
+
+    private async Task OnTourStep(int index)
+    {
+        tourIndex = index;
+        await ApplyTourStep();
+    }
+
+    private async Task CloseTour()
+    {
+        tourIndex = null;
+        if (surface)
+        {
+            await Leave();
+        }
+    }
+
+    private async Task ApplyTourStep()
+    {
+        if (Store.Tour?.Steps is not { } steps || tourIndex is not { } index || index < 0 || index >= steps.Count || globe is null)
+        {
+            return;
+        }
+
+        var step = steps[index];
+        StopPlay();
+        if ((step.Layer ?? "none") != layer)
+        {
+            await SetLayer(step.Layer ?? "none");
+        }
+
+        if (step.Time is { } time)
+        {
+            cursor = Math.Clamp(Grid.IndexOf(time), 0, Grid.Count - 1);
+        }
+
+        if (Views.Resolve(step.Site) is null)
+        {
+            return;
+        }
+
+        if (step.Site.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+        {
+            await Views.PrepareAsync(step.Site);
+        }
+
+        view = ViewFor(step.Site);
+        Refresh();
+        StateHasChanged();
+        var scene = step.Scene ?? "orbit";
+        if (scene == "orbit")
+        {
+            if (surface)
+            {
+                await Leave();
+            }
+
+            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, view.Site.LatitudeDeg < -70 ? 2600 : 4600);
+            return;
+        }
+
+        if (await globe.StandAsync(view.Site, eye, SurfaceLabels()))
+        {
+            surface = true;
+            StateHasChanged();
+            if (scene == "earth")
+            {
+                await globe.TurnToAsync("earth");
+            }
+            else if (scene == "sun")
+            {
+                await globe.TurnToAsync("sun");
+            }
+            else if (scene == "eclipse")
+            {
+                await globe.TurnToAsync("sun", 6);
+            }
+        }
+    }
+
+    private async Task Leave()
+    {
+        surface = false;
+        if (globe is not null)
+        {
+            await globe.LeaveSurfaceAsync();
+        }
+    }
+
+    private async Task Turn(string target)
+    {
+        if (globe is not null)
+        {
+            await globe.TurnToAsync(target);
+        }
+    }
+
+    private async Task SetEye(int meters)
+    {
+        eye = meters;
+        if (globe is not null)
+        {
+            await globe.SetEyeAsync(meters);
+        }
+    }
+
+    private async Task SelectSite(string id, bool fly)
+    {
+        cardHidden = false;
+        if (Views.Resolve(id) is null)
+        {
+            return;
+        }
+
+        if (id.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) && Views.TerrainFor(id) is null)
+        {
+            preparing = true;
+            view = ViewFor(id);
+            Refresh();
+            StateHasChanged();
+            await Views.PrepareAsync(id);
+            preparing = false;
+        }
+
+        view = ViewFor(id);
+        sitesOpen = false;
+        region = null;
+        customName = null;
+        Refresh();
+        UpdateUrl();
+        if (fly && globe is not null)
+        {
+            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, view.Site.LatitudeDeg < -70 ? 900 : 1800);
+        }
+    }
+
+    private Task SelectPoint(double lat, double lon, bool fly)
+    {
+        var site = CustomSite.Create(lat, lon);
+        return SelectSite(site.Id, fly);
+    }
+
+    private Task OnSitePicked(string id) =>
+        RecZones().FirstOrDefault(zone => RecId(zone) == id) is { } zone ? PickRec(zone) : SelectSite(id, true);
+
+    private Task OnPointPicked((double Lat, double Lon) point) => SelectPoint(point.Lat, point.Lon, false);
+
+    private async Task FlyToSelected()
+    {
+        if (globe is not null && view is not null)
+        {
+            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, view.Site.LatitudeDeg < -70 ? 260 : 600, 60);
+        }
+    }
+
+    private async Task SetLayerNow(bool now)
+    {
+        layerNow = now;
+        QueueNowMap();
+        await Task.CompletedTask;
+    }
+
+    private void QueueNowMap()
+    {
+        nowDirty = true;
+        if (!nowRunning)
+        {
+            _ = InvokeAsync(RunNowMapAsync);
+        }
+    }
+
+    private async Task RunNowMapAsync()
+    {
+        nowRunning = true;
+        try
+        {
+            while (nowDirty)
+            {
+                nowDirty = false;
+                await SendNowMapAsync();
+                await Task.Delay(150);
+            }
+        }
+        finally
+        {
+            nowRunning = false;
+        }
+    }
+
+    private async Task SendNowMapAsync()
+    {
+        if (globe is null)
+        {
+            return;
+        }
+
+        var wanted = layerNow && layer is "sun" or "earth";
+        if (wanted && FinderData.Grid is null && !nowLoading)
+        {
+            nowLoading = true;
+            StateHasChanged();
+        }
+
+        var finder = wanted ? await FinderData.LoadAsync() : null;
+        if (nowLoading)
+        {
+            nowLoading = false;
+            StateHasChanged();
+        }
+
+        var step = finder is null ? -1 : finder.StepAt(Grid.At(cursor));
+        var shown = finder is not null && step >= 0 && step < finder.Steps;
+        var key = shown ? step.ToString(CultureInfo.InvariantCulture) : "off";
+        if (key != nowKey)
+        {
+            nowKey = key;
+            await globe.SetNowMapAsync(shown ? PoleNow.Build(finder!, Grid.At(cursor)) : null, finder?.Size ?? 0, finder?.HalfExtentM ?? 0);
+        }
+
+        if (shown != nowShown)
+        {
+            nowShown = shown;
+            StateHasChanged();
+        }
+    }
+
+    private void Refresh()
+    {
+        if (view is null)
+        {
+            return;
+        }
+
+        QueueNowMap();
+
+        var grid = Grid;
+        var length = Math.Min(30 * 48, grid.Count - cursor);
+        var metrics = WindowEvaluator.Evaluate(view.Tracks, grid, cursor, Math.Max(1, length));
+        var points = new List<string>();
+        var samples = 120;
+        for (var k = 0; k <= samples; k++)
+        {
+            var index = Math.Min(grid.Count - 1, cursor + k * (30 * 48) / samples);
+            var sun = view.At(index).Sun;
+            var above = sun.ElevationDeg - view.Horizon.ElevationAt(sun.AzimuthDeg);
+            var y = Math.Clamp(SparkZero - above * SparkScale, 1, SparkHeight - 1);
+            points.Add((k == 0 ? "M" : "L") + Format(k * (double)SparkWidth / samples) + " " + Format(y));
+        }
+
+        var s = Eph.Sun(cursor);
+        var e = Eph.Earth(cursor);
+        var sunFromEarth = (s - e).Normalized();
+        var moonFromEarth = (e * -1).Normalized();
+        var lit = (int)Math.Round((1 + Vec3.Dot(sunFromEarth, moonFromEarth)) / 2 * 100);
+        var now = view.At(cursor);
+        RefreshPins();
+        card = new Card(CountdownText("planner.sun", view.Tracks.SunVisible), CountdownText("planner.earth", view.Tracks.EarthVisible), string.Join(' ', points), metrics, lit, now.Sun.ElevationDeg, view.Horizon.ElevationAt(now.Sun.AzimuthDeg), now.Earth.ElevationDeg, view.Power(grid, cursor, Math.Max(1, length)), DsnPanel.Summarize(view.Tracks.EarthVisible, Comms.Dsn(Eph), grid.Step, cursor, Math.Max(1, length)), view.Thermal(grid, cursor, Math.Max(1, length)), now.Earth.RangeKm / 299792.458);
+    }
+
+    private string CountdownText(string prefix, BitTrack track)
+    {
+        var countdown = Countdown.At(track, cursor);
+        if (countdown.StepsToChange is not { } steps)
+        {
+            return L[prefix + (countdown.Active ? ".up" : ".down")];
+        }
+
+        return L.Format(prefix + (countdown.Active ? ".sets" : ".rises"), L.Span(Grid.Step * steps));
+    }
+
+    private void SetCursor(int index)
+    {
+        StopPlay();
+        cursor = Math.Clamp(index, 0, Grid.Count - 1);
+        Refresh();
+        UpdateUrl();
+    }
+
+    private void OnScrub(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            cursor = Math.Clamp(value, 0, Grid.Count - 1);
+            Refresh();
+        }
+    }
+
+    private void Jump(BitTrack track, bool forward, bool rising)
+    {
+        if (TrackNavigator.Find(track, cursor, forward, rising) is { } target)
+        {
+            cursor = target;
+            Refresh();
+            UpdateUrl();
+        }
+    }
+
+
+    private async Task OnYear(ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() is not { } id || view is null)
+        {
+            return;
+        }
+
+        StopPlay();
+        var offset = Grid.At(cursor) - Grid.Start;
+        if (!await Store.SetYearAsync(id))
+        {
+            return;
+        }
+
+        cursor = Math.Clamp(Grid.IndexOf(Grid.Start + offset), 0, Grid.Count - 1);
+        view = ViewFor(view.Site.Id);
+        Refresh();
+        UpdateUrl();
+    }
+
+    private void OnSpeed(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value) && value >= 0 && value < Speeds.Length)
+        {
+            speedIndex = value;
+        }
+    }
+
+    private void TogglePlay()
+    {
+        if (playing)
+        {
+            StopPlay();
+            UpdateUrl();
+            return;
+        }
+
+        playing = true;
+        timer = new Timer(_ => InvokeAsync(Tick), null, TickMs, TickMs);
+    }
+
+    private void StopPlay()
+    {
+        playing = false;
+        timer?.Dispose();
+        timer = null;
+    }
+
+    private void Tick()
+    {
+        if (!playing)
+        {
+            return;
+        }
+
+        var last = Grid.Count - 1;
+        cursor = Math.Min(cursor + Speeds[speedIndex], last);
+        if (cursor >= last)
+        {
+            StopPlay();
+        }
+
+        Refresh();
+        StateHasChanged();
+    }
+
+    private void UpdateUrl()
+    {
+        if (view is null)
+        {
+            return;
+        }
+
+        var history = replay is null ? Store.YearQuery : "&h=" + Uri.EscapeDataString(replay.Id);
+        Navigation.NavigateTo($"?site={Uri.EscapeDataString(view.Site.Id)}&t={cursor}{history}{Missions.QuerySuffix}", new NavigationOptions { ReplaceHistoryEntry = true });
+    }
+
+    private string CompareLink() => view is null ? "compare" : $"compare?a={Uri.EscapeDataString(view.Site.Id)}&t={cursor}{Store.YearQuery}";
+
+    private string ReportLink() => view is null ? "report" : $"report?site={Uri.EscapeDataString(view.Site.Id)}&t={cursor}&w=720{Store.YearQuery}";
+
+    private string PlannerLink() => view is null ? "plan/sky" : $"plan/sky?site={Uri.EscapeDataString(view.Site.Id)}&t={cursor}&w=168{Store.YearQuery}";
+
+    private IEnumerable<(double Fraction, string Label)> Months()
+    {
+        var grid = Grid;
+        var start = grid.Start;
+        var month = new DateTimeOffset(start.Year, start.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(1);
+        var total = (grid.End - grid.Start).TotalHours;
+        if (total < 24 * 60)
+        {
+            var names = L.Language == "uk" ? MonthsUk : MonthsEn;
+            var day = new DateTimeOffset(start.Year, start.Month, start.Day, 0, 0, 0, TimeSpan.Zero).AddDays(1);
+            for (; day < grid.End; day = day.AddDays(5))
+            {
+                yield return ((day - start).TotalHours / total, day.Day.ToString(CultureInfo.InvariantCulture) + " " + names[day.Month - 1]);
+            }
+
+            yield break;
+        }
+
+        while (month < grid.End)
+        {
+            var names = L.Language == "uk" ? MonthsUk : MonthsEn;
+            var label = names[month.Month - 1] + (month.Month <= 2 ? " " + month.Year.ToString(CultureInfo.InvariantCulture) : string.Empty);
+            yield return ((month - start).TotalHours / total, label);
+            month = month.AddMonths(2);
+        }
+    }
+
+    private double LaneX(int steps) => (double)steps / Grid.Count * LaneWidth;
+
+    private static string Format(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string EarthPhasePath(double lit)
+    {
+        const double r = 11;
+        var k = Math.Clamp(lit, 0, 1);
+        var rx = Math.Abs(1 - 2 * k) * r;
+        var sweep = k > 0.5 ? 1 : 0;
+        return $"M0 {Format(-r)} A{Format(r)} {Format(r)} 0 0 1 0 {Format(r)} A{Format(rx)} {Format(r)} 0 0 {sweep} 0 {Format(-r)} Z";
+    }
+
+    private static string Deg(double value) => value.ToString("F1", CultureInfo.InvariantCulture) + "°";
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private string FormatLat(double value) => L.Lat(value, 2);
+
+    private string ShortLat(double value) => L.Lat(value, 1);
+
+    private string FormatLon(double value) => L.Lon(value, 2);
+
+    public override void Dispose()
+    {
+        StopPlay();
+        base.Dispose();
+    }
+}

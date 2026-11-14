@@ -1,0 +1,23 @@
+@using Shadowline.Data
+@if (Ids is { Count: > 0 } && Doc?.Sources is { } sources)
+{
+    <sup class="cite">
+        @foreach (var id in Ids.Where(sources.ContainsKey))
+        {
+            <a href="@sources[id].Url" target="_blank" rel="noopener" title="@sources[id].Title">[@(Index(id))]</a>
+        }
+    </sup>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<string>? Ids { get; set; }
+
+    [Parameter]
+    public IncidentsDocument? Doc { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string>? Order { get; set; }
+
+    private int Index(string id) => (Order ?? Doc?.Sources?.Keys.ToList() ?? []).ToList().IndexOf(id) + 1;
+}

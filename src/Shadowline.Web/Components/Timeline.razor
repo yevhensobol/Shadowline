@@ -1,0 +1,66 @@
+@inherits LocalizedComponent
+@using Shadowline.Core.Time
+@using Shadowline.Core.Tracks
+
+<div class="timeline">
+    <svg viewBox="0 0 @Width @TotalHeight" role="img">
+        @for (var row = 0; row < Rows.Length; row++)
+        {
+            var top = row * (RowHeight + Gap);
+            var definition = Rows[row];
+            <g><text x="0" y="@(top + RowHeight - 7)" class="lane-label">@L[definition.LabelKey]</text></g>
+            <rect x="@Gutter" y="@top" width="@(Width - Gutter)" height="@RowHeight" rx="3" class="lane" />
+            @foreach (var run in definition.Select(Tracks).Runs(true))
+            {
+                <rect x="@Format(Scale(run.Start))" y="@top" width="@Format(Math.Max(1, Span(run.Length)))" height="@RowHeight" class="@definition.CssClass" />
+            }
+        }
+        <rect x="@Format(Scale(WindowStart))" y="-4" width="@Format(Math.Max(1, Span(WindowLength)))" height="@(TotalHeight + 8)" class="window" />
+        <line x1="@Format(Scale(Cursor))" x2="@Format(Scale(Cursor))" y1="-6" y2="@(TotalHeight + 6)" class="cursor" />
+    </svg>
+    <input type="range" min="0" max="@(Grid.Count - 1)" value="@Cursor" @oninput="OnInput" aria-label="@L["timeline.time"]" />
+</div>
+
+@code {
+    private const int Width = 720;
+    private const int Gutter = 150;
+    private const int RowHeight = 22;
+    private const int Gap = 8;
+    private static int TotalHeight => Rows.Length * RowHeight + Gap * (Rows.Length - 1);
+
+    private sealed record Row(string LabelKey, string CssClass, Func<SkyTracks, BitTrack> Select);
+
+    private static readonly Row[] Rows =
+    [
+        new("timeline.sun", "lane-sun", tracks => tracks.SunVisible),
+        new("timeline.earth", "lane-earth", tracks => tracks.EarthVisible),
+        new("metric.eclipse", "lane-eclipse", tracks => tracks.EarthOverSun)
+    ];
+
+    [Parameter, EditorRequired]
+    public SkyTracks Tracks { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public TimeGrid Grid { get; set; } = default!;
+
+    [Parameter]
+    public int Cursor { get; set; }
+
+    [Parameter]
+    public EventCallback<int> CursorChanged { get; set; }
+
+    [Parameter]
+    public int WindowStart { get; set; }
+
+    [Parameter]
+    public int WindowLength { get; set; }
+
+    private double Span(int steps) => (double)steps / Grid.Count * (Width - Gutter);
+
+    private double Scale(int steps) => Gutter + Span(steps);
+
+    private static string Format(double value) => value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+    private Task OnInput(ChangeEventArgs args) =>
+        int.TryParse(args.Value?.ToString(), out var value) ? CursorChanged.InvokeAsync(value) : Task.CompletedTask;
+}

@@ -1,0 +1,920 @@
+{
+  "formatVersion": 1,
+  "builtAtUtc": "2026-11-07T19:34:16Z",
+  "draws": 6000,
+  "seed": 1,
+  "slim": {
+    "fit": {
+      "drawn": 6000,
+      "kept": 1658,
+      "azimuthDeg": {
+        "low": 206.06086641832292,
+        "median": 272.13609445473935,
+        "high": 336.4905677253803
+      },
+      "elevationDeg": {
+        "low": -30.368440711476207,
+        "median": 12.85001895502035,
+        "high": 56.81715029116081
+      },
+      "threshold": {
+        "low": 0.045135289898670876,
+        "median": 0.28877192302084154,
+        "high": 0.5637250969296904
+      }
+    },
+    "sensitivity": [
+      {
+        "id": "base",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1658,
+          "azimuthDeg": {
+            "low": 206.06086641832292,
+            "median": 272.13609445473935,
+            "high": 336.4905677253803
+          },
+          "elevationDeg": {
+            "low": -30.368440711476207,
+            "median": 12.85001895502035,
+            "high": 56.81715029116081
+          },
+          "threshold": {
+            "low": 0.045135289898670876,
+            "median": 0.28877192302084154,
+            "high": 0.5637250969296904
+          }
+        },
+        "powerLostShare": 0.916,
+        "day1SunsetUtc": "2024-01-31T06:30:00+00:00",
+        "day2SunriseUtc": "2024-02-15T12:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.916
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.791
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.97
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.674
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 726.6666666666666,
+          "median": 825.1666666666666,
+          "high": 915.6666666666666
+        }
+      },
+      {
+        "id": "thresholdTo30",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1774,
+          "azimuthDeg": {
+            "low": 204.12707686616432,
+            "median": 269.8444685478903,
+            "high": 337.66232442933256
+          },
+          "elevationDeg": {
+            "low": -35.69828713582688,
+            "median": 6.059534781628161,
+            "high": 47.22311340610267
+          },
+          "threshold": {
+            "low": 0.0326397698058932,
+            "median": 0.1581188364783855,
+            "high": 0.2854276676035615
+          }
+        },
+        "powerLostShare": 0.983,
+        "day1SunsetUtc": "2024-01-31T06:30:00+00:00",
+        "day2SunriseUtc": "2024-02-15T12:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.983
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.813
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.979
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.704
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 725.1666666666666,
+          "median": 820.6666666666666,
+          "high": 914.1666666666666
+        }
+      },
+      {
+        "id": "thresholdTo90",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1388,
+          "azimuthDeg": {
+            "low": 208.55227347861614,
+            "median": 272.68594143571613,
+            "high": 335.7407186439916
+          },
+          "elevationDeg": {
+            "low": -28.326636837787348,
+            "median": 17.737834048354173,
+            "high": 59.648588626738295
+          },
+          "threshold": {
+            "low": 0.05094618657182259,
+            "median": 0.35115458943469197,
+            "high": 0.7963517305517345
+          }
+        },
+        "powerLostShare": 0.849,
+        "day1SunsetUtc": "2024-01-31T06:30:00+00:00",
+        "day2SunriseUtc": "2024-02-15T12:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.849
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.771
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.955
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.646
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 731.1666666666666,
+          "median": 832.1666666666666,
+          "high": 917.6666666666666
+        }
+      },
+      {
+        "id": "windowsEarlier6h",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1663,
+          "azimuthDeg": {
+            "low": 205.06128272277363,
+            "median": 272.5255084561768,
+            "high": 338.55136272430013
+          },
+          "elevationDeg": {
+            "low": -28.27810885546224,
+            "median": 15.673522669030952,
+            "high": 58.8902171621439
+          },
+          "threshold": {
+            "low": 0.04401747378707746,
+            "median": 0.28467186950364703,
+            "high": 0.5623506023280093
+          }
+        },
+        "powerLostShare": 0.902,
+        "day1SunsetUtc": "2024-01-31T06:30:00+00:00",
+        "day2SunriseUtc": "2024-02-15T12:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.902
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.817
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.984
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.7
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 720.1666666666666,
+          "median": 825.1666666666666,
+          "high": 909.6666666666666
+        }
+      },
+      {
+        "id": "windowsLater6h",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1662,
+          "azimuthDeg": {
+            "low": 206.7051350356569,
+            "median": 270.7500912764808,
+            "high": 335.2203694243078
+          },
+          "elevationDeg": {
+            "low": -33.205547659788635,
+            "median": 10.61710931327044,
+            "high": 53.44856157999355
+          },
+          "threshold": {
+            "low": 0.045135289898670876,
+            "median": 0.28908603180622966,
+            "high": 0.5641748800241272
+          }
+        },
+        "powerLostShare": 0.93,
+        "day1SunsetUtc": "2024-01-31T06:30:00+00:00",
+        "day2SunriseUtc": "2024-02-15T12:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.93
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.761
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.94
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.644
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 730.1666666666666,
+          "median": 831.6666666666666,
+          "high": 921.6666666666666
+        }
+      },
+      {
+        "id": "horizonMinus1",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1658,
+          "azimuthDeg": {
+            "low": 206.06086641832292,
+            "median": 272.13609445473935,
+            "high": 336.4905677253803
+          },
+          "elevationDeg": {
+            "low": -30.368440711476207,
+            "median": 12.85001895502035,
+            "high": 56.81715029116081
+          },
+          "threshold": {
+            "low": 0.045135289898670876,
+            "median": 0.28877192302084154,
+            "high": 0.5637250969296904
+          }
+        },
+        "powerLostShare": 0.916,
+        "day1SunsetUtc": "2024-01-31T08:30:00+00:00",
+        "day2SunriseUtc": "2024-02-15T10:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.916
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.791
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.97
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.674
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 726.6666666666666,
+          "median": 825.1666666666666,
+          "high": 915.6666666666666
+        }
+      },
+      {
+        "id": "horizonPlus1",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1658,
+          "azimuthDeg": {
+            "low": 206.06086641832292,
+            "median": 272.13609445473935,
+            "high": 336.4905677253803
+          },
+          "elevationDeg": {
+            "low": -30.368440711476207,
+            "median": 12.85001895502035,
+            "high": 56.81715029116081
+          },
+          "threshold": {
+            "low": 0.045135289898670876,
+            "median": 0.28877192302084154,
+            "high": 0.5637250969296904
+          }
+        },
+        "powerLostShare": 0.916,
+        "day1SunsetUtc": "2024-01-31T04:00:00+00:00",
+        "day2SunriseUtc": "2024-02-15T14:00:00+00:00",
+        "checks": [
+          {
+            "kind": "PowerLost",
+            "fromUtc": "2024-01-31T00:00:00+00:00",
+            "share": 0.916
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-02-25T09:00:00+00:00",
+            "share": 0.791
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-03-27T09:00:00+00:00",
+            "share": 0.97
+          },
+          {
+            "kind": "Power",
+            "fromUtc": "2024-04-23T09:00:00+00:00",
+            "share": 0.674
+          }
+        ],
+        "day2FirstPowerHours": {
+          "low": 726.6666666666666,
+          "median": 825.1666666666666,
+          "high": 915.6666666666666
+        }
+      }
+    ]
+  },
+  "im1": {
+    "hypotheses": [
+      {
+        "id": "panel30ToHorizontal",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1414,
+          "azimuthDeg": {
+            "low": 295.7628343141464,
+            "median": 349.8310105268988,
+            "high": 43.52515319526435
+          },
+          "elevationDeg": {
+            "low": 59.99999999999999,
+            "median": 59.99999999999999,
+            "high": 59.99999999999999
+          },
+          "threshold": {
+            "low": 0.035777436250717116,
+            "median": 0.19220394141609032,
+            "high": 0.48523093369101683
+          }
+        },
+        "evidence": 0.2357,
+        "standardError": 0.0055,
+        "share": 0.232,
+        "shareError": 0.011,
+        "medianErrorHours": 13,
+        "lowHours": -17,
+        "highHours": 43
+      },
+      {
+        "id": "panel60ToHorizontal",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1593,
+          "azimuthDeg": {
+            "low": 301.69363279905815,
+            "median": 350.42767596916656,
+            "high": 37.38797498745282
+          },
+          "elevationDeg": {
+            "low": 29.999999999999996,
+            "median": 29.999999999999996,
+            "high": 29.999999999999996
+          },
+          "threshold": {
+            "low": 0.043424887258291654,
+            "median": 0.24559820407330904,
+            "high": 0.5524450497666584
+          }
+        },
+        "evidence": 0.2655,
+        "standardError": 0.0057,
+        "share": 0.202,
+        "shareError": 0.01,
+        "medianErrorHours": 25.5,
+        "lowHours": -15,
+        "highHours": 43
+      },
+      {
+        "id": "free",
+        "fit": {
+          "drawn": 6000,
+          "kept": 1236,
+          "azimuthDeg": {
+            "low": 303.198047291114,
+            "median": 351.4568694082352,
+            "high": 36.36459356004593
+          },
+          "elevationDeg": {
+            "low": -43.74074158553749,
+            "median": 9.82776772619653,
+            "high": 60.75341463301814
+          },
+          "threshold": {
+            "low": 0.03836294010205331,
+            "median": 0.2185018907480416,
+            "high": 0.5437967860809512
+          }
+        },
+        "evidence": 0.206,
+        "standardError": 0.0052,
+        "share": 0.21,
+        "shareError": 0.012,
+        "medianErrorHours": 22.5,
+        "lowHours": -16,
+        "highHours": 43
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "incident": "slim",
+      "id": "uniform",
+      "kept": 1658,
+      "drawn": 6000,
+      "evidence": 0.2763,
+      "standardError": 0.0058,
+      "bayesFactor": 1
+    },
+    {
+      "incident": "slim",
+      "id": "reportedWest",
+      "kept": 6000,
+      "drawn": 6000,
+      "evidence": 1,
+      "standardError": 0,
+      "bayesFactor": 3.619
+    },
+    {
+      "incident": "slim",
+      "id": "westHalf",
+      "kept": 3283,
+      "drawn": 6000,
+      "evidence": 0.5472,
+      "standardError": 0.0064,
+      "bayesFactor": 1.98
+    },
+    {
+      "incident": "slim",
+      "id": "upright",
+      "kept": 0,
+      "drawn": 6000,
+      "evidence": 0,
+      "standardError": 0,
+      "bayesFactor": 0
+    }
+  ],
+  "soft": [
+    {
+      "incident": "slim",
+      "id": "sunUp",
+      "sigmaHours": 0,
+      "lapse": 0,
+      "effectiveSize": 0,
+      "azimuthDeg": null,
+      "elevationDeg": null,
+      "threshold": null,
+      "meanCheckShare": 1,
+      "meanCheckLog": -0
+    },
+    {
+      "incident": "slim",
+      "id": "strict",
+      "sigmaHours": 0,
+      "lapse": 0,
+      "effectiveSize": 1658,
+      "azimuthDeg": {
+        "low": 206.06086641832292,
+        "median": 272.13609445473935,
+        "high": 336.4905677253803
+      },
+      "elevationDeg": {
+        "low": -30.368440711476207,
+        "median": 12.85001895502035,
+        "high": 56.81715029116081
+      },
+      "threshold": {
+        "low": 0.045135289898670876,
+        "median": 0.28877192302084154,
+        "high": 0.5637250969296904
+      },
+      "meanCheckShare": 0.838,
+      "meanCheckLog": 0.187
+    },
+    {
+      "incident": "slim",
+      "id": "soft3_0.01",
+      "sigmaHours": 3,
+      "lapse": 0.01,
+      "effectiveSize": 1788,
+      "azimuthDeg": {
+        "low": 204.7836336888297,
+        "median": 271.1756250779963,
+        "high": 338.6846738768204
+      },
+      "elevationDeg": {
+        "low": -33.801504092264935,
+        "median": 12.23136235177293,
+        "high": 57.56844802357333
+      },
+      "threshold": {
+        "low": 0.045135289898670876,
+        "median": 0.2893792644838706,
+        "high": 0.5641748800241272
+      },
+      "meanCheckShare": 0.817,
+      "meanCheckLog": 0.212
+    },
+    {
+      "incident": "slim",
+      "id": "soft6_0.05",
+      "sigmaHours": 6,
+      "lapse": 0.05,
+      "effectiveSize": 2090,
+      "azimuthDeg": {
+        "low": 196.76424564643025,
+        "median": 270.93723235229845,
+        "high": 345.12516348861413
+      },
+      "elevationDeg": {
+        "low": -39.47269333053014,
+        "median": 11.090497039206944,
+        "high": 59.27962098769175
+      },
+      "threshold": {
+        "low": 0.045135289898670876,
+        "median": 0.29139098691353155,
+        "high": 0.5652246150957535
+      },
+      "meanCheckShare": 0.772,
+      "meanCheckLog": 0.267
+    },
+    {
+      "incident": "slim",
+      "id": "soft12_0.05",
+      "sigmaHours": 12,
+      "lapse": 0.05,
+      "effectiveSize": 2241,
+      "azimuthDeg": {
+        "low": 195.45994624284094,
+        "median": 270.92254910195356,
+        "high": 347.91830950785356
+      },
+      "elevationDeg": {
+        "low": -40.86535593279166,
+        "median": 11.23031950293416,
+        "high": 61.042130706286656
+      },
+      "threshold": {
+        "low": 0.045192518171478305,
+        "median": 0.290094743887938,
+        "high": 0.5653882814037559
+      },
+      "meanCheckShare": 0.759,
+      "meanCheckLog": 0.285
+    },
+    {
+      "incident": "slim",
+      "id": "soft6_0.2",
+      "sigmaHours": 6,
+      "lapse": 0.2,
+      "effectiveSize": 3034,
+      "azimuthDeg": {
+        "low": 156.75957627443574,
+        "median": 270.7070046061217,
+        "high": 20.24419450212463
+      },
+      "elevationDeg": {
+        "low": -54.267176711900134,
+        "median": 6.84776278956646,
+        "high": 60.75341463301814
+      },
+      "threshold": {
+        "low": 0.04560716933831906,
+        "median": 0.29592378692511645,
+        "high": 0.5687387185770733
+      },
+      "meanCheckShare": 0.656,
+      "meanCheckLog": 0.429
+    },
+    {
+      "incident": "im1",
+      "id": "sunUp",
+      "sigmaHours": 0,
+      "lapse": 0,
+      "effectiveSize": 0,
+      "azimuthDeg": null,
+      "elevationDeg": null,
+      "threshold": null,
+      "meanCheckShare": 0,
+      "meanCheckLog": 4.605
+    },
+    {
+      "incident": "im1",
+      "id": "strict",
+      "sigmaHours": 0,
+      "lapse": 0,
+      "effectiveSize": 1414,
+      "azimuthDeg": {
+        "low": 295.7628343141464,
+        "median": 349.8310105268988,
+        "high": 43.52515319526435
+      },
+      "elevationDeg": {
+        "low": 59.99999999999999,
+        "median": 59.99999999999999,
+        "high": 59.99999999999999
+      },
+      "threshold": {
+        "low": 0.035777436250717116,
+        "median": 0.19220394141609032,
+        "high": 0.48523093369101683
+      },
+      "meanCheckShare": 0.232,
+      "meanCheckLog": 1.461
+    },
+    {
+      "incident": "im1",
+      "id": "soft3_0.01",
+      "sigmaHours": 3,
+      "lapse": 0.01,
+      "effectiveSize": 1593,
+      "azimuthDeg": {
+        "low": 291.69975402378464,
+        "median": 349.9259561998425,
+        "high": 47.44499916557447
+      },
+      "elevationDeg": {
+        "low": 59.99999999999999,
+        "median": 59.99999999999999,
+        "high": 59.99999999999999
+      },
+      "threshold": {
+        "low": 0.03631823723032988,
+        "median": 0.2003601760791429,
+        "high": 0.49773887950821727
+      },
+      "meanCheckShare": 0.219,
+      "meanCheckLog": 1.517
+    },
+    {
+      "incident": "im1",
+      "id": "soft6_0.05",
+      "sigmaHours": 6,
+      "lapse": 0.05,
+      "effectiveSize": 2064,
+      "azimuthDeg": {
+        "low": 272.7130471694809,
+        "median": 350.12573651509615,
+        "high": 67.5060950161452
+      },
+      "elevationDeg": {
+        "low": 59.99999999999999,
+        "median": 59.99999999999999,
+        "high": 59.99999999999999
+      },
+      "threshold": {
+        "low": 0.037915394109634404,
+        "median": 0.2177308446251465,
+        "high": 0.5203142241017493
+      },
+      "meanCheckShare": 0.193,
+      "meanCheckLog": 1.645
+    },
+    {
+      "incident": "im1",
+      "id": "soft12_0.05",
+      "sigmaHours": 12,
+      "lapse": 0.05,
+      "effectiveSize": 2219,
+      "azimuthDeg": {
+        "low": 272.4226242827357,
+        "median": 350.1372889569668,
+        "high": 66.15009351919878
+      },
+      "elevationDeg": {
+        "low": 59.99999999999999,
+        "median": 59.99999999999999,
+        "high": 59.99999999999999
+      },
+      "threshold": {
+        "low": 0.03963706085441497,
+        "median": 0.22461080083838234,
+        "high": 0.5259664288563497
+      },
+      "meanCheckShare": 0.185,
+      "meanCheckLog": 1.688
+    },
+    {
+      "incident": "im1",
+      "id": "soft6_0.2",
+      "sigmaHours": 6,
+      "lapse": 0.2,
+      "effectiveSize": 3500,
+      "azimuthDeg": {
+        "low": 210.14442403341855,
+        "median": 350.6135183529059,
+        "high": 135.7425449861878
+      },
+      "elevationDeg": {
+        "low": 59.99999999999999,
+        "median": 59.99999999999999,
+        "high": 59.99999999999999
+      },
+      "threshold": {
+        "low": 0.042355724536979444,
+        "median": 0.24704234619952845,
+        "high": 0.5491897179229137
+      },
+      "meanCheckShare": 0.144,
+      "meanCheckLog": 1.936
+    }
+  ],
+  "synthetic": {
+    "id": "matched",
+    "misspecified": false,
+    "maxContactDelayHours": 72,
+    "site": "slim",
+    "count": 200,
+    "drawsPerCase": 3000,
+    "seed": 11,
+    "coverage90": {
+      "azimuth": 0.925,
+      "elevation": 0.875,
+      "threshold": 0.915,
+      "day2FirstPower": 0.91
+    },
+    "azimuthErrorDeg": {
+      "low": 4.78140352516516,
+      "median": 44.23125712398024,
+      "high": 125.3810726503753
+    },
+    "day2PowerBrier": 0.0683,
+    "day2PowerBrierClimatology": 0.1716,
+    "reliability": [
+      {
+        "from": 0,
+        "to": 0.1,
+        "count": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "from": 0.1,
+        "to": 0.3,
+        "count": 27,
+        "predicted": 0.282,
+        "observed": 0.37
+      },
+      {
+        "from": 0.3,
+        "to": 0.5,
+        "count": 33,
+        "predicted": 0.323,
+        "observed": 0.212
+      },
+      {
+        "from": 0.5,
+        "to": 0.7,
+        "count": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "from": 0.7,
+        "to": 0.9,
+        "count": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "from": 0.9,
+        "to": 1,
+        "count": 140,
+        "predicted": 0.999,
+        "observed": 0.993
+      }
+    ]
+  },
+  "syntheticMisspecified": {
+    "id": "misspecified",
+    "misspecified": true,
+    "maxContactDelayHours": 192,
+    "site": "slim",
+    "count": 200,
+    "drawsPerCase": 3000,
+    "seed": 12,
+    "coverage90": {
+      "azimuth": 0.885,
+      "elevation": 0.865,
+      "threshold": 0.87,
+      "day2FirstPower": 0.933
+    },
+    "azimuthErrorDeg": {
+      "low": 7.074924747960267,
+      "median": 47.904623676047095,
+      "high": 119.20742478184746
+    },
+    "day2PowerBrier": 0.0655,
+    "day2PowerBrierClimatology": 0.1476,
+    "reliability": [
+      {
+        "from": 0,
+        "to": 0.1,
+        "count": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "from": 0.1,
+        "to": 0.3,
+        "count": 29,
+        "predicted": 0.276,
+        "observed": 0.379
+      },
+      {
+        "from": 0.3,
+        "to": 0.5,
+        "count": 21,
+        "predicted": 0.325,
+        "observed": 0.238
+      },
+      {
+        "from": 0.5,
+        "to": 0.7,
+        "count": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "from": 0.7,
+        "to": 0.9,
+        "count": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "from": 0.9,
+        "to": 1,
+        "count": 150,
+        "predicted": 1,
+        "observed": 0.987
+      }
+    ]
+  }
+}

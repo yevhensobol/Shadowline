@@ -1,0 +1,38 @@
+@inherits Shadowline.Web.Services.LocalizedComponent
+
+<nav class="section-tabs" aria-label="@L["plan.tabs"]">
+    <a href="@Link("plan/where")" class="@Active("where")" aria-current="@Current("where")">@L["plan.tab.where"]</a>
+    <a href="@Link("plan/when")" class="@Active("when")" aria-current="@Current("when")">@L["plan.tab.when"]</a>
+    <a href="@Link("plan/sky")" class="@Active("sky")" aria-current="@Current("sky")">@L["plan.tab.sky"]</a>
+</nav>
+@if (Tab == "when")
+{
+    <nav class="section-tabs sub" aria-label="@L["plan.tab.when"]">
+        <a href="@Link("plan/when")" class="@(Slip ? null : "active")" aria-current="@(Slip ? null : "page")">@L["plan.when.windows"]</a>
+        <a href="@Link("plan/when/slip")" class="@(Slip ? "active" : null)" aria-current="@(Slip ? "page" : null)">@L["plan.when.slip"]</a>
+    </nav>
+}
+@if (ShowMission)
+{
+    <MissionPanel />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Tab { get; set; } = "where";
+
+    [Parameter]
+    public bool Slip { get; set; }
+
+    [Parameter]
+    public string? Query { get; set; }
+
+    [Parameter]
+    public bool ShowMission { get; set; }
+
+    private string Link(string path) => string.IsNullOrEmpty(Query) ? path : path + Query;
+
+    private string? Active(string tab) => tab == Tab ? "active" : null;
+
+    private string? Current(string tab) => tab == Tab ? "page" : null;
+}

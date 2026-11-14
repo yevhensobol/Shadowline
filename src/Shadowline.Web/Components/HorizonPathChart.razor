@@ -1,0 +1,102 @@
+@using System.Globalization
+@using Shadowline.Core.Horizon
+@using Shadowline.Core.Reports
+@inherits LocalizedComponent
+
+<figure class="hpath">
+    <svg viewBox="0 0 @Width @Height" role="img" aria-label="@L["report.path.alt"]">
+        <defs>
+            <linearGradient id="hpath-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070d1b" /><stop offset="1" stop-color="#16243d" /></linearGradient>
+        </defs>
+        <rect x="@Left" y="0" width="@(Width - Left - Right)" height="@(Height - Bottom)" fill="url(#hpath-sky)" />
+        @for (var e = (int)Math.Ceiling(yMin / Step()) * Step(); e <= yMax; e += Step())
+        {
+            <g>
+                <line x1="@Left" x2="@(Width - Right)" y1="@F(Y(e))" y2="@F(Y(e))" class="@(e == 0 ? "hp-grid zero" : "hp-grid")" />
+                <text x="@(Left - 6)" y="@F(Y(e) + 4)" text-anchor="end" class="hp-axis">@e°</text>
+            </g>
+        }
+        <path d="@HorizonPath()" class="hp-terrain" />
+        @foreach (var p in Path)
+        {
+            var sunUp = p.SunElevationDeg > Horizon.ElevationAt(p.SunAzimuthDeg);
+            var earthUp = p.EarthElevationDeg > Horizon.ElevationAt(p.EarthAzimuthDeg);
+            if (p.SunElevationDeg >= yMin && p.SunElevationDeg <= yMax)
+            {
+                <circle cx="@F(X(p.SunAzimuthDeg))" cy="@F(Y(p.SunElevationDeg))" r="2.4" class="@(sunUp ? "hp-sun" : "hp-sun off")" />
+            }
+
+            if (p.EarthElevationDeg >= yMin && p.EarthElevationDeg <= yMax)
+            {
+                <circle cx="@F(X(p.EarthAzimuthDeg))" cy="@F(Y(p.EarthElevationDeg))" r="2.4" class="@(earthUp ? "hp-earth" : "hp-earth off")" />
+            }
+        }
+        @foreach (var (az, label) in Compass)
+        {
+            <g>
+                <line x1="@F(X(az))" x2="@F(X(az))" y1="@(Height - Bottom)" y2="@(Height - Bottom + 5)" class="hp-tick" />
+                <text x="@F(X(az))" y="@(Height - Bottom + 17)" text-anchor="middle" class="hp-axis">@label</text>
+            </g>
+        }
+        <text x="@F(Left + (Width - Left - Right) / 2.0)" y="@(Height - 3)" text-anchor="middle" class="axis-title">@L["axis.azimuth"]</text>
+        <text transform="translate(13 @F((Height - Bottom) / 2.0)) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.elevation"]</text>
+    </svg>
+    <figcaption><span class="key sun">@L["report.path.sun"]</span><span class="key earth">@L["report.path.earth"]</span><span class="key terrain">@L["report.path.terrain"]</span></figcaption>
+</figure>
+
+@code {
+    private const int Width = 960;
+    private const int Height = 280;
+    private const int Left = 56;
+    private const int Bottom = 42;
+    private const int Right = 14;
+
+    private double yMin;
+    private double yMax;
+
+    [Parameter, EditorRequired]
+    public HorizonProfile Horizon { get; set; } = HorizonProfile.Flat;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ReportPathPoint> Path { get; set; } = [];
+
+    private IEnumerable<(double, string)> Compass
+    {
+        get
+        {
+            var names = L["explore.dirs"].Split(',');
+            for (var k = 0; k <= 8; k++)
+            {
+                yield return (k * 45.0, names[k % 8]);
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var horizonMax = Enumerable.Range(0, 72).Max(k => Horizon.ElevationAt(k * 5));
+        var horizonMin = Enumerable.Range(0, 72).Min(k => Horizon.ElevationAt(k * 5));
+        var sunMax = Path.Count > 0 ? Path.Max(p => p.SunElevationDeg) : 10;
+        var earthMax = Path.Count > 0 ? Path.Max(p => p.EarthElevationDeg) : 10;
+        yMax = Math.Ceiling(Math.Max(4, Math.Max(horizonMax, Math.Max(sunMax, earthMax)) + 1));
+        yMin = Math.Floor(Math.Min(-2, horizonMin - 1));
+        if (yMax - yMin > 60)
+        {
+            yMin = Math.Max(yMin, -10);
+        }
+    }
+
+    private int Step() => yMax - yMin > 40 ? 15 : yMax - yMin > 16 ? 5 : yMax - yMin > 8 ? 2 : 1;
+
+    private double X(double az) => Left + az / 360.0 * (Width - Left - Right);
+
+    private double Y(double el) => (yMax - el) / (yMax - yMin) * (Height - Bottom);
+
+    private string HorizonPath()
+    {
+        var points = Enumerable.Range(0, 145).Select(k => (Az: k * 2.5, El: Horizon.ElevationAt(k * 2.5 % 360)));
+        return $"M{Left} {Height - Bottom} " + string.Join(' ', points.Select(p => $"L{F(X(p.Az))} {F(Math.Min(Height - Bottom, Y(Math.Max(yMin, p.El))))}")) + $" L{F(X(360))} {Height - Bottom} Z";
+    }
+
+    private static string F(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+}

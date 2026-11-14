@@ -1,0 +1,470 @@
+{
+  "formatVersion": 1,
+  "name": "Artemis likeness",
+  "builtAtUtc": "2026-11-07T19:28:26Z",
+  "task": "Presence-background classification: the published candidate landing sites inside NASA's Artemis regions (Wueller et al. 2026, an independent study, not a NASA selection) against all other 1 km cells south of 83 S",
+  "labels": {
+    "source": "https://doi.org/10.5281/zenodo.17084058",
+    "announcement": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/",
+    "regions": 16,
+    "currentRegions": 9,
+    "sites": 130,
+    "sitesInCurrentRegions": 78,
+    "backgroundCells": 140383
+  },
+  "features": [
+    {
+      "id": "sun",
+      "description": "Share of the year with the Sun up",
+      "importance": 0.014
+    },
+    {
+      "id": "earth",
+      "description": "Share of the year with Earth up",
+      "importance": 0.0065
+    },
+    {
+      "id": "sun_max_3km",
+      "description": "Best Sun share within 3 km",
+      "importance": 0.033
+    },
+    {
+      "id": "psr_km",
+      "description": "Distance to the nearest area with no Sun, log km",
+      "importance": 0.0038
+    },
+    {
+      "id": "slope",
+      "description": "Mean slope in the 1 km cell, degrees",
+      "importance": 0.0907
+    },
+    {
+      "id": "elevation",
+      "description": "Elevation, km",
+      "importance": 0.1244
+    },
+    {
+      "id": "relief",
+      "description": "Height spread within 5 km, km",
+      "importance": 0.008
+    }
+  ],
+  "importanceNote": "Permutation importance (drop in AUC) on the held-out sites and local background of each fold, averaged over the folds",
+  "model": "monotonic",
+  "modelNote": "Gradient-boosted trees (depth 3, 200 rounds) with monotonic constraints: the score can only rise with Sun share, Earth share and best Sun within 3 km, and only fall with slope and with distance to areas with no Sun (closeness to permanent shadow is rewarded on purpose, for access to cold traps); elevation and relief are free. Logistic regression and unconstrained trees were trained the same way for comparison",
+  "models": {
+    "logistic": {
+      "meanAuc": 0.919,
+      "minAuc": 0.694,
+      "maxAuc": 0.981
+    },
+    "boosting": {
+      "meanAuc": 0.908,
+      "minAuc": 0.756,
+      "maxAuc": 0.986
+    },
+    "monotonic": {
+      "meanAuc": 0.912,
+      "minAuc": 0.621,
+      "maxAuc": 0.988
+    }
+  },
+  "baselines": {
+    "elevation": {
+      "meanAuc": 0.867,
+      "minAuc": 0.461
+    },
+    "sun": {
+      "meanAuc": 0.82,
+      "minAuc": 0.347
+    },
+    "sun_max_3km": {
+      "meanAuc": 0.805,
+      "minAuc": 0.418
+    },
+    "slope": {
+      "meanAuc": 0.784,
+      "minAuc": 0.609
+    }
+  },
+  "currentRegionFolds": {
+    "regions": 9,
+    "meanAuc": 0.884,
+    "minAuc": 0.621
+  },
+  "validation": {
+    "method": "Leave one region out: train without that region, without the background within 25 km of its centre and without sites of other regions within 25 km of it, then score its sites against that local background. AUC 0.5 is chance, 1.0 is perfect. Baselines rank the same test cells by one feature with no training",
+    "folds": [
+      {
+        "region": "AR",
+        "current": false,
+        "sites": 10,
+        "localBackground": 1848,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.962
+        },
+        "boosting": {
+          "localAuc": 0.916
+        },
+        "monotonic": {
+          "localAuc": 0.934
+        },
+        "baselines": {
+          "elevation": 0.887,
+          "sun": 0.945,
+          "sun_max_3km": 0.875,
+          "slope": 0.743
+        }
+      },
+      {
+        "region": "CR",
+        "current": false,
+        "sites": 9,
+        "localBackground": 1843,
+        "neighbourSitesDropped": 4,
+        "logistic": {
+          "localAuc": 0.946
+        },
+        "boosting": {
+          "localAuc": 0.969
+        },
+        "monotonic": {
+          "localAuc": 0.973
+        },
+        "baselines": {
+          "elevation": 0.975,
+          "sun": 0.777,
+          "sun_max_3km": 0.859,
+          "slope": 0.761
+        }
+      },
+      {
+        "region": "CRE",
+        "current": false,
+        "sites": 6,
+        "localBackground": 1808,
+        "neighbourSitesDropped": 10,
+        "logistic": {
+          "localAuc": 0.954
+        },
+        "boosting": {
+          "localAuc": 0.946
+        },
+        "monotonic": {
+          "localAuc": 0.951
+        },
+        "baselines": {
+          "elevation": 0.855,
+          "sun": 0.879,
+          "sun_max_3km": 0.868,
+          "slope": 0.766
+        }
+      },
+      {
+        "region": "FRA",
+        "current": false,
+        "sites": 8,
+        "localBackground": 1861,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.925
+        },
+        "boosting": {
+          "localAuc": 0.888
+        },
+        "monotonic": {
+          "localAuc": 0.877
+        },
+        "baselines": {
+          "elevation": 0.882,
+          "sun": 0.869,
+          "sun_max_3km": 0.662,
+          "slope": 0.753
+        }
+      },
+      {
+        "region": "HW",
+        "current": true,
+        "sites": 11,
+        "localBackground": 1838,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.95
+        },
+        "boosting": {
+          "localAuc": 0.948
+        },
+        "monotonic": {
+          "localAuc": 0.953
+        },
+        "baselines": {
+          "elevation": 0.867,
+          "sun": 0.87,
+          "sun_max_3km": 0.824,
+          "slope": 0.875
+        }
+      },
+      {
+        "region": "MMA",
+        "current": true,
+        "sites": 5,
+        "localBackground": 1899,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.952
+        },
+        "boosting": {
+          "localAuc": 0.907
+        },
+        "monotonic": {
+          "localAuc": 0.949
+        },
+        "baselines": {
+          "elevation": 0.944,
+          "sun": 0.861,
+          "sun_max_3km": 0.85,
+          "slope": 0.892
+        }
+      },
+      {
+        "region": "MMO",
+        "current": true,
+        "sites": 10,
+        "localBackground": 1733,
+        "neighbourSitesDropped": 13,
+        "logistic": {
+          "localAuc": 0.873
+        },
+        "boosting": {
+          "localAuc": 0.788
+        },
+        "monotonic": {
+          "localAuc": 0.878
+        },
+        "baselines": {
+          "elevation": 0.881,
+          "sun": 0.877,
+          "sun_max_3km": 0.82,
+          "slope": 0.818
+        }
+      },
+      {
+        "region": "MMP",
+        "current": true,
+        "sites": 11,
+        "localBackground": 1802,
+        "neighbourSitesDropped": 5,
+        "logistic": {
+          "localAuc": 0.694
+        },
+        "boosting": {
+          "localAuc": 0.756
+        },
+        "monotonic": {
+          "localAuc": 0.621
+        },
+        "baselines": {
+          "elevation": 0.461,
+          "sun": 0.347,
+          "sun_max_3km": 0.418,
+          "slope": 0.902
+        }
+      },
+      {
+        "region": "NR1",
+        "current": true,
+        "sites": 9,
+        "localBackground": 1749,
+        "neighbourSitesDropped": 12,
+        "logistic": {
+          "localAuc": 0.893
+        },
+        "boosting": {
+          "localAuc": 0.938
+        },
+        "monotonic": {
+          "localAuc": 0.963
+        },
+        "baselines": {
+          "elevation": 0.962,
+          "sun": 0.972,
+          "sun_max_3km": 0.914,
+          "slope": 0.879
+        }
+      },
+      {
+        "region": "NR2",
+        "current": true,
+        "sites": 9,
+        "localBackground": 1852,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.936
+        },
+        "boosting": {
+          "localAuc": 0.902
+        },
+        "monotonic": {
+          "localAuc": 0.903
+        },
+        "baselines": {
+          "elevation": 0.852,
+          "sun": 0.851,
+          "sun_max_3km": 0.764,
+          "slope": 0.771
+        }
+      },
+      {
+        "region": "PCB",
+        "current": true,
+        "sites": 5,
+        "localBackground": 1705,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.968
+        },
+        "boosting": {
+          "localAuc": 0.959
+        },
+        "monotonic": {
+          "localAuc": 0.961
+        },
+        "baselines": {
+          "elevation": 0.933,
+          "sun": 0.904,
+          "sun_max_3km": 0.928,
+          "slope": 0.824
+        }
+      },
+      {
+        "region": "PNS",
+        "current": false,
+        "sites": 6,
+        "localBackground": 1888,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.972
+        },
+        "boosting": {
+          "localAuc": 0.986
+        },
+        "monotonic": {
+          "localAuc": 0.981
+        },
+        "baselines": {
+          "elevation": 0.985,
+          "sun": 0.856,
+          "sun_max_3km": 0.894,
+          "slope": 0.707
+        }
+      },
+      {
+        "region": "SP",
+        "current": true,
+        "sites": 11,
+        "localBackground": 1818,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.836
+        },
+        "boosting": {
+          "localAuc": 0.847
+        },
+        "monotonic": {
+          "localAuc": 0.865
+        },
+        "baselines": {
+          "elevation": 0.812,
+          "sun": 0.73,
+          "sun_max_3km": 0.72,
+          "slope": 0.701
+        }
+      },
+      {
+        "region": "dGKM",
+        "current": false,
+        "sites": 7,
+        "localBackground": 1884,
+        "neighbourSitesDropped": 0,
+        "logistic": {
+          "localAuc": 0.935
+        },
+        "boosting": {
+          "localAuc": 0.939
+        },
+        "monotonic": {
+          "localAuc": 0.935
+        },
+        "baselines": {
+          "elevation": 0.83,
+          "sun": 0.649,
+          "sun_max_3km": 0.773,
+          "slope": 0.76
+        }
+      },
+      {
+        "region": "dGR1",
+        "current": false,
+        "sites": 6,
+        "localBackground": 1800,
+        "neighbourSitesDropped": 8,
+        "logistic": {
+          "localAuc": 0.981
+        },
+        "boosting": {
+          "localAuc": 0.986
+        },
+        "monotonic": {
+          "localAuc": 0.988
+        },
+        "baselines": {
+          "elevation": 0.951,
+          "sun": 0.803,
+          "sun_max_3km": 0.883,
+          "slope": 0.609
+        }
+      },
+      {
+        "region": "dGR2",
+        "current": true,
+        "sites": 7,
+        "localBackground": 1815,
+        "neighbourSitesDropped": 6,
+        "logistic": {
+          "localAuc": 0.935
+        },
+        "boosting": {
+          "localAuc": 0.846
+        },
+        "monotonic": {
+          "localAuc": 0.865
+        },
+        "baselines": {
+          "elevation": 0.797,
+          "sun": 0.934,
+          "sun_max_3km": 0.828,
+          "slope": 0.779
+        }
+      }
+    ]
+  },
+  "reproduce": {
+    "python": "3.10.12",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "scikit-learn": "1.7.2",
+    "Pillow": "12.3.0",
+    "inputs": {
+      "pole_light.png": "92b74bc2e04aaba22ebd16a028fee5d1",
+      "pole_slope.jpg": "f028bbe40754fa2261a8eaae36a1ac3d",
+      "pole_height.bin": "010634957863dce01d728c55811ae3fd",
+      "artemis.json": "c81b1556c17f45e0c4015b336d766fd2"
+    }
+  },
+  "output": {
+    "file": "data/pole_artemis.bin",
+    "meaning": "Percentile of the model score among cells south of 83 S, 1-255, 0 outside",
+    "sitesMedianPercentile": 0.993
+  }
+}

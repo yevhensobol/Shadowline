@@ -1,0 +1,91 @@
+@using System.Globalization
+@using Shadowline.Core.Missions
+@inherits Shadowline.Web.Services.LocalizedComponent
+@inject Shadowline.Web.Services.MissionStore Missions
+
+<section class="mission-panel @(open ? "open" : null)" aria-label="@L["mission.title"]">
+    <button type="button" class="mission-summary" aria-expanded="@(open ? "true" : "false")" @onclick="() => open = !open">
+        <span class="cap">@L["mission.title"]</span>
+        <span class="mission-line">
+            <b>@Number(m.PanelW) @L["common.unit.w"]</b> @L["mission.panelsShort"]
+            · <b>@Number(m.LoadW) @L["common.unit.w"]</b> @L["mission.loadShort"]
+            · <b>@Number(m.BatteryWh / 1000, "0.#") @L["mission.kwh"]</b>
+            · <b>@m.DurationDays @L["common.unit.d"]</b>
+            · @L["mission.earthShort"] <b>≥ @Pct(m.MinEarthShare)</b>
+            · <b>@Number(m.SafeLoadW) @L["common.unit.w"]</b> @L["mission.safeShort"]
+            · <b>@m.Stance.Name</b>, <b>@Number(m.LateralSpeedMs, "0.##") @L["mission.ms"]</b>
+        </span>
+        <span class="mission-edit">@L[open ? "mission.close" : "mission.edit"]</span>
+    </button>
+    @if (open)
+    {
+        <div class="mission-form">
+            <label><span>@L["finder.panels"]</span><span class="fin"><input type="number" min="10" max="20000" step="10" value="@Number(m.PanelW)" @onchange="e => Update(e, (x, v) => x with { PanelW = v })" /><em>@L["common.unit.w"]</em></span></label>
+            <label><span>@L["finder.load"]</span><span class="fin"><input type="number" min="1" max="10000" step="5" value="@Number(m.LoadW)" @onchange="e => Update(e, (x, v) => x with { LoadW = v })" /><em>@L["common.unit.w"]</em></span></label>
+            <label><span>@L["finder.battery"]</span><span class="fin"><input type="number" min="0" max="1000" step="0.5" value="@Number(m.BatteryWh / 1000, "0.#")" @onchange="e => Update(e, (x, v) => x with { BatteryWh = v * 1000 })" /><em>@L["mission.kwh"]</em></span></label>
+            <label><span>@L["finder.duration"]</span><span class="fin"><input type="number" min="1" max="60" step="1" value="@m.DurationDays" @onchange="e => Update(e, (x, v) => x with { DurationDays = (int)Math.Round(v) })" /><em>@L["finder.days"]</em></span></label>
+            <label><span>@L["finder.minEarth"]</span><span class="fin"><input type="number" min="0" max="100" step="5" value="@Number(m.MinEarthShare * 100)" @onchange="e => Update(e, (x, v) => x with { MinEarthShare = v / 100 })" /><em>%</em></span></label>
+            <label><span>@L["tip.load"]</span><span class="fin"><input type="number" min="1" max="10000" step="5" value="@Number(m.SafeLoadW)" @onchange="e => Update(e, (x, v) => x with { SafeLoadW = v })" /><em>@L["common.unit.w"]</em></span></label>
+            <div class="mission-stance">
+                <span>@L["mission.stance"]</span>
+                <span class="chips" role="group" aria-label="@L["mission.stance"]">
+                    @foreach (var stance in LanderStance.Presets)
+                    {
+                        <button type="button" class="chip" aria-pressed="@(stance.Id == m.Stance.Id ? "true" : "false")" @onclick="() => SetStance(stance.Id)">@stance.Name</button>
+                    }
+                </span>
+            </div>
+            <label><span>@L["mission.lateral"]</span><span class="fin"><input type="number" min="0" max="5" step="0.1" value="@Number(m.LateralSpeedMs, "0.##")" @onchange="e => Update(e, (x, v) => x with { LateralSpeedMs = v })" /><em>@L["mission.ms"]</em></span></label>
+            <p class="muted small mission-stance-note">@L["stance." + m.Stance.Id + ".note"] @L["mission.lateralNote"]</p>
+            <dl class="mission-derived">
+                <div><dt>@L["finder.maxDark"]</dt><dd>@Hours(m.MaxDarkHours)</dd></div>
+                <div><dt>@L["finder.needSun"]</dt><dd>≥ @Pct(m.RequiredSunShare)</dd></div>
+                <div><dt>@L["mission.safeHours"]</dt><dd>@Hours(m.SafeModeHours)</dd></div>
+                <div><dt>@L["mission.staticTip"]</dt><dd>@Number(m.Stance.StaticTipDeg)°</dd></div>
+                <div><dt>@L["mission.flatTip"]</dt><dd>@Number(TouchdownStability.WorstTipSpeed(m.Stance, 0), "0.0") @L["mission.ms"]</dd></div>
+            </dl>
+            <p class="muted small">@L["finder.landerNote"] @L["mission.shared"]</p>
+        </div>
+    }
+</section>
+
+@code {
+    private bool open;
+
+    private Mission m => Missions.Current;
+
+    protected override async Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+        Missions.Changed += OnMission;
+        await Missions.EnsureLoadedAsync();
+    }
+
+    public override void Dispose()
+    {
+        Missions.Changed -= OnMission;
+        base.Dispose();
+    }
+
+    private void OnMission() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task Update(ChangeEventArgs args, Func<Mission, double, Mission> apply)
+    {
+        if (double.TryParse(args.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value))
+        {
+            await Missions.SetAsync(apply(Missions.Current, value));
+        }
+    }
+
+    private async Task SetStance(string id) => await Missions.SetAsync(Missions.Current with { StanceId = id });
+
+    private static string Number(double value, string format = "0") => value.ToString(format, CultureInfo.InvariantCulture);
+
+    private string Pct(double share) => (share * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+    private string Hours(double hours) => double.IsFinite(hours)
+        ? hours >= 48
+            ? (hours / 24).ToString("0.0", CultureInfo.InvariantCulture) + " " + L["common.unit.d"]
+            : hours.ToString("0", CultureInfo.InvariantCulture) + " " + L["common.unit.h"]
+        : "∞";
+}

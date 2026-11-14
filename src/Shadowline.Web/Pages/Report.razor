@@ -1,0 +1,958 @@
+@page "/report"
+@using System.Globalization
+@using Shadowline.Core.Permalink
+@using Shadowline.Core.Reports
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Terrain
+@using Shadowline.Core.Ml
+@using Shadowline.Core.Tracks
+@using Shadowline.Web.Components
+@inherits LocalizedComponent
+@inject DataStore Store
+@inject SiteViewCache Views
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+@inject CommsCache Comms
+@inject RouteStore Routes
+@inject HttpClient Http
+
+<PageTitle>@(report is null ? L["report.title"] : L["report.title"] + ": " + SiteTitle) - Shadowline</PageTitle>
+
+@if (error is not null)
+{
+    <p class="error page-note">@error</p>
+}
+else if (report is null || view is null)
+{
+    <p class="muted page-note">@L["common.loading"]</p>
+}
+else
+{
+    var grid = Store.Manifest!.Grid;
+    <article class="report">
+        <div class="report-tools">
+            <a class="button" href="@ExploreLink()">@L["report.back"]</a>
+            <a class="button" href="@TipLink()">@L["report.tipRisk"]</a>
+            <button type="button" class="primary" @onclick="Print">@L["report.print"]</button>
+            <button type="button" @onclick="DownloadJson">@L["report.json"]</button>
+            <button type="button" @onclick="DownloadCsv">@L["report.csv"]</button>
+        </div>
+
+        <header class="report-cover">
+            <div class="cover-main">
+                <p class="report-kicker">@L["report.kicker"]</p>
+                <h1>@SiteTitle</h1>
+                <p class="cover-meta">
+                    <span>@Lat(report.Site.LatitudeDeg), @Lon(report.Site.LongitudeEastDeg)</span>
+                    <span>@Signed(report.Site.ElevationM, "F0") @L["common.unit.m"]</span>
+                    @if (L.Mission(view.Site) is { Length: > 0 } mission)
+                    {
+                        <span>@mission</span>
+                    }
+                </p>
+                <p>@L.Format("report.window", Stamp(report.WindowStartUtc), Stamp(report.WindowEndUtc), L.Span(report.WindowEndUtc - report.WindowStartUtc))</p>
+                @if (report.Site.CoordinateSource is { } coordSource)
+                {
+                    <p class="cover-source">@L["report.coordSource"] @coordSource @if (report.Site.CoordinateSourceUrl is { } coordUrl)
+                    {
+                        @(" ")<a href="@coordUrl" target="_blank" rel="noopener">@coordUrl</a>
+                    }</p>
+                }
+                else
+                {
+                    <p class="cover-source">@L["report.method.siteCustom"]</p>
+                }
+                @if (report.Site.Id.StartsWith("plan-", StringComparison.Ordinal))
+                {
+                    <p class="notice">@L["explore.planned"]</p>
+                }
+                @if (report.Site.Id.StartsWith("impact-", StringComparison.Ordinal))
+                {
+                    <p class="notice">@L["explore.impact"]</p>
+                }
+            </div>
+            <ul class="verdicts">
+                @foreach (var verdict in report.Verdicts)
+                {
+                    <li class="verdict @verdict.Level">
+                        <span class="verdict-topic">@L["report.verdict." + verdict.Topic]</span>
+                        <strong>@L["report.level." + verdict.Level]</strong>
+                        <span class="verdict-why">@VerdictWhy(verdict)</span>
+                    </li>
+                }
+            </ul>
+        </header>
+
+        @if (Shadowline.Data.PhotosReader.Find(Store.Photos, report.Site.Id) is { } photo)
+        {
+            <figure class="site-photo report-photo">
+                <a href="@photo.Source" target="_blank" rel="noopener"><img src="@photo.File" alt="@PhotoCaption(photo)" loading="lazy" /></a>
+                <figcaption>@PhotoCaption(photo) <span class="muted">@photo.Credit</span></figcaption>
+            </figure>
+        }
+
+        <section class="report-figures" aria-label="@L["report.figures"]">
+            <div><strong>@Pct(report.Sun.SunlitShare)</strong><span>@L["metric.sun"]</span></div>
+            <div><strong>@L.Duration(TimeSpan.FromHours(report.Sun.LongestDarknessHours))</strong><span>@L["metric.darkness"]</span></div>
+            <div><strong>@Deg(report.Sun.MaxElevationDeg)</strong><span>@L["report.fig.sunMax"]</span></div>
+            <div><strong>@Pct(report.Earth.DsnLinkShare)</strong><span>@L["report.fig.link"]</span></div>
+            <div><strong>@L.Duration(TimeSpan.FromHours(report.Earth.LongestLinkGapHours))</strong><span>@L["dsn.gap"]</span></div>
+            <div><strong>@report.Power.VerticalKWhPerDay.ToString("F1", CultureInfo.InvariantCulture)</strong><span>@L["report.fig.kwh"]</span></div>
+            <div><strong>@report.Power.BatteryKWh.ToString("F0", CultureInfo.InvariantCulture)</strong><span>@L["report.fig.battery"]</span></div>
+            <div><strong>@Celsius(report.Thermal.DayMaxK) / @Celsius(report.Thermal.NightK)</strong><span>@L["report.fig.temp"]</span></div>
+        </section>
+
+        <section class="report-robust">
+            <RobustnessCard SiteId="@report.Site.Id" Start="start" ShowReport="false" Computed="r => robustness = r" />
+        </section>
+
+        @if (report.Mission is { } touchdown)
+        {
+            var land = touchdown.Landing;
+            <section>
+                <h2>@L["report.landing.title"] <sup class="cite">@Cite("de440", "jones1967", "ochmo2023")</sup></h2>
+                <div class="report-two even">
+                    <dl class="report-facts">
+                        <div><dt>@L["report.landing.sunEl"]</dt><dd>@Deg(land.SunElevationDeg), @Deg(land.SunAzimuthDeg)</dd></div>
+                        <div><dt>@L["report.landing.sunAbove"]</dt><dd>@Deg(land.SunAboveTerrainDeg)</dd></div>
+                        <div><dt>@L["report.landing.disc"]</dt><dd>@Pct(land.SunDiscVisibleShare)</dd></div>
+                        <div><dt>@L["report.landing.apollo"]</dt><dd class="@(land.ApolloLighting == "within" ? "ok" : "warn")">@L["report.apollo." + land.ApolloLighting]</dd></div>
+                        <div><dt>@L["report.landing.earthEl"]</dt><dd>@Deg(land.EarthElevationDeg), @Deg(land.EarthAzimuthDeg)</dd></div>
+                        <div><dt>@L["report.landing.earthAbove"]</dt><dd>@Deg(land.EarthAboveTerrainDeg)</dd></div>
+                        <div><dt>@L["report.landing.link"]</dt><dd class="@(land.DsnLink ? "ok" : "warn")">@L[land.DsnLink ? "report.yes" : "report.no"]</dd></div>
+                        <div><dt>@L["report.landing.stations"]</dt><dd>@(land.StationsInView.Count == 0 ? "-" : string.Join(", ", land.StationsInView.Select(L.Place)))</dd></div>
+                    </dl>
+                    <div>
+                        <h3 class="numbers-head">@L["report.changes.title"]</h3>
+                        <ul class="change-list">
+                            @foreach (var change in touchdown.Changes)
+                            {
+                                var key = "report.change." + change.Topic + (change.AtLanding ? ".on" : ".off");
+                                <li class="@change.Topic">@(change.HoursToChange is { } h ? L.Format(key, L.Duration(TimeSpan.FromHours(h))) : L[key + ".never"])</li>
+                            }
+                        </ul>
+                        <h3 class="numbers-head">@L["report.landing.shadows"]</h3>
+                        <table class="report-table">
+                            <thead><tr><th>@L["report.shadow.object"]</th><th>@L["report.shadow.height"]</th><th>@L["report.shadow.length"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var shadow in land.Shadows)
+                                {
+                                    <tr><td>@L["report.shadow." + shadow.Object]</td><td>@shadow.HeightM.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.m"]</td><td>@(shadow.LengthM is { } len ? Metres(len) : "-")</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        }
+
+        <section>
+            <h2>@L["report.path.title"]</h2>
+            <HorizonPathChart Horizon="view.Horizon" Path="report.Path" />
+            <p class="muted small">@L["report.path.note"]</p>
+        </section>
+
+        @if (report.Series is { } ts)
+        {
+            var nights = NightBands(report);
+            <section class="series-block">
+                <h2>@L["report.series.title"] <sup class="cite">@Cite("de440", "hayne2017", "fincannon2020")</sup></h2>
+                <p class="muted small">@L["report.series.lede"]</p>
+                <SeriesChart Title="@L["report.series.elevation"]" YLabel="@L["axis.elevation"]" StepHours="ts.StepHours" Unit="°" ZeroLine="true" Bands="nights"
+                             Lines="@(new SeriesChart.Line[] { new(L["report.path.sun"], ts.SunElevationDeg, "sun"), new(L["report.path.earth"], ts.EarthElevationDeg, "earth") })" />
+                <SeriesChart Title="@L["report.series.temperature"]" YLabel="@L["axis.temperature"]" StepHours="ts.StepHours" Unit=" K" Bands="nights"
+                             References="@TemperatureReferences()"
+                             Lines="@(new SeriesChart.Line[] { new(L["report.series.surface"], ts.SurfaceK, "temp") })" />
+                <SeriesChart Title="@L["report.series.power"]" YLabel="@L["axis.power"]" StepHours="ts.StepHours" Unit=" W" Min="0" Bands="nights"
+                             References="@(new SeriesChart.Reference[] { new(ts.LoadW, L.Format("report.series.load", ts.LoadW.ToString("F0", CultureInfo.InvariantCulture))) })"
+                             Lines="@(new SeriesChart.Line[] { new(L["report.series.tracking"], ts.TrackingW, "sun"), new(L.Format("report.series.fixed", ts.BestFixedAzimuthDeg.ToString("F0", CultureInfo.InvariantCulture)), ts.BestFixedW, "fixed") })" />
+                <SeriesChart Title="@L["report.series.battery"]" YLabel="@L["axis.charge"]" StepHours="ts.StepHours" Unit="%" Min="0" Max="100" Bands="nights"
+                             References="@(new SeriesChart.Reference[] { new(20, L["report.series.floor"]) })"
+                             Lines="@(ts.Battery.Select((b, k) => new SeriesChart.Line(b.CapacityKWh.ToString("F0", CultureInfo.InvariantCulture) + " " + L["report.unit.kwh"], b.Soc.Select(v => v * 100).ToList(), "soc" + k)).ToList())" />
+                <p class="muted small">@L["report.series.note"]@if (diviner is not null)
+                {
+                    @(" " + L["report.series.notePolar"])
+                }</p>
+            </section>
+        }
+
+        <section>
+            <h2>@L["report.lanes"]</h2>
+            <svg class="report-lanes" viewBox="-10 0 @(LaneWidth + 20) 122" role="img" aria-label="@L["report.lanes"]">
+                @Lane(0, L["report.lane.sun"], report.SunIntervals, "lane-sun")
+                @Lane(28, L["report.lane.earth"], report.EarthIntervals, "lane-earth")
+                @Lane(56, L["report.lane.link"], report.LinkIntervals, "lane-link")
+                @Lane(84, L["report.lane.eclipse"], report.EclipseIntervals, "lane-eclipse")
+                @for (var day = 0; day * 24 <= Hours(); day += Math.Max(1, (int)(Hours() / 24 / 6)))
+                {
+                    <g>
+                        <line x1="@X(report.WindowStartUtc.AddDays(day))" x2="@X(report.WindowStartUtc.AddDays(day))" y1="110" y2="114" class="lane-tick" />
+                        <text x="@X(report.WindowStartUtc.AddDays(day))" y="122" class="lane-day">@day</text>
+                    </g>
+                }
+            </svg>
+            <p class="muted small">@L["report.days"]</p>
+        </section>
+
+        <section>
+            <h2>@L.Format("report.sky", Stamp(report.WindowStartUtc))</h2>
+            <SkyChart Snapshot="view.At(start)" Horizon="view.Horizon" />
+        </section>
+
+        <section class="report-two even">
+            <div>
+                <h2>@L["report.start.title"]</h2>
+                <dl class="report-facts">
+                    <div><dt>@L["explore.sunEl"]</dt><dd>@Deg(report.Sun.ElevationAtStartDeg)</dd></div>
+                    <div><dt>@L["report.fig.sunAbove"]</dt><dd>@Deg(report.Sun.MaxAboveHorizonDeg)</dd></div>
+                    <div><dt>@L["report.fig.sunMin"]</dt><dd>@Deg(report.Sun.MinElevationDeg)</dd></div>
+                    <div><dt>@L["report.fig.earthRange"]</dt><dd>@Deg(report.Earth.MinElevationDeg) … @Deg(report.Earth.MaxElevationDeg)</dd></div>
+                    <div><dt>@L["metric.earth"]</dt><dd>@Pct(report.Earth.VisibleShare)</dd></div>
+                    <div><dt>@L["metric.gap"]</dt><dd>@L.Duration(TimeSpan.FromHours(report.Earth.LongestGapHours))</dd></div>
+                    <div><dt>@L["metric.eclipse"]</dt><dd>@(report.Earth.EclipseCount == 0 ? L["report.none"] : L.Duration(TimeSpan.FromHours(report.Earth.EclipseHours)))</dd></div>
+                    <div><dt>@L["dsn.delay"]</dt><dd>@L.Format("dsn.delayValue", report.Earth.SignalDelaySeconds.ToString("F2", CultureInfo.InvariantCulture), (2 * report.Earth.SignalDelaySeconds).ToString("F2", CultureInfo.InvariantCulture))</dd></div>
+                </dl>
+            </div>
+            <div>
+                <h2>@L["report.terrain.title"]</h2>
+                <dl class="report-facts">
+                    <div><dt>@L["report.terrain.source"]</dt><dd>@L["report.horizon." + report.Site.HorizonSource]</dd></div>
+                    <div><dt>@L["report.terrain.max"]</dt><dd>@L.Format("report.terrain.maxValue", Deg(report.Horizon.MaxElevationDeg), report.Horizon.MaxAzimuthDeg.ToString("F0", CultureInfo.InvariantCulture))</dd></div>
+                    <div><dt>@L["report.terrain.mean"]</dt><dd>@Deg(report.Horizon.MeanElevationDeg)</dd></div>
+                    @if (view.Site.Id == report.Site.Id && view.Site.RockAbundance is { } rocks)
+                    {
+                        <div><dt>@L["explore.rocks"] <sup class="cite">@Cite("bandfield2011")</sup></dt><dd>@L.Format("explore.rocksValue", (rocks * 100).ToString("0.0#", CultureInfo.InvariantCulture))</dd></div>
+                    }
+                </dl>
+                @if (view.Site.Id == report.Site.Id && view.Site.RockAbundance is not null)
+                {
+                    <p class="muted small">@L["explore.rocksHint"]</p>
+                }
+            </div>
+        </section>
+
+        <section class="report-three">
+            <PowerPanel Estimate="report.Power" />
+            <ThermalPanel Estimate="report.Thermal" Window="true" Tilted="patch is not null" />
+            <DsnPanel Ephemeris="Store.Ephemeris!" Cursor="start" Link="new DsnPanel.LinkSummary(report.Earth.DsnLinkShare, TimeSpan.FromHours(report.Earth.LongestLinkGapHours))" DelaySeconds="report.Earth.SignalDelaySeconds" />
+        </section>
+
+        @if (report.Site.LatitudeDeg <= -80)
+        {
+            <section class="report-radio">
+                <h2>@L["radio.title"] <sup class="cite">@Cite("santorelli2026", "lunarrf2026", "barker2023")</sup></h2>
+                <RadioPanel SiteId="@report.Site.Id" LatitudeDeg="report.Site.LatitudeDeg" LongitudeDeg="report.Site.LongitudeEastDeg" Bare="true" Computed="RadioComputed" />
+                <p class="muted small">@L["report.radio.note"] <a href="science/method#radio">@L["nav.method"]</a></p>
+            </section>
+        }
+
+        <section>
+            <h2>@L["report.regolith.title"] <sup class="cite">@Cite("hayne2017", "vasavada2012", "williams2017")</sup></h2>
+            <dl class="report-facts two-col">
+                <div><dt>@L["report.regolith.mean"]</dt><dd>@Celsius(report.Regolith.MeanSurfaceK) (@report.Regolith.MeanSurfaceK.ToString("F0", CultureInfo.InvariantCulture) K)</dd></div>
+                <div><dt>@L["report.regolith.deep"]</dt><dd>@Celsius(report.Regolith.SubsurfaceK) (@report.Regolith.SubsurfaceK.ToString("F0", CultureInfo.InvariantCulture) K)</dd></div>
+                <div><dt>@L["report.regolith.darkMin"]</dt><dd>@(report.Regolith.DarkMinK is { } b ? Celsius(b) + " (" + b.ToString("F0", CultureInfo.InvariantCulture) + " K)" : "-")</dd></div>
+                <div><dt>@L["report.regolith.tilt"]</dt><dd>@L.Format("report.regolith.tiltValue", report.Regolith.SlopeDeg.ToString("F1", CultureInfo.InvariantCulture), report.Regolith.AspectDeg.ToString("F0", CultureInfo.InvariantCulture))</dd></div>
+                <div><dt>@L["report.regolith.simple"]</dt><dd>@Celsius(report.Regolith.SimpleModelMaxK) (@report.Regolith.SimpleModelMaxK.ToString("F0", CultureInfo.InvariantCulture) K)</dd></div>
+            </dl>
+            @if (diviner is { } measured)
+            {
+                <h3 class="numbers-head">@L["report.diviner.title"] <sup class="cite">@Cite("paige2010")</sup></h3>
+                <table class="report-table">
+                    <thead><tr><th></th><th>@L["report.diviner.max"]</th><th>@L["report.diviner.avg"]</th></tr></thead>
+                    <tbody>
+                        <tr class="base"><td>@L["report.diviner.measured"]</td><td>@measured.AnnualMaxK.ToString("F0", CultureInfo.InvariantCulture) K</td><td>@measured.AnnualAverage2cmK.ToString("F0", CultureInfo.InvariantCulture) K</td></tr>
+                        <tr><td>@L["report.diviner.model"]</td><td>@(annual is { } y ? y.MaxK.ToString("F0", CultureInfo.InvariantCulture) + " K" : L["common.loading"])</td><td>@(annual is { } z ? z.Mean2cmK.ToString("F0", CultureInfo.InvariantCulture) + " K" : L["common.loading"])</td></tr>
+                    </tbody>
+                </table>
+                <p>@(measured.IceDepthM is { } ice ? (ice <= 0.001 ? L["report.diviner.iceSurface"] : L.Format("report.diviner.ice", ice.ToString("F2", CultureInfo.InvariantCulture))) : L["report.diviner.noIce"])</p>
+                <p class="muted small">@L["report.diviner.note"] <a href="science/validation#thermal">@L["nav.validation"]</a></p>
+            }
+            <p class="muted small">@L["report.acc.thermal"]</p>
+        </section>
+
+        <section>
+            <h2>@L["report.shift.title"]</h2>
+            <table class="report-table">
+                <thead><tr><th>@L["report.shift.days"]</th><th>@L["metric.sun"]</th><th>@L["metric.darkness"]</th><th>@L["metric.earth"]</th></tr></thead>
+                <tbody>
+                    <tr class="base"><td>0</td><td>@Pct(report.Sun.SunlitShare)</td><td>@L.Duration(TimeSpan.FromHours(report.Sun.LongestDarknessHours))</td><td>@Pct(report.Earth.VisibleShare)</td></tr>
+                    @foreach (var shift in report.StartShifts)
+                    {
+                        <tr><td>@(shift.Days > 0 ? "+" : null)@shift.Days</td><td class="@Trend(shift.SunlitShare, report.Sun.SunlitShare)">@Pct(shift.SunlitShare)</td><td class="@Trend(report.Sun.LongestDarknessHours, shift.LongestDarknessHours)">@L.Duration(TimeSpan.FromHours(shift.LongestDarknessHours))</td><td class="@Trend(shift.EarthShare, report.Earth.VisibleShare)">@Pct(shift.EarthShare)</td></tr>
+                    }
+                </tbody>
+            </table>
+            <p class="muted small">@L["report.shift.note"]</p>
+        </section>
+
+        @if (report.Route is { } route && Routes.BelongsTo(report.Site.Id) && Routes.Data is { } data)
+        {
+            <section>
+                <h2>@L["route.title"]</h2>
+                <div class="report-two">
+                    <div>
+                        <dl class="report-facts">
+                            <div><dt>@L["route.length"]</dt><dd>@route.Summary.LengthKm.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.km"]</dd></div>
+                            <div><dt>@L["route.climb"]</dt><dd>+@route.Summary.ClimbM.ToString("F0", CultureInfo.InvariantCulture) / −@route.Summary.DescentM.ToString("F0", CultureInfo.InvariantCulture) @L["common.unit.m"]</dd></div>
+                            <div><dt>@L["route.grade"]</dt><dd>@Deg(route.Summary.MaxGradeDeg)</dd></div>
+                            <div><dt>@L["route.steep"]</dt><dd>@Pct(route.Summary.SteepFraction)</dd></div>
+                            <div><dt>@L["route.sun"]</dt><dd>@Pct(route.Summary.SunMin) / @Pct(route.Summary.SunMean)</dd></div>
+                            <div><dt>@L["route.dark"]</dt><dd>@route.Summary.DarkKm.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.km"]</dd></div>
+                            <div><dt>@L["route.earth"]</dt><dd>@Pct(route.Summary.EarthMean)</dd></div>
+                        </dl>
+                        <table class="report-table narrow">
+                            <thead><tr><th>#</th><th>@L["report.route.lat"]</th><th>@L["report.route.lon"]</th></tr></thead>
+                            <tbody>
+                                @for (var i = 0; i < route.Waypoints.Count; i++)
+                                {
+                                    <tr><td>@(i + 1)</td><td>@Lat(route.Waypoints[i][0])</td><td>@Lon(route.Waypoints[i][1])</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <RouteProfile Data="data" Width="460" />
+                </div>
+                <p class="muted small">@L["route.note"]</p>
+            </section>
+        }
+
+        @if (report.Mission is { } ops)
+        {
+            <section>
+                <h2>@L["report.mount.title"] <sup class="cite">@Cite("fincannon2020", "kopp2011")</sup></h2>
+                <table class="report-table">
+                    <thead><tr><th>@L["report.mount.layout"]</th><th>@L["report.mount.kwh"]</th><th>@L["report.mount.peak"]</th><th>@L["report.mount.dark"]</th><th>@L["report.mount.cell"]</th></tr></thead>
+                    <tbody>
+                        @for (var i = 0; i < ops.Mounts.Count; i++)
+                        {
+                            var mount = ops.Mounts[i];
+                            <tr class="@(i == 0 ? "base" : null)"><td>@L.Format("report.mount." + i, mount.AzimuthDeg.ToString("F0", CultureInfo.InvariantCulture))</td><td>@mount.KWhPerDay.ToString("F2", CultureInfo.InvariantCulture)</td><td>@mount.PeakW.ToString("F0", CultureInfo.InvariantCulture) @L["report.unit.w"]</td><td>@L.Duration(TimeSpan.FromHours(mount.LongestDarkHours))</td><td>@Signed(mount.MaxCellC, "F0") °C</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small">@L["report.mount.note"]</p>
+            </section>
+
+            <section class="report-two even">
+                <div>
+                    <h2>@L["report.battery.title"] <sup class="cite">@Cite("kopp2011", "viper2022")</sup></h2>
+                    <table class="report-table">
+                        <thead><tr><th>@L["report.battery.capacity"]</th><th>@L["report.battery.min"]</th><th>@L["report.battery.empty"]</th><th>@L["report.battery.emptyHours"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var battery in ops.Batteries)
+                            {
+                                <tr><td>@battery.CapacityKWh.ToString("F0", CultureInfo.InvariantCulture) @L["report.unit.kwh"]</td><td class="@(battery.HoursToEmpty is not null ? "down" : null)">@Pct(battery.MinStateOfCharge)</td><td>@(battery.HoursToEmpty is { } e ? L.Duration(TimeSpan.FromHours(e)) : L["report.battery.never"])</td><td>@L.Duration(TimeSpan.FromHours(battery.HoursEmpty))</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                    <p class="muted small">@L["report.battery.note"]</p>
+                </div>
+                <div>
+                    <h2>@L["report.safe.title"] <sup class="cite">@Cite("viper2022")</sup></h2>
+                    <dl class="report-facts">
+                        <div><dt>@L["report.safe.dark"]</dt><dd>@Hours(ops.SafeHaven.DarkWithoutEarthHours)</dd></div>
+                        <div><dt>@L["report.safe.per"]</dt><dd>@ops.SafeHaven.PerLunationHours.ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.h"]</dd></div>
+                        <div><dt>@L["report.safe.longest"]</dt><dd>@Hours(ops.SafeHaven.LongestHours)</dd></div>
+                        <div><dt>@L["report.safe.limit"]</dt><dd>@ops.SafeHaven.LimitHoursPerLunation.ToString("F0", CultureInfo.InvariantCulture) @L["common.unit.h"]</dd></div>
+                    </dl>
+                    <p class="pill @(ops.SafeHaven.Status switch { "pass" => "good", "short" => "limited", _ => "poor" })">@L["report.safe." + ops.SafeHaven.Status]</p>
+                </div>
+            </section>
+
+            <section class="report-two even">
+                <div>
+                    <h2>@L["report.slope.title"] <sup class="cite">@Cite(report.Site.HorizonSource is "polar" or "polargrid" or "pole80" ? "barker2023" : "lola2017", "viper2022")</sup></h2>
+                    @if (ops.Slope is { } slope)
+                    {
+                        <dl class="report-facts">
+                            <div><dt>@L["report.slope.site"]</dt><dd>@Deg(slope.AtSiteDeg)</dd></div>
+                            <div><dt>@L.Format("report.slope.mean", Metres(slope.RadiusM))</dt><dd>@Deg(slope.MeanDeg)</dd></div>
+                            <div><dt>@L.Format("report.slope.max", Metres(slope.RadiusM))</dt><dd>@Deg(slope.MaxDeg)</dd></div>
+                            <div><dt>@L.Format("report.slope.steep", slope.ThresholdDeg.ToString("F0", CultureInfo.InvariantCulture))</dt><dd class="@(slope.SteepShare > 0 ? "warn" : "ok")">@Pct(slope.SteepShare)</dd></div>
+                            <div><dt>@L["report.slope.baseline"]</dt><dd>@Metres(slope.BaselineM)</dd></div>
+                            @if (NacCheck() is { } nac)
+                            {
+                                <div><dt>@L.Format("report.slope.nac", nac.Product) <sup class="cite">@Cite("henriksen2017")</sup></dt><dd>@L.Format("report.slope.nacValue", Deg(nac.NacMedianDeg), Metres(nac.FineBaselineM), Deg(nac.NacMedianWideDeg), Metres(nac.WideBaselineM))</dd></div>
+                            }
+                        </dl>
+                        @if (NacCheck() is not null)
+                        {
+                            <p class="muted small">@L["report.slope.nacNote"] <a href="plan/tipover#nac">@L["report.tipRisk"]</a></p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="muted">@L["report.slope.none"]</p>
+                    }
+                </div>
+                <div>
+                    <h2>@L["report.eva.title"] <sup class="cite">@Cite("ochmo2023", "null2023", "vasavada2012")</sup></h2>
+                    <dl class="report-facts">
+                        <div><dt>@L.Format("report.eva.lowSun", ops.Eva.LowSunLimitDeg.ToString("F0", CultureInfo.InvariantCulture))</dt><dd>@Pct(ops.Eva.LowSunShare)</dd></div>
+                        <div><dt>@L["report.eva.shadow"]</dt><dd>@(ops.Eva.ShadowFactorAtLanding is { } f ? L.Format("report.eva.shadowValue", f.ToString("F1", CultureInfo.InvariantCulture)) : "-")</dd></div>
+                        <div><dt>@L.Format("report.eva.glare", ops.Eva.GlareConeDeg.ToString("F0", CultureInfo.InvariantCulture))</dt><dd>@(ops.Eva.RouteGlareShare is { } g ? Pct(g) : L["report.eva.noRoute"])</dd></div>
+                        <div><dt>@L["report.eva.night"]</dt><dd>@Celsius(ops.Eva.NightK) (@ops.Eva.NightK.ToString("F0", CultureInfo.InvariantCulture) K)</dd></div>
+                    </dl>
+                    <p class="muted small">@L["report.eva.note"]</p>
+                </div>
+            </section>
+
+            <section class="ml-block">
+                <h2>@L["report.ml.title"] <sup class="cite">@Cite("wueller2026", "barker2023")</sup></h2>
+                @if (mlPercentile is { } pct)
+                {
+                    <p class="ml-score"><strong>@((pct * 100).ToString("F0", CultureInfo.InvariantCulture))</strong><span>@L["report.ml.of100"]</span></p>
+                    <p>@L.Format("report.ml.text", (pct * 100).ToString("F0", CultureInfo.InvariantCulture))</p>
+                }
+                else if (mlReady)
+                {
+                    <p class="muted">@L["report.ml.outside"]</p>
+                }
+                else
+                {
+                    <p class="muted">@L["common.loading"]</p>
+                }
+                <p class="muted small">@L["report.ml.note"] <a href="science/method#ml">@L["layer.artemisMore"]</a></p>
+            </section>
+
+            <section>
+                <h2>@L["report.disp.title"] <sup class="cite">@Cite("viper2022")</sup></h2>
+                <div class="report-two even">
+                    <div>
+                        <h3 class="numbers-head">@L["report.disp.time"]</h3>
+                        <table class="report-table">
+                            <thead><tr><th>@L["report.disp.shift"]</th><th>@L["metric.sun"]</th><th>@L["metric.darkness"]</th><th>@L["metric.earth"]</th></tr></thead>
+                            <tbody>
+                                <tr class="base"><td>0</td><td>@Pct(report.Sun.SunlitShare)</td><td>@L.Duration(TimeSpan.FromHours(report.Sun.LongestDarknessHours))</td><td>@Pct(report.Earth.VisibleShare)</td></tr>
+                                @foreach (var shift in ops.TimeShifts)
+                                {
+                                    <tr><td>@(shift.Hours > 0 ? "+" : null)@shift.Hours.ToString("F0", CultureInfo.InvariantCulture)</td><td class="@Trend(shift.SunlitShare, report.Sun.SunlitShare)">@Pct(shift.SunlitShare)</td><td class="@Trend(report.Sun.LongestDarknessHours, shift.LongestDarknessHours)">@L.Duration(TimeSpan.FromHours(shift.LongestDarknessHours))</td><td class="@Trend(shift.EarthShare, report.Earth.VisibleShare)">@Pct(shift.EarthShare)</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h3 class="numbers-head">@L["report.disp.place"]</h3>
+                        @if (dispersion is { } disp)
+                        {
+                            <DispersionRose Data="disp" />
+                            <details class="rose-table">
+                                <summary>@L["rose.table"]</summary>
+                            <table class="report-table">
+                                <thead><tr><th>@L["report.disp.dir"]</th><th>@L["report.disp.dist"]</th><th>@L["metric.sun"]</th><th>@L["metric.darkness"]</th><th>@L["metric.earth"]</th></tr></thead>
+                                <tbody>
+                                    <tr class="base"><td>@L["report.disp.centre"]</td><td>0</td><td>@Pct(disp.Centre.SunlitShare)</td><td>@L.Duration(TimeSpan.FromHours(disp.Centre.LongestDarknessHours))</td><td>@Pct(disp.Centre.EarthShare)</td></tr>
+                                    @foreach (var point in disp.Points)
+                                    {
+                                        <tr><td>@point.Direction</td><td>@Metres(point.DistanceM)</td><td class="@Trend(point.SunlitShare, disp.Centre.SunlitShare)">@Pct(point.SunlitShare)</td><td class="@Trend(disp.Centre.LongestDarknessHours, point.LongestDarknessHours)">@L.Duration(TimeSpan.FromHours(point.LongestDarknessHours))</td><td class="@Trend(point.EarthShare, disp.Centre.EarthShare)">@Pct(point.EarthShare)</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                            </details>
+                            <p class="muted small">@L.Format("report.disp.spread", Pct(disp.Points.Min(p => p.SunlitShare)), Pct(disp.Points.Max(p => p.SunlitShare)), L.Duration(TimeSpan.FromHours(disp.Points.Min(p => p.LongestDarknessHours))), L.Duration(TimeSpan.FromHours(disp.Points.Max(p => p.LongestDarknessHours))), Pct(disp.Points.Min(p => p.EarthShare)), Pct(disp.Points.Max(p => p.EarthShare)))</p>
+                        }
+                        else if (dispersionBusy)
+                        {
+                            <p class="muted">@L["report.disp.computing"]</p>
+                        }
+                        else
+                        {
+                            <p class="muted">@L["report.disp.none"]</p>
+                        }
+                    </div>
+                </div>
+            </section>
+        }
+
+        <section>
+            <h2>@L["report.month.title"] <sup class="cite">@Cite("de440", "iau2015", "dsn810")</sup></h2>
+            @if (monthly is { Count: > 0 })
+            {
+                var years = monthly.Select(m => m.Year).Distinct().ToList();
+                var names = L["windows.months"].Split(',');
+                var firstMonth = monthly[0].Month;
+                @foreach (var (title, pick) in MonthTables())
+                {
+                    <h3 class="numbers-head">@L[title]</h3>
+                    <div class="results-wrap">
+                        <table class="month-table">
+                            <thead><tr><th>@L["report.month.year"]</th>@for (var m = 0; m < 12; m++) { <th>@names[(firstMonth - 1 + m) % 12]</th> }</tr></thead>
+                            <tbody>
+                                @foreach (var year in years)
+                                {
+                                    <tr>
+                                        <th scope="row">@DataStore.YearLabel(year)</th>
+                                        @foreach (var item in monthly.Where(m => m.Year == year))
+                                        {
+                                            var v = pick(item);
+                                            <td style="--v: @v.ToString("F3", CultureInfo.InvariantCulture)" title="@L.Duration(TimeSpan.FromHours(item.LongestDarknessHours))">@((v * 100).ToString("F0", CultureInfo.InvariantCulture))</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                <p class="muted small">@L["report.month.note"] @L.Format("report.month.summary", Pct(monthly.Average(m => m.SunlitShare)), L.Duration(TimeSpan.FromHours(monthly.Max(m => m.LongestDarknessHours))), Pct(monthly.Average(m => m.LinkShare)))</p>
+            }
+            else
+            {
+                <p class="muted">@L["report.month.loading"]</p>
+            }
+        </section>
+
+        <section>
+            <h2>@L["report.intervals"]</h2>
+            <div class="report-tables">
+                @foreach (var (title, list) in Tables())
+                {
+                    <table>
+                        <caption>@L[title]</caption>
+                        <thead><tr><th>@L["report.start"]</th><th>@L["report.end"]</th><th>@L["report.length"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var item in expanded.Contains(title) ? list : list.Take(IntervalRows))
+                            {
+                                <tr><td>@Stamp(item.StartUtc)</td><td>@Stamp(item.EndUtc)</td><td>@L.Duration(TimeSpan.FromHours(item.Hours))</td></tr>
+                            }
+                            @if (list.Count > IntervalRows && !expanded.Contains(title))
+                            {
+                                <tr class="more-row"><td colspan="3"><button type="button" class="link-button" @onclick="() => expanded.Add(title)">@L.Format("report.moreRows", list.Count - IntervalRows)</button></td></tr>
+                            }
+                            @if (list.Count == 0)
+                            {
+                                <tr><td colspan="3" class="muted">@L["report.none"]</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+            <p class="muted small">@L["report.clip"]</p>
+        </section>
+
+        <section>
+            <h2>@L["report.numbers.title"]</h2>
+            <div class="report-two even">
+                <div>
+                    <h3 class="numbers-head sun">@L["report.path.sun"] <sup>@Cite("de440", "spice", "iau-nominal", "kopp2011")</sup></h3>
+                    <dl class="report-facts">
+                        <div><dt>@L["metric.sun"]</dt><dd>@Pct(report.Sun.SunlitShare), @Hours(report.Sun.SunlitHours)</dd></div>
+                        <div><dt>@L["report.num.sunrises"]</dt><dd>@report.Sun.Sunrises / @report.Sun.Sunsets</dd></div>
+                        <div><dt>@L["metric.darkness"]</dt><dd>@Hours(report.Sun.LongestDarknessHours)</dd></div>
+                        <div><dt>@L["report.num.elevation"]</dt><dd>@Deg(report.Sun.MinElevationDeg) / @Deg(report.Sun.MeanElevationDeg) / @Deg(report.Sun.MaxElevationDeg)</dd></div>
+                        <div><dt>@L["report.fig.sunAbove"]</dt><dd>@Deg(report.Sun.MaxAboveHorizonDeg)</dd></div>
+                        <div><dt>@L["report.num.sunDistance"]</dt><dd>@report.Sun.MinDistanceAu.ToString("F5", CultureInfo.InvariantCulture) … @report.Sun.MaxDistanceAu.ToString("F5", CultureInfo.InvariantCulture) @L["report.unit.au"]</dd></div>
+                        <div><dt>@L["report.num.irradiance"]</dt><dd>@report.Sun.MinIrradianceWm2.ToString("F1", CultureInfo.InvariantCulture) … @report.Sun.MaxIrradianceWm2.ToString("F1", CultureInfo.InvariantCulture) @L["report.unit.wm2"]</dd></div>
+                        <div><dt>@L["report.num.sunDisc"]</dt><dd>@report.Sun.AngularDiameterDeg.ToString("F4", CultureInfo.InvariantCulture)°</dd></div>
+                        <div><dt>@L["report.num.peak"]</dt><dd>@report.Power.PeakVerticalW.ToString("F0", CultureInfo.InvariantCulture) @L["report.unit.w"], @L["report.num.mean"] @report.Power.MeanVerticalW.ToString("F0", CultureInfo.InvariantCulture) @L["report.unit.w"]</dd></div>
+                        <div><dt>@L["report.num.energy"]</dt><dd>@((report.Power.VerticalKWhPerDay * Days()).ToString("F1", CultureInfo.InvariantCulture)) / @((report.Power.HorizontalKWhPerDay * Days()).ToString("F1", CultureInfo.InvariantCulture)) @L["report.unit.kwh"]</dd></div>
+                    </dl>
+                </div>
+                <div>
+                    <h3 class="numbers-head earth">@L["report.path.earth"] <sup>@Cite("de440", "spice", "dsn810", "si2019")</sup></h3>
+                    <dl class="report-facts">
+                        <div><dt>@L["metric.earth"]</dt><dd>@Pct(report.Earth.VisibleShare), @Hours(report.Earth.VisibleHours)</dd></div>
+                        <div><dt>@L["report.num.earthrises"]</dt><dd>@report.Earth.Earthrises / @report.Earth.Earthsets</dd></div>
+                        <div><dt>@L["metric.gap"]</dt><dd>@Hours(report.Earth.LongestGapHours)</dd></div>
+                        <div><dt>@L["report.num.elevation"]</dt><dd>@Deg(report.Earth.MinElevationDeg) / @Deg(report.Earth.MeanElevationDeg) / @Deg(report.Earth.MaxElevationDeg)</dd></div>
+                        <div><dt>@L["report.num.azimuth"]</dt><dd>@Deg(report.Earth.MinAzimuthDeg) … @Deg(report.Earth.MaxAzimuthDeg)</dd></div>
+                        <div><dt>@L["report.num.earthDistance"]</dt><dd>@Km(report.Earth.MinRangeKm) … @Km(report.Earth.MaxRangeKm) @L["common.unit.km"]</dd></div>
+                        <div><dt>@L["report.num.earthDisc"]</dt><dd>@report.Earth.MinAngularDiameterDeg.ToString("F3", CultureInfo.InvariantCulture)° … @report.Earth.MaxAngularDiameterDeg.ToString("F3", CultureInfo.InvariantCulture)°</dd></div>
+                        <div><dt>@L["report.num.phase"]</dt><dd>@Pct(report.Earth.IlluminatedFractionAtStart)</dd></div>
+                        <div><dt>@L["report.fig.link"]</dt><dd>@Pct(report.Earth.DsnLinkShare), @L["dsn.gap"] @Hours(report.Earth.LongestLinkGapHours)</dd></div>
+                        @foreach (var station in report.Earth.Stations)
+                        {
+                            <div><dt>@L.Format("report.num.station", L.Place(station.Name))</dt><dd>@Pct(station.MoonAbove10DegShare)</dd></div>
+                        }
+                        <div><dt>@L["dsn.delay"]</dt><dd>@report.Earth.SignalDelaySeconds.ToString("F3", CultureInfo.InvariantCulture) @L["common.unit.s"]</dd></div>
+                    </dl>
+                </div>
+            </div>
+            <p class="muted small">@L["report.num.note"]</p>
+        </section>
+
+        <section class="report-method">
+            <h2>@L["report.method.title"]</h2>
+            <div class="results-wrap">
+                <table class="report-table method-table">
+                    <thead><tr><th>@L["report.method.quantity"]</th><th>@L["report.method.how"]</th><th>@L["report.method.accuracy"]</th><th>@L["report.method.refs"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in report.Provenance)
+                        {
+                            <tr>
+                                <th scope="row">@L["report.quantity." + item.Quantity]</th>
+                                <td>@MethodText(item)</td>
+                                <td>@AccuracyText(item)</td>
+                                <td class="refs">@Cite(item.References.ToArray())</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>@L["report.sources"]</h2>
+            <ol class="report-refs">
+                @foreach (var reference in report.References)
+                {
+                    <li>@reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
+                    {
+                        @(" ")<a href="@link" target="_blank" rel="noopener">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
+                    }</li>
+                }
+            </ol>
+            <p class="muted small">@L.Format("report.source.grid", report.StepMinutes) @L["report.source.models"]</p>
+            <p class="muted small">@L.Format("report.generated", Stamp(report.GeneratedUtc)) <a href="science/method">@L["nav.method"]</a></p>
+            <p class="muted small report-link">@Navigation.Uri</p>
+        </section>
+    </article>
+}
+
+@code {
+    private const int LaneWidth = 940;
+
+    private string SiteTitle => view is not null && report is not null && view.Site.Id == report.Site.Id
+        ? (view.Site.Id.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) ? L["explore.custom"] : L.Name(view.Site))
+        : report?.Site.Name ?? string.Empty;
+
+    private static readonly HashSet<string> Unrelated = ["csa-moon", "csa-rover", "ispace2021", "space2026", "pedregosa2011"];
+
+    private static bool Cited(string id, Site site) => id switch
+    {
+        _ when Unrelated.Contains(id) => false,
+        "santorelli2026" or "lunarrf2026" => site.LatitudeDeg <= -80,
+        "nokia2025" => site.Id == "im2-athena",
+        "henriksen2017" => site.Id is "im1-odysseus" or "im2-athena",
+        "bandfield2011" => site.RockAbundance is not null,
+        _ => true,
+    };
+    private const int IntervalRows = 8;
+
+    private readonly HashSet<string> expanded = [];
+    private readonly CancellationTokenSource cancel = new();
+    private TerrainPatch? patch;
+    private ReportDispersion? dispersion;
+    private bool dispersionBusy;
+    private IReadOnlyList<ReportMonth>? monthly;
+    private double? mlPercentile;
+    private Shadowline.Core.Thermal.DivinerCell? diviner;
+    private Shadowline.Core.Thermal.RegolithResult? annual;
+    private bool mlReady;
+
+    private string? error;
+    private SiteView? view;
+    private SiteReport? report;
+    private int start;
+    private ReportRobustness? robustness;
+    private ReportRadio? radio;
+    private int length = 30 * 48;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Store.ApplyYearAsync(new Uri(Navigation.Uri));
+            await Views.EnsureLoadedAsync();
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        var grid = Store.Manifest!.Grid;
+        var state = PlannerState.Parse(new Uri(Navigation.Uri).Query);
+        var siteId = state is not null && Views.Resolve(state.SiteId) is not null ? state.SiteId : Store.Catalog!.Sites[0].Id;
+        start = Math.Clamp(state?.Cursor ?? 0, 0, grid.Count - 1);
+        var hours = state?.WindowHours is > 0 and var h ? h : 720;
+        length = Math.Clamp(hours * 60 / (int)grid.Step.TotalMinutes, 1, grid.Count - start);
+        if (siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+        {
+            await Views.PrepareAsync(siteId);
+        }
+
+        view = Views.Get(siteId);
+        var custom = siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal);
+        var source = !view.HasTerrain ? "flat" : custom ? (Views.UsesPoleTiles(siteId) ? "pole80" : Views.UsesPolarGrid(siteId) ? "polargrid" : "global") : view.Site.LatitudeDeg < -80 ? "polar" : "global";
+        var route = Routes.BelongsTo(siteId) && Routes.Data is { Points: { Length: > 1 } points } && Routes.Summary is { } summary ? new ReportRoute(points, summary) : null;
+        patch = await LoadPatchAsync(siteId);
+        var site = custom && Views.TerrainFor(siteId) is { } terrain ? view.Site with { ElevationM = Math.Round(terrain.ElevationM, 1) } : view.Site;
+        report = SiteReportBuilder.Build(site, source, view.Horizon, Store.Ephemeris!, view.Tracks, Comms.Dsn(Store.Ephemeris!), start, length, Store.Year ?? string.Empty, "MOON_ME", DateTimeOffset.UtcNow, route, patch);
+        report = report with { References = report.References.Where(reference => Cited(reference.Id, site)).ToList() };
+        dispersionBusy = patch is not null;
+        _ = ExtrasAsync(cancel.Token);
+    }
+
+    private async Task<TerrainPatch?> LoadPatchAsync(string siteId)
+    {
+        try
+        {
+            if (Views.TerrainFor(siteId) is { } custom)
+            {
+                return TerrainPatch.Parse(custom.Tile);
+            }
+
+            if (siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            using var response = await Http.GetAsync($"data/terrain/{Uri.EscapeDataString(siteId)}.bin");
+            return response.IsSuccessStatusCode ? TerrainPatch.Parse(await response.Content.ReadAsByteArrayAsync()) : null;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private async Task ExtrasAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(50, token);
+            try
+            {
+                var map = PolarScoreMap.Parse(await Http.GetByteArrayAsync("data/pole_artemis.bin", token));
+                mlPercentile = view is null ? null : map.Percentile(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg);
+            }
+            catch (Exception exception) when (exception is HttpRequestException or ArgumentException)
+            {
+                mlPercentile = null;
+            }
+
+            mlReady = true;
+            StateHasChanged();
+            if (view is not null && view.Site.LatitudeDeg <= -75)
+            {
+                try
+                {
+                    var map = Shadowline.Core.Thermal.DivinerPolarMap.Parse(await Http.GetByteArrayAsync("data/pole_diviner.bin", token));
+                    diviner = map.At(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg);
+                }
+                catch (Exception exception) when (exception is HttpRequestException or ArgumentException)
+                {
+                    diviner = null;
+                }
+
+                if (diviner is not null)
+                {
+                    StateHasChanged();
+                    await Task.Yield();
+                    var tilt = patch?.Tilt(480) ?? (0, 0);
+                    annual = Shadowline.Core.Thermal.Regolith1D.Run(new Shadowline.Core.Geometry.SiteFrame(view.Site), Store.Ephemeris!, view.Horizon, 0, Store.Ephemeris!.Grid.Count, null, 4, 2, tilt.SlopeDeg, tilt.AspectDeg);
+                    StateHasChanged();
+                }
+            }
+            if (patch is not null && view is not null)
+            {
+                dispersion = await MissionAnalysis.DispersionAsync(view.Site, view.Horizon, patch, Store.Ephemeris!, start, length, token);
+                dispersionBusy = false;
+                StateHasChanged();
+                await Task.Yield();
+            }
+
+            var list = new List<ReportMonth>();
+            foreach (var entry in Store.Years?.Years ?? [])
+            {
+                token.ThrowIfCancellationRequested();
+                if (await Store.LoadYearAsync(entry, token) is not { } ephemeris || view is null)
+                {
+                    continue;
+                }
+
+                await Task.Yield();
+                var tracks = SkyTracks.Build(view.Site, ephemeris, view.Horizon);
+                list.AddRange(MissionAnalysis.Monthly(entry.Id, tracks, Comms.Dsn(ephemeris), ephemeris.Grid));
+                await Task.Yield();
+            }
+
+            monthly = list;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private IEnumerable<(string Title, Func<ReportMonth, double> Pick)> MonthTables()
+    {
+        yield return ("report.month.sun", m => m.SunlitShare);
+        yield return ("report.month.link", m => m.LinkShare);
+    }
+
+    private string Metres(double m) => m >= 1000 ? (m / 1000).ToString("F1", CultureInfo.InvariantCulture) + " " + L["common.unit.km"] : m.ToString("F0", CultureInfo.InvariantCulture) + " " + L["common.unit.m"];
+
+    public override void Dispose()
+    {
+        cancel.Cancel();
+        base.Dispose();
+    }
+
+    private RenderFragment Lane(int y, string label, IReadOnlyList<ReportInterval> intervals, string css) => __builder =>
+    {
+        <g>
+            <text x="0" y="@(y + 9)" class="lane-label">@label</text>
+            <rect x="0" y="@(y + 12)" width="@LaneWidth" height="10" rx="2" class="lane" />
+            @foreach (var item in intervals)
+            {
+                <rect x="@X(item.StartUtc)" y="@(y + 12)" width="@W(item.Hours)" height="10" class="@css" />
+            }
+        </g>
+    };
+
+    private IEnumerable<(string Title, IReadOnlyList<ReportInterval> List)> Tables()
+    {
+        yield return ("report.table.sun", report!.SunIntervals);
+        yield return ("report.table.earth", report.EarthIntervals);
+        yield return ("report.table.link", report.LinkIntervals);
+        yield return ("report.table.eclipse", report.EclipseIntervals);
+    }
+
+    private double Hours() => (report!.WindowEndUtc - report.WindowStartUtc).TotalHours;
+
+    private double Days() => Hours() / 24.0;
+
+    private IReadOnlyList<SeriesChart.Reference> TemperatureReferences()
+    {
+        var lines = new List<SeriesChart.Reference> { new(273.15, "0 °C") };
+        if (diviner is { } d)
+        {
+            lines.Add(new SeriesChart.Reference(d.AnnualMaxK, L.Format("report.series.divinerMax", d.AnnualMaxK.ToString("F0", CultureInfo.InvariantCulture)), true));
+        }
+
+        return lines;
+    }
+
+    private static IReadOnlyList<SeriesChart.Band> NightBands(SiteReport r)
+    {
+        var bands = new List<SeriesChart.Band>();
+        var cursor = r.WindowStartUtc;
+        foreach (var day in r.SunIntervals)
+        {
+            if (day.StartUtc > cursor)
+            {
+                bands.Add(new SeriesChart.Band((cursor - r.WindowStartUtc).TotalHours, (day.StartUtc - r.WindowStartUtc).TotalHours));
+            }
+
+            cursor = day.EndUtc;
+        }
+
+        if (cursor < r.WindowEndUtc)
+        {
+            bands.Add(new SeriesChart.Band((cursor - r.WindowStartUtc).TotalHours, (r.WindowEndUtc - r.WindowStartUtc).TotalHours));
+        }
+
+        return bands;
+    }
+
+    private string Hours(double hours) => hours >= 48 ? L.Duration(TimeSpan.FromHours(hours)) + " (" + hours.ToString("F1", CultureInfo.InvariantCulture) + " " + L["common.unit.h"] + ")" : L.Duration(TimeSpan.FromHours(hours));
+
+    private static string Km(double km) => km.ToString("N0", CultureInfo.InvariantCulture).Replace(",", " ", StringComparison.Ordinal);
+
+    private string Cite(params string[] ids)
+    {
+        var numbers = ids.Select(id => report!.References.ToList().FindIndex(r => r.Id == id) + 1).Where(n => n > 0).OrderBy(n => n).ToList();
+        return numbers.Count == 0 ? "-" : "[" + string.Join(", ", numbers) + "]";
+    }
+
+    private string MethodText(ReportProvenance item) => item.Quantity switch
+    {
+        "site" => report!.Site.CoordinateSource ?? L["report.method.siteCustom"],
+        "horizon" => L["report.method.horizon." + report!.Site.HorizonSource],
+        "elevation" when report!.Site.HorizonSource == "pole80" => L["report.method.elevation.pole80"],
+        _ => L["report.method." + item.Quantity],
+    };
+
+    private string AccuracyText(ReportProvenance item) => item.Quantity switch
+    {
+        "horizon" => L["report.acc.horizon." + report!.Site.HorizonSource],
+        "site" when report!.Site.CoordinateSource is null => L["report.acc.siteCustom"],
+        "elevation" when report!.Site.HorizonSource == "pole80" => L["report.acc.elevation.pole80"],
+        _ => L["report.acc." + item.Quantity],
+    };
+
+    private string X(DateTimeOffset moment) => ((moment - report!.WindowStartUtc).TotalHours / Hours() * LaneWidth).ToString("F1", CultureInfo.InvariantCulture);
+
+    private string W(double hours) => Math.Max(0.6, hours / Hours() * LaneWidth).ToString("F1", CultureInfo.InvariantCulture);
+
+    private string VerdictWhy(ReportVerdict verdict) => verdict.Topic switch
+    {
+        "power" => L.Format("report.why.power", Pct(verdict.Value)),
+        "night" => L.Format("report.why.night", L.Duration(TimeSpan.FromHours(verdict.Value))),
+        _ => L.Format("report.why.link", Pct(verdict.Value)),
+    };
+
+    private static string Trend(double better, double worse)
+    {
+        var tolerance = Math.Max(0.005, Math.Abs(worse) * 0.002);
+        return better > worse + tolerance ? "up" : better < worse - tolerance ? "down" : null!;
+    }
+
+    private static string Pct(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private static string Deg(double value) => Signed(value, "F1") + "°";
+
+    private static string Signed(double value, string format) => value.ToString(format, CultureInfo.InvariantCulture).Replace("-", "−", StringComparison.Ordinal);
+
+    private string PhotoCaption(Shadowline.Data.SitePhoto photo) => photo.Caption is { } caption && (caption.GetValueOrDefault(L.Language) ?? caption.GetValueOrDefault("en")) is { } text ? text : string.Empty;
+
+    private Shadowline.Core.Missions.NacSlopeCheck? NacCheck() => report?.Site.Id switch
+    {
+        "im1-odysseus" => Shadowline.Core.Missions.NacSlopeChecks.All.FirstOrDefault(c => c.Key == "im1"),
+        "im2-athena" => Shadowline.Core.Missions.NacSlopeChecks.All.FirstOrDefault(c => c.Key == "im2"),
+        _ => null,
+    };
+
+    private void RadioComputed(Shadowline.Core.Radio.MastViewshed? viewshed)
+    {
+        radio = viewshed is null ? null : new ReportRadio(Shadowline.Core.Radio.MastViewshed.MastM, Shadowline.Core.Radio.MastViewshed.ReceiverM, Shadowline.Core.Radio.MastViewshed.RangeM / 1000, Math.Round(viewshed.EvaFraction, 4), Math.Round(viewshed.NearFraction, 4), Math.Round(viewshed.AreaKm2, 1));
+    }
+
+    private static string Celsius(double kelvin) => (kelvin - 273.15).ToString("F0", CultureInfo.InvariantCulture).Replace("-", "−", StringComparison.Ordinal) + " °C";
+
+    private static string Stamp(DateTimeOffset moment) => moment.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC";
+
+    private string Lat(double value) => L.Lat(value, 4);
+
+    private string Lon(double value) => L.Lon(value, 4);
+
+    private string TipLink() => view is null ? "plan/tipover" : $"plan/tipover?site={Uri.EscapeDataString(view.Site.Id)}&t={start}{Store.YearQuery}";
+
+    private string ExploreLink() => view is null ? "./" : $"./?site={Uri.EscapeDataString(view.Site.Id)}&t={start}{Store.YearQuery}";
+
+    private string FileStem()
+    {
+        var id = new string(view!.Site.Id.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+        return $"shadowline-{id}-{Store.Manifest!.Grid.At(start).ToString("yyyyMMdd-HHmm", CultureInfo.InvariantCulture)}";
+    }
+
+    private async Task Print()
+    {
+        await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await module.InvokeVoidAsync("print");
+    }
+
+    private async Task DownloadJson()
+    {
+        if (report is null)
+        {
+            return;
+        }
+
+        await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await module.InvokeVoidAsync("download", FileStem() + ".json", ReportJson.Write(report with { Robustness = robustness, Dispersion = dispersion, Monthly = monthly, Diviner = diviner is { } d ? new ReportDiviner(d.AnnualMaxK, d.AnnualAverage2cmK, d.IceDepthM, annual?.MaxK, annual?.Mean2cmK) : null, Radio = radio }), "application/json");
+    }
+
+    private async Task DownloadCsv()
+    {
+        if (view is null)
+        {
+            return;
+        }
+
+        var csv = SiteCsv.Build(view.Site, Store.Ephemeris!, view.Horizon, view.Tracks, Store.Manifest!.Grid, start, length);
+        await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await module.InvokeVoidAsync("download", FileStem() + ".csv", csv, "text/csv");
+    }
+}

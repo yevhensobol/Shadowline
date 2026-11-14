@@ -4,28 +4,156 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shadowline.Web</title>
+    <title>Shadowline</title>
+    <meta name="theme-color" content="#0d121b" />
+    <meta name="description" content="Shadowline compares lunar landing sites and dates: Sun and Earth over the real LOLA horizon, time to sunset and Earthset, power and direct-to-Earth windows." />
     <base href="/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Shadowline: lunar landing site navigator" />
+    <meta property="og:description" content="Sun and Earth over the real lunar horizon at landing sites, with power and communication windows. Built on NASA data for the NASA Space Apps Challenge 2026." />
+    <meta property="og:image" content="https://shadowline-8rn.pages.dev/img/og.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="css/app.css" />
-    <!-- If you add any scoped CSS files, uncomment the following to load them
-    <link href="Shadowline.Web.styles.css" rel="stylesheet" /> -->
+    <link rel="stylesheet" href="css/ui.css" />
     <script type="importmap"></script>
+    <script>
+        window.shadowlineHint = {
+            get: (key) => { try { return localStorage.getItem("hint-" + key); } catch (e) { return null; } },
+            set: (key, value) => { try { localStorage.setItem("hint-" + key, value); } catch (e) { } }
+        };
+        window.shadowlineTour = {
+            scrollTo: function (id) {
+                var element = document.getElementById(id);
+                if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }
+        };
+        window.shadowlineMap = {
+            fractions: function (id, clientX, clientY) {
+                var element = document.getElementById(id);
+                if (!element) { return []; }
+                var rect = element.getBoundingClientRect();
+                return [(clientX - rect.left) / rect.width, (clientY - rect.top) / rect.height];
+            },
+            watch: function (id, dotnet, big) {
+                var element = document.getElementById(id);
+                if (!element || element.shadowlineWatch) { return; }
+                element.shadowlineWatch = true;
+                var pending = null, frame = 0;
+                element.addEventListener("pointermove", function (e) {
+                    if (e.pointerType === "touch") { return; }
+                    var rect = element.getBoundingClientRect();
+                    pending = [(e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height];
+                    if (!frame) {
+                        frame = requestAnimationFrame(function () {
+                            frame = 0;
+                            if (pending) { dotnet.invokeMethodAsync("OnHover", pending[0], pending[1], big); pending = null; }
+                        });
+                    }
+                });
+                element.addEventListener("pointerleave", function () { pending = null; dotnet.invokeMethodAsync("OnHoverEnd"); });
+            },
+            open: function (dialog, id, dotnet) {
+                if (!dialog.open) { dialog.showModal(); }
+                window.shadowlineMap.watch(id, dotnet, true);
+                if (dialog.shadowlineReady) { return; }
+                dialog.shadowlineReady = true;
+                var drag = null, dragged = false, pan = [0, 0], wheel = null, frame = 0;
+                var map = function () { return document.getElementById(id); };
+                var flush = function () {
+                    frame = 0;
+                    if (pan[0] || pan[1]) { dotnet.invokeMethodAsync("OnPan", pan[0], pan[1]); pan = [0, 0]; }
+                    if (wheel) { dotnet.invokeMethodAsync("OnWheel", wheel[0], wheel[1], wheel[2]); wheel = null; }
+                };
+                var schedule = function () { if (!frame) { frame = requestAnimationFrame(flush); } };
+                dialog.addEventListener("close", function () { drag = null; dotnet.invokeMethodAsync("OnDialogClosed"); });
+                dialog.addEventListener("click", function (e) { if (e.target === dialog) { dialog.close(); } });
+                dialog.addEventListener("wheel", function (e) {
+                    e.preventDefault();
+                    var element = map();
+                    if (!element) { return; }
+                    var rect = element.getBoundingClientRect();
+                    var fx = (e.clientX - rect.left) / rect.width, fy = (e.clientY - rect.top) / rect.height;
+                    if (fx < 0 || fx > 1 || fy < 0 || fy > 1) { return; }
+                    var delta = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+                    wheel = [fx, fy, (wheel ? wheel[2] : 0) + delta];
+                    schedule();
+                }, { passive: false });
+                dialog.addEventListener("pointerdown", function (e) {
+                    var element = map();
+                    if (!element || !element.contains(e.target) || e.button !== 0) { return; }
+                    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY, moving: false };
+                    dragged = false;
+                });
+                dialog.addEventListener("pointermove", function (e) {
+                    var element = map();
+                    if (!drag || e.pointerId !== drag.id || !element) { return; }
+                    if (!drag.moving && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) {
+                        drag.moving = true;
+                        dragged = true;
+                        element.classList.add("dragging");
+                        try { element.setPointerCapture(e.pointerId); } catch (error) { }
+                    }
+                    if (drag.moving) {
+                        var rect = element.getBoundingClientRect();
+                        pan[0] += (e.clientX - drag.lastX) / rect.width;
+                        pan[1] += (e.clientY - drag.lastY) / rect.height;
+                        schedule();
+                    }
+                    drag.lastX = e.clientX;
+                    drag.lastY = e.clientY;
+                });
+                var end = function () { var element = map(); if (element) { element.classList.remove("dragging"); } drag = null; };
+                dialog.addEventListener("pointerup", end);
+                dialog.addEventListener("pointercancel", end);
+                window.addEventListener("click", function (e) {
+                    var element = map();
+                    if (dragged && element && element.contains(e.target)) { e.stopImmediatePropagation(); e.preventDefault(); }
+                    dragged = false;
+                }, true);
+            },
+            close: function (dialog) { if (dialog.open) { dialog.close(); } }
+        };
+        window.shadowlineLang = {
+            get: () => { try { return localStorage.getItem("lang"); } catch (e) { return null; } },
+            set: (value) => { try { localStorage.setItem("lang", value); } catch (e) { } document.documentElement.lang = value; },
+            apply: (value) => { document.documentElement.lang = value; },
+            browser: () => navigator.language || "en"
+        };
+    </script>
 </head>
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div class="boot" role="status" aria-live="polite">
+            <div class="boot-mark">
+                <svg class="boot-ring" aria-hidden="true"><circle r="40%" cx="50%" cy="50%" /><circle r="40%" cx="50%" cy="50%" /></svg>
+                <svg class="boot-moon" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="34" fill="#070a10" /><path d="M60 26A34 34 0 0 0 60 94A12 34 0 0 0 60 26Z" fill="#f2a33a" /><circle cx="60" cy="60" r="34" fill="none" stroke="#b3bccd" stroke-width="2" /></svg>
+            </div>
+            <p class="boot-name">Shadowline</p>
+            <p class="boot-text"><span id="boot-label">Loading the app</span> <span class="boot-pct"></span></p>
+        </div>
     </div>
+    <script>
+        (function () {
+            var lang = null;
+            try { lang = localStorage.getItem("lang"); } catch (e) { }
+            if ((lang || navigator.language || "").toLowerCase().indexOf("uk") === 0) {
+                document.getElementById("boot-label").textContent = "Завантаження застосунку";
+            }
+        })();
+    </script>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
+        <span class="dismiss">x</span>
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>

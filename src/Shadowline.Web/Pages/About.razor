@@ -1,0 +1,153 @@
+@page "/about"
+@page "/science/about"
+@using System.Globalization
+@using Shadowline.Core.Reports
+@using Shadowline.Core.Validation
+@inherits LocalizedComponent
+@inject DataStore Store
+@inject HttpClient Http
+
+<PageTitle>@L["about.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.ScienceTabs Tab="about" />
+
+<article class="about">
+    <header>
+        <h1 class="page-title">@L["about.title"]</h1>
+        <p class="lede">@L["about.lede"]</p>
+    </header>
+
+    <section class="about-facts" aria-label="@L["about.facts"]">
+        <div><strong>17 520</strong><span>@L["about.fact.steps"]</span></div>
+        <div><strong>80 @L["common.unit.m"]</strong><span>@L["about.fact.dem"]</span></div>
+        <div><strong>300 @L["common.unit.km"]</strong><span>@L["about.fact.range"]</span></div>
+        <div><strong>@(checks is null ? "…" : Arcsec(checks.Value.Max) + "″")</strong><span>@L.Format("about.fact.error", checks?.Count ?? 0)</span></div>
+    </section>
+
+    <section>
+        <h2>@L["about.q.title"]</h2>
+        <p>@L["about.q.text"]</p>
+    </section>
+
+    <section class="about-figure">
+        <h2>@L["about.horizon.title"]</h2>
+        <svg viewBox="0 0 720 220" role="img" aria-label="@L["about.horizon.alt"]">
+            <defs>
+                <linearGradient id="about-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070d1b" /><stop offset="1" stop-color="#1b2c4b" /></linearGradient>
+            </defs>
+            <rect width="720" height="220" fill="url(#about-sky)" rx="10" />
+            <path d="M0 196 L70 192 L120 186 L170 190 L230 178 L300 184 L360 170 L420 150 L470 120 L520 132 L560 118 L610 140 L660 150 L720 146 L720 220 L0 220 Z" fill="#04060a" stroke="#3a4558" />
+            <line x1="62" y1="186" x2="620" y2="96" stroke="#f2a33a" stroke-dasharray="5 5" stroke-width="1.5" />
+            <line x1="62" y1="186" x2="720" y2="186" stroke="#7f8aa0" stroke-width="1" stroke-dasharray="2 4" />
+            <circle cx="62" cy="186" r="5" fill="#ffffff" />
+            <circle cx="660" cy="62" r="16" fill="#ffd98a" />
+            <circle cx="660" cy="62" r="30" fill="#f2a33a" opacity="0.18" />
+            <g class="about-labels">
+                <text x="40" y="210">@L["about.horizon.site"]</text>
+                <text x="430" y="108">@L["about.horizon.peak"]</text>
+                <text x="612" y="26">@L["about.horizon.sun"]</text>
+                <text x="250" y="172">@L["about.horizon.ray"]</text>
+                <text x="560" y="200">@L["about.horizon.flat"]</text>
+            </g>
+        </svg>
+        <p>@L["about.horizon.text"]</p>
+    </section>
+
+    <section class="about-grid">
+        <div>
+            <h2>@L["about.data.title"]</h2>
+            <ul>
+                <li>@L["about.data.eph"]</li>
+                <li>@L["about.data.dem"]</li>
+                <li>@L["about.data.sites"]</li>
+                <li>@L["about.data.history"]</li>
+            </ul>
+            <p class="muted small"><a href="sources">@L["about.data.credits"]</a></p>
+        </div>
+        <div>
+            <h2>@L["about.method.title"]</h2>
+            <ul>
+                <li>@L["about.method.sun"]</li>
+                <li>@L["about.method.earth"]</li>
+                <li>@L["about.method.power"]</li>
+                <li>@L["about.method.thermal"]</li>
+                <li>@L["about.method.maps"]</li>
+                <li>@L["about.method.where"]</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="about-grid">
+        <div>
+            <h2>@L["about.check.title"]</h2>
+            <ul>
+                <li>@(checks is null ? L["about.check.horizonsLoading"] : L.Format("about.check.horizons", checks.Value.Count, Arcsec(checks.Value.Max)))</li>
+                <li>@L["about.check.apollo"]</li>
+                <li>@L["about.check.pole"]</li>
+                <li>@L["about.check.terrain"]</li>
+            </ul>
+            <p class="muted small"><a href="science/validation">@L["about.check.link"]</a></p>
+        </div>
+        <div>
+            <h2>@L["about.limits.title"]</h2>
+            <ul>
+                <li>@L["about.limits.dem"]</li>
+                <li>@L["about.limits.time"]</li>
+                <li>@L["about.limits.link"]</li>
+                <li>@L["about.limits.power"]</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h2>@L["about.use.title"]</h2>
+        <ol class="about-steps">
+            <li>@L["about.use.1"]</li>
+            <li>@L["about.use.2"]</li>
+            <li>@L["about.use.3"]</li>
+            <li>@L["about.use.4"]</li>
+            <li>@L["about.use.5"]</li>
+            <li>@L["about.use.6"]</li>
+        </ol>
+    </section>
+
+    <section>
+        <h2>@L["report.sources"]</h2>
+        <ol class="report-refs">
+            @foreach (var reference in References.All)
+            {
+                <li>@reference.Citation @L.Note(reference) @if (References.Link(reference) is { } link)
+                {
+                    @(" ")<a href="@link" target="_blank" rel="noopener">@(reference.Doi is { } doi ? "doi:" + doi : link)</a>
+                }</li>
+            }
+        </ol>
+    </section>
+</article>
+
+@code {
+    private (int Count, double Max)? checks;
+
+    private static string Arcsec(double degrees) => (degrees * 3600).ToString("F1", CultureInfo.InvariantCulture);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            using var response = await Http.GetAsync("data/validation.json");
+            if (response.IsSuccessStatusCode)
+            {
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                var document = await ValidationReader.ReadAsync(stream);
+                var result = ValidationRunner.Run(document.Fixtures!, id => Store.Catalog!.Find(id), Store.Ephemeris!);
+                var summary = result.Summary();
+                checks = (summary.Count, Math.Max(summary.MaxAzimuthErrorDeg, summary.MaxElevationErrorDeg));
+            }
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            checks = null;
+        }
+    }
+}

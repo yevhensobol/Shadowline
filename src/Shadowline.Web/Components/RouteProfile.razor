@@ -1,0 +1,55 @@
+@using System.Globalization
+@inherits LocalizedComponent
+
+<figure class="route-profile">
+    <figcaption>@L["route.profile"]</figcaption>
+    <svg viewBox="-52 0 @(Width + 52) 132" role="img" aria-label="@L["route.profile"]">
+        <text x="-4" y="@F(Y(Data.ElevationM.Max()) + 4)" text-anchor="end" class="series-axis">@Data.ElevationM.Max().ToString("F0", CultureInfo.InvariantCulture) @L["common.unit.m"]</text>
+        <text x="-4" y="@F(Y(Data.ElevationM.Min()))" text-anchor="end" class="series-axis">@Data.ElevationM.Min().ToString("F0", CultureInfo.InvariantCulture) @L["common.unit.m"]</text>
+        <text transform="translate(-44 46) rotate(-90)" text-anchor="middle" class="axis-title">@L["axis.heightM"]</text>
+        <path d="@Line() L@(Width) 88 L0 88 Z" class="profile-fill" />
+        <path d="@Line()" class="profile-line" />
+        @for (var i = 0; i < Data.DistanceKm.Length; i++)
+        {
+            if (Data.Waypoint[i])
+            {
+                <circle cx="@F(X(Data.DistanceKm[i]))" cy="@F(Y(Data.ElevationM[i]))" r="3" class="profile-dot" />
+            }
+        }
+        <g>
+            @for (var i = 1; i < Data.DistanceKm.Length; i++)
+            {
+                var x0 = X(Data.DistanceKm[i - 1]);
+                var w = Math.Max(0.5, X(Data.DistanceKm[i]) - x0);
+                <rect x="@F(x0)" y="96" width="@F(w + 0.3)" height="12" fill="@SunColor(i)" />
+                <rect x="@F(x0)" y="114" width="@F(w + 0.3)" height="12" fill="@SlopeColor(Data.SlopeDeg[i])" />
+            }
+        </g>
+    </svg>
+    <p class="spark-caption"><span>0</span><span>@L["axis.routeKm"] · @L["route.sunStrip"] / @L["route.slopeStrip"]</span><span>@Data.DistanceKm[^1].ToString("F1", CultureInfo.InvariantCulture) @L["common.unit.km"]</span></p>
+</figure>
+
+@code {
+    [Parameter, EditorRequired]
+    public MoonGlobe.RouteData Data { get; set; } = default!;
+
+    [Parameter]
+    public int Width { get; set; } = 300;
+
+    private double X(double km) => Data.DistanceKm[^1] <= 0 ? 0 : km / Data.DistanceKm[^1] * Width;
+
+    private double Y(double meters)
+    {
+        var min = Data.ElevationM.Min();
+        var max = Math.Max(min + 50, Data.ElevationM.Max());
+        return 84 - (meters - min) / (max - min) * 76;
+    }
+
+    private string Line() => string.Join(' ', Data.DistanceKm.Select((d, i) => (i == 0 ? "M" : "L") + F(X(d)) + " " + F(Y(Data.ElevationM[i]))));
+
+    private string SunColor(int i) => Data.Dark[i] ? "#2b73eb" : $"rgba(247, 191, 77, {(0.15 + 0.85 * Data.Sun[i]).ToString("F2", CultureInfo.InvariantCulture)})";
+
+    private static string SlopeColor(double deg) => deg >= 15 ? "#e0453a" : deg >= 10 ? "#f0b43c" : "#7ee08a";
+
+    private static string F(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+}

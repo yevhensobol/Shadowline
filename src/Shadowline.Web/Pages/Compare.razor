@@ -1,0 +1,309 @@
+@page "/compare"
+@using System.Globalization
+@using Shadowline.Core.Metrics
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Tracks
+@using Shadowline.Web.Components
+@inherits LocalizedComponent
+@inject DataStore Store
+@inject SiteViewCache Views
+@inject NavigationManager Navigation
+@inject MissionStore Missions
+
+<PageTitle>@L["compare.title"] - Shadowline</PageTitle>
+
+@if (error is not null)
+{
+    <p class="error page-note">@error</p>
+}
+else if (sides[0] is null || sides[1] is null || Store.Manifest is null)
+{
+    <p class="muted page-note">@L["common.loading"]</p>
+}
+else
+{
+    var grid = Store.Manifest.Grid;
+    <div class="compare">
+        <header class="compare-head">
+            <div>
+                <h1>@L["compare.title"]</h1>
+                <p class="muted">@L["compare.lede"]</p>
+            </div>
+            <div class="compare-tools">
+                <button type="button" @onclick='() => Turn("earth")'>@L["explore.lookEarth"]</button>
+                <button type="button" @onclick='() => Turn("sun")'>@L["explore.lookSun"]</button>
+                <button type="button" @onclick="Swap">@L["compare.swap"]</button>
+                <a class="button" href="@BackLink()">@L["compare.back"]</a>
+            </div>
+        </header>
+
+        <div class="compare-grid">
+            @for (var k = 0; k < 2; k++)
+            {
+                var index = k;
+                var side = sides[index]!;
+                var metrics = WindowEvaluator.Evaluate(side.Tracks, grid, cursor, Math.Max(1, Math.Min(30 * 48, grid.Count - cursor)));
+                <section class="compare-side">
+                    <label class="compare-pick">
+                        <span class="hud-label">@(index == 0 ? "A" : "B")</span>
+                        <select value="@side.Site.Id" @onchange="args => Pick(index, args)">
+                            @if (side.Site.Id.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+                            {
+                                <option value="@side.Site.Id">@L["explore.custom"] @Coords(side.Site)</option>
+                            }
+                            @foreach (var site in Store.Catalog!.Sites.Where(site => !site.Id.StartsWith("syn-", StringComparison.Ordinal)))
+                            {
+                                <option value="@site.Id">@L.Name(site)</option>
+                            }
+                        </select>
+                    </label>
+                    <div class="compare-view">
+                        <MoonGlobe @ref="globes[index]"
+                                   Sites="NoSites"
+                                   Embedded="true"
+                                   Quality="low"
+                                   StandAt="side.Site"
+                                   Labels="SurfaceLabels()"
+                                   Cursor="cursor"
+                                   Ephemeris="Store.Ephemeris!"
+                                   Grid="grid" />
+                    </div>
+                    <div class="compare-facts">
+                        <p class="coords">@Coords(side.Site)</p>
+                        <p class="now-line sun">@CountdownText("planner.sun", side.Tracks.SunVisible)</p>
+                        <p class="now-line earth">@CountdownText("planner.earth", side.Tracks.EarthVisible)</p>
+                        <dl class="metrics compact">
+                            <div><dt>@L["metric.sun"]</dt><dd>@Percent(metrics.SunFraction)</dd></div>
+                            <div><dt>@L["metric.darkness"]</dt><dd>@L.Duration(metrics.LongestDarkness)</dd></div>
+                            <div><dt>@L["metric.earth"]</dt><dd>@Percent(metrics.EarthFraction)</dd></div>
+                        </dl>
+                        <p class="muted small">@L["explore.next30"]</p>
+                    </div>
+                </section>
+            }
+        </div>
+
+        <footer class="compare-time">
+            <button type="button" class="play" aria-label="@L[playing ? "planner.pause" : "planner.play"]" @onclick="TogglePlay">
+                @if (playing)
+                {
+                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" /><rect x="9.5" y="2" width="3.5" height="12" /></svg>
+                }
+                else
+                {
+                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2 L14 8 L4 14 Z" /></svg>
+                }
+            </button>
+            <time>@grid.At(cursor).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>
+            <div class="lanes">
+                <svg viewBox="0 0 @LaneWidth 58" preserveAspectRatio="none" aria-hidden="true">
+                    @for (var k = 0; k < 2; k++)
+                    {
+                        var tracks = sides[k]!.Tracks;
+                        var y = k * 30;
+                        <g>
+                            <rect x="0" y="@y" width="@LaneWidth" height="12" rx="3" class="lane" />
+                            <rect x="0" y="@(y + 14)" width="@LaneWidth" height="12" rx="3" class="lane" />
+                            @foreach (var run in tracks.SunVisible.Runs(true))
+                            {
+                                <rect x="@Format(LaneX(run.Start))" y="@y" width="@Format(Math.Max(0.6, LaneX(run.Length)))" height="12" class="lane-sun" />
+                            }
+                            @foreach (var run in tracks.EarthVisible.Runs(true))
+                            {
+                                <rect x="@Format(LaneX(run.Start))" y="@(y + 14)" width="@Format(Math.Max(0.6, LaneX(run.Length)))" height="12" class="lane-earth" />
+                            }
+                        </g>
+                    }
+                    <rect x="@Format(LaneX(cursor) - 1)" y="-2" width="2" height="62" class="cursor-bar" />
+                </svg>
+                <input type="range" min="0" max="@(grid.Count - 1)" value="@cursor" @oninput="OnScrub" aria-label="@L["explore.time"]" />
+                <div class="compare-lane-keys"><span>A</span><span>B</span></div>
+            </div>
+        </footer>
+    </div>
+}
+
+@code {
+    private const int LaneWidth = 1000;
+    private const int TickMs = 100;
+
+    private static readonly IReadOnlyList<MoonGlobe.SceneSite> NoSites = [];
+
+    private readonly SiteView?[] sides = new SiteView?[2];
+    private readonly MoonGlobe?[] globes = new MoonGlobe?[2];
+    private string? error;
+    private int cursor;
+    private bool playing;
+    private Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Store.ApplyYearAsync(new Uri(Navigation.Uri));
+            await Views.EnsureLoadedAsync();
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        var grid = Store.Manifest!.Grid;
+        cursor = Math.Clamp(grid.IndexOf(DateTimeOffset.UtcNow), 0, grid.Count - 1);
+        string? a = null, b = null;
+        foreach (var pair in new Uri(Navigation.Uri).Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length != 2)
+            {
+                continue;
+            }
+
+            var value = Uri.UnescapeDataString(parts[1]);
+            if (parts[0] == "a")
+            {
+                a = value;
+            }
+            else if (parts[0] == "b")
+            {
+                b = value;
+            }
+            else if (parts[0] == "t" && int.TryParse(value, out var t))
+            {
+                cursor = Math.Clamp(t, 0, grid.Count - 1);
+            }
+        }
+
+        a = a is not null && Views.Resolve(a) is not null ? a : "im2-athena";
+        b = b is not null && Views.Resolve(b) is not null ? b : (a == "apollo11-lm" ? "im2-athena" : "apollo11-lm");
+        await SetSide(0, a);
+        await SetSide(1, b);
+    }
+
+    private async Task SetSide(int index, string id)
+    {
+        if (id.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) && Views.TerrainFor(id) is null)
+        {
+            await Views.PrepareAsync(id);
+        }
+
+        sides[index] = Views.Get(id);
+    }
+
+    private async Task Pick(int index, ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() is { } id && Views.Resolve(id) is not null)
+        {
+            await SetSide(index, id);
+            UpdateUrl();
+        }
+    }
+
+    private void Swap()
+    {
+        (sides[0], sides[1]) = (sides[1], sides[0]);
+        UpdateUrl();
+    }
+
+    private async Task Turn(string target)
+    {
+        foreach (var globe in globes)
+        {
+            if (globe is not null)
+            {
+                await globe.TurnToAsync(target);
+            }
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        if (sides[0] is null || sides[1] is null)
+        {
+            return;
+        }
+
+        Navigation.NavigateTo($"compare?a={Uri.EscapeDataString(sides[0]!.Site.Id)}&b={Uri.EscapeDataString(sides[1]!.Site.Id)}&t={cursor}{Store.YearQuery}{Missions.QuerySuffix}", new NavigationOptions { ReplaceHistoryEntry = true });
+    }
+
+    private string BackLink() => sides[0] is null ? "./" : $"./?site={Uri.EscapeDataString(sides[0]!.Site.Id)}&t={cursor}";
+
+    private object SurfaceLabels() => new
+    {
+        sun = L["explore.sun"],
+        earth = L["explore.earth"],
+        directions = L["explore.dirs"].Split(','),
+    };
+
+    private string CountdownText(string prefix, BitTrack track)
+    {
+        var countdown = Countdown.At(track, cursor);
+        if (countdown.StepsToChange is not { } steps)
+        {
+            return L[prefix + (countdown.Active ? ".up" : ".down")];
+        }
+
+        return L.Format(prefix + (countdown.Active ? ".sets" : ".rises"), L.Span(Store.Manifest!.Grid.Step * steps));
+    }
+
+    private void OnScrub(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            cursor = Math.Clamp(value, 0, Store.Manifest!.Grid.Count - 1);
+        }
+    }
+
+    private void TogglePlay()
+    {
+        if (playing)
+        {
+            StopPlay();
+            UpdateUrl();
+            return;
+        }
+
+        playing = true;
+        timer = new Timer(_ => InvokeAsync(Tick), null, TickMs, TickMs);
+    }
+
+    private void StopPlay()
+    {
+        playing = false;
+        timer?.Dispose();
+        timer = null;
+    }
+
+    private void Tick()
+    {
+        if (!playing)
+        {
+            return;
+        }
+
+        var last = Store.Manifest!.Grid.Count - 1;
+        cursor = Math.Min(cursor + 2, last);
+        if (cursor >= last)
+        {
+            StopPlay();
+        }
+
+        StateHasChanged();
+    }
+
+    private double LaneX(int steps) => (double)steps / Store.Manifest!.Grid.Count * LaneWidth;
+
+    private static string Format(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private string Coords(Site site) => L.Lat(site.LatitudeDeg, 2) + ", " + L.Lon(site.LongitudeEastDeg, 2);
+
+    public override void Dispose()
+    {
+        StopPlay();
+        base.Dispose();
+    }
+}

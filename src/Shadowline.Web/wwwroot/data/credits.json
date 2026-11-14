@@ -1,0 +1,641 @@
+{
+  "formatVersion": 1,
+  "entries": [
+    {
+      "id": "spice",
+      "title": "NAIF SPICE kernels and DE440",
+      "author": "NAIF/JPL. Park, R. S. et al., The Astronomical Journal 161, 105 (2021)",
+      "source": "https://naif.jpl.nasa.gov",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Sun and Earth positions, lunar orientation",
+        "uk": "Положення Сонця і Землі, орієнтація Місяця"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "horizons",
+      "title": "JPL Horizons",
+      "author": "NASA/JPL",
+      "source": "https://ssd.jpl.nasa.gov/horizons/",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Reference check of the computed Sun and Earth positions: 7458 positions at 33 catalogue sites, from November 2026 to October 2030",
+        "uk": "Еталонна перевірка розрахованих положень Сонця і Землі: 7458 положень у 33 місцях каталогу, з листопада 2026 до жовтня 2030"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lola-illum",
+      "title": "LOLA average visibility maps, south pole (avgvisib_65s_240m_201608, avgvisib_85s_060m_201608 and _earth)",
+      "author": "LRO LOLA Team, NASA GSFC. Mazarico, E. et al., Icarus 211, 1066-1081 (2011), doi:10.1016/j.icarus.2010.10.030. NASA PDS Geosciences Node",
+      "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/extras/illumination/img/",
+      "license": "NASA PDS open data",
+      "usedIn": {
+        "en": "Independent check of the Sun and Earth shares on the validation page",
+        "uk": "Незалежна перевірка часток Сонця і Землі на сторінці перевірки"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lola-spole",
+      "title": "LOLA south pole DEM LDEM_80S_80MPP_ADJ",
+      "author": "Barker, M. K. et al., NASA GSFC PGDA, doi:10.60903/gsfcpgda-lola-spole",
+      "source": "https://pgda.gsfc.nasa.gov",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Relief, shadows and horizons near the south pole",
+        "uk": "Рельєф, тіні та горизонти біля південного полюса"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "diviner-prp",
+      "title": "LRO Diviner Polar Resource Product, south (LRO-L-DLRE-5-PRP-V2.0)",
+      "author": "Paige, D. A. et al., Science 330, 479-482 (2010), doi:10.1126/science.1187726. NASA PDS Geosciences Node",
+      "source": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/",
+      "license": "NASA PDS open data",
+      "usedIn": {
+        "en": "Annual maximum and mean temperature and water ice stability depth (calculated by a thermal model fitted to Diviner observations): globe layers, site card, report and the regolith model check",
+        "uk": "Річна максимальна і середня температура та глибина стабільності водяного льоду (пораховано тепловою моделлю, підігнаною до спостережень Diviner): шари глобуса, картка місця, звіт і перевірка моделі реголіту"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "moonkit-color",
+      "title": "CGI Moon Kit, LROC color map",
+      "author": "NASA Scientific Visualization Studio, Ernie Wright, Noah Petro. Data NASA/GSFC/Arizona State University",
+      "source": "https://svs.gsfc.nasa.gov/4720",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Moon surface colour on the globe",
+        "uk": "Колір поверхні Місяця на глобусі"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "trek-wac-spole",
+      "title": "LRO WAC Mosaic, S Pole v2 (LRO_WAC_Mosaic_SPole60_100m_v02)",
+      "author": "The LROC Team, Arizona State University. Served by NASA Moon Trek, NASA/JPL. Robinson, M. S. et al., Space Science Reviews 150, 81-124 (2010), doi:10.1007/s11214-010-9634-2",
+      "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_WAC_Mosaic_SPole60_100m_v02",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "South polar 2D map, 60-90 S",
+        "uk": "Південна полярна 2D-карта, 60-90 пд. ш."
+      },
+      "kind": "data"
+    },
+    {
+      "id": "trek-wac-global",
+      "title": "LRO WAC Mosaic v2 (LRO_WAC_Mosaic_Global_303ppd_v02)",
+      "author": "The LROC Team, Arizona State University. Served by NASA Moon Trek, NASA/JPL. Robinson, M. S. et al., Space Science Reviews 150, 81-124 (2010), doi:10.1007/s11214-010-9634-2",
+      "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_WAC_Mosaic_Global_303ppd_v02",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Whole Moon 2D map",
+        "uk": "2D-карта всього Місяця"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "iau-names",
+      "title": "Gazetteer of Planetary Nomenclature, Moon (MOON_nomenclature_center_pts)",
+      "author": "IAU Working Group for Planetary System Nomenclature (WGPSN), USGS Astrogeology Science Center",
+      "source": "https://planetarynames.wr.usgs.gov",
+      "license": "IAU/USGS public data",
+      "usedIn": {
+        "en": "Names of craters, maria and other features under the cursor on the 2D maps",
+        "uk": "Назви кратерів, морів та інших об'єктів під курсором на 2D-картах"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "moonkit-ldem",
+      "title": "CGI Moon Kit, LOLA displacement map ldem_16",
+      "author": "NASA Scientific Visualization Studio, LOLA data NASA/GSFC",
+      "source": "https://svs.gsfc.nasa.gov/4720",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Global relief, terrain around every site, horizons and site elevations",
+        "uk": "Рельєф усього Місяця, ділянки навколо місць, горизонти і висоти місць"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lola-ldem64",
+      "title": "LOLA Gridded Data Record LDEM_64",
+      "author": "LOLA Science Team, NASA/GSFC, PDS Geosciences Node",
+      "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "3D relief of the whole Moon at 474 m, loaded by zoom level",
+        "uk": "3D-рельєф усього Місяця з кроком 474 м, що підвантажується за наближенням"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "bluemarble",
+      "title": "Blue Marble Next Generation, November",
+      "author": "NASA Earth Observatory, Reto Stöckli, NASA GSFC",
+      "source": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Earth by day",
+        "uk": "Земля вдень"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "blackmarble",
+      "title": "Earth at Night, Black Marble 2016",
+      "author": "NASA Earth Observatory, Joshua Stevens, Suomi NPP VIIRS data, Miguel Román, NASA GSFC",
+      "source": "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "City lights on the night side of Earth",
+        "uk": "Вогні міст на нічному боці Землі"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "clouds",
+      "title": "The Blue Marble, clouds",
+      "author": "NASA Goddard Space Flight Center, MODIS",
+      "source": "https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution/",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Clouds over Earth",
+        "uk": "Хмари над Землею"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "stars",
+      "title": "Deep Star Maps 2020",
+      "author": "NASA/Goddard Space Flight Center Scientific Visualization Studio. Gaia DR2: ESA/Gaia/DPAC",
+      "source": "https://svs.gsfc.nasa.gov/4851",
+      "license": "NASA open data, Gaia DR2 credit",
+      "usedIn": {
+        "en": "Star background and the Milky Way",
+        "uk": "Зоряне небо і Чумацький Шлях"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "nssdca",
+      "title": "Apollo landing sites",
+      "author": "NASA NSSDCA, Wagner, R. V. et al., Icarus 283, 92-103 (2017)",
+      "source": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Apollo Lunar Module positions",
+        "uk": "Положення місячних модулів Apollo"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lroc-sites",
+      "title": "LROC coordinates of human features (2016) and LROC site images",
+      "author": "NASA/GSFC/Arizona State University",
+      "source": "https://lroc.im-ldi.com/about/terms",
+      "license": "LROC terms of use: website images are copyrighted, educational use with credit",
+      "usedIn": {
+        "en": "Positions of Luna, Surveyor, Chang'e 3 to 6, Blue Ghost M1, IM-2 and Chandrayaan-3 and of the Luna 25, HAKUTO-R Mission 1, RESILIENCE and Beresheet impact sites, and the orbital photos of IM-2, IM-1, SLIM, Blue Ghost M1, Chandrayaan-3, Apollo 11 and the four impact sites. The photos are crops of LROC Featured Image releases, used for education with the credit NASA/GSFC/Arizona State University.",
+        "uk": "Положення Луна, Сервеєр, Чан'е-3...6, Blue Ghost M1, IM-2 і Чандраян-3 та місць падіння Луни-25, HAKUTO-R Mission 1, RESILIENCE і Beresheet, а також орбітальні фото IM-2, IM-1, SLIM, Blue Ghost M1, Чандраян-3, Apollo 11 і чотирьох місць падіння. Фото є фрагментами публікацій LROC Featured Images, використані в освітніх цілях з підписом NASA/GSFC/Arizona State University."
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lroc-nac-dtm",
+      "title": "LROC NAC digital terrain models NAC_DTM_MALAPERTA01 and NAC_DTM_NOBILE03",
+      "author": "NASA/GSFC/Arizona State University. Henriksen, M. R. et al., Icarus 283, 122-137 (2017), doi:10.1016/j.icarus.2016.05.012",
+      "source": "https://data.lroc.im-ldi.com/lroc/view_rdr/NAC_DTM_MALAPERTA01",
+      "license": "NASA PDS open data",
+      "usedIn": {
+        "en": "Slope check at the IM-1 and IM-2 landing points (3 and 4 m per pixel, read from PDS by byte ranges)",
+        "uk": "Перевірка схилів у точках посадки IM-1 та IM-2 (3 і 4 м на піксель, прочитано з PDS частинами)"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "diviner-ra",
+      "title": "LRO Diviner global high-resolution mosaic, rock abundance at slope-adjusted midnight (dghrm_ra_sam_70s70n)",
+      "author": "Diviner Lunar Radiometer team. Bandfield, J. L. et al., JGR 116, E00H02 (2011), doi:10.1029/2011JE003866. NASA PDS Geosciences Node, doi:10.17189/wj0s-w188",
+      "source": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_ghrm/",
+      "license": "NASA PDS open data",
+      "usedIn": {
+        "en": "Rock fraction in the site card for the 29 catalogue sites between 70° S and 70° N",
+        "uk": "Частка каміння в картці місця для 29 місць каталогу між 70° пд. ш. і 70° пн. ш."
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lunarrf",
+      "title": "LunarRF atlas v2.0: pole-wide 3GPP surface coverage of the lunar south pole",
+      "author": "Santorelli, C. J., Wyglinski, A. M. (2026), Worcester Polytechnic Institute. Preprint arXiv:2610.34554v2, data doi:10.5281/zenodo.23301640",
+      "source": "https://doi.org/10.5281/zenodo.23301640",
+      "license": "CC BY 4.0",
+      "usedIn": {
+        "en": "Mast and receiver heights and the 22 km range of the surface radio check; candidate table candidates_coverage.csv used to compare line-of-sight shares (1860 candidates); coverage-to-line-of-sight ratio quoted on the Method page",
+        "uk": "Висоти щогли і приймача та дальність 22 км для перевірки наземного радіозв'язку; таблиця кандидатів candidates_coverage.csv для порівняння часток прямої видимості (1860 кандидатів); відношення покриття до прямої видимості наведено на сторінці «Методика»"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "lro-im1",
+      "title": "LRO images Odysseus lander",
+      "author": "NASA/GSFC/Arizona State University",
+      "source": "https://www.nasa.gov/missions/lro/nasas-lro-images-intuitive-machines-odysseus-lander/",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "Position of IM-1",
+        "uk": "Положення IM-1"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "threejs",
+      "title": "three.js r187",
+      "author": "three.js authors",
+      "source": "https://threejs.org",
+      "license": "MIT",
+      "usedIn": {
+        "en": "3D rendering",
+        "uk": "3D-графіка"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "geologica",
+      "title": "Geologica",
+      "author": "The Geologica Project Authors, via Fontsource",
+      "source": "https://fontsource.org/fonts/geologica",
+      "license": "SIL Open Font License 1.1",
+      "usedIn": {
+        "en": "Interface typeface",
+        "uk": "Шрифт інтерфейсу"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "oswald",
+      "title": "Oswald",
+      "author": "The Oswald Project Authors, via Fontsource",
+      "source": "https://fontsource.org/fonts/oswald",
+      "license": "SIL Open Font License 1.1",
+      "usedIn": {
+        "en": "Headings, values and navigation",
+        "uk": "Заголовки, значення і навігація"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "roboto-condensed",
+      "title": "Roboto Condensed",
+      "author": "Google, via Fontsource",
+      "source": "https://fontsource.org/fonts/roboto-condensed",
+      "license": "SIL Open Font License 1.1",
+      "usedIn": {
+        "en": "Interface text",
+        "uk": "Текст інтерфейсу"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "spectral",
+      "title": "Spectral",
+      "author": "The Spectral Project Authors, via Fontsource",
+      "source": "https://fontsource.org/fonts/spectral",
+      "license": "SIL Open Font License 1.1",
+      "usedIn": {
+        "en": "Typeface for countdowns and tour text",
+        "uk": "Шрифт відліків і тексту туру"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "artemis-sites",
+      "title": "Complementary Data for Wueller et al. (2026): Assessing Potential Landing Sites with Favorable Illumination and Accessible, Potentially Volatile-Rich PSRs within Artemis Candidate Landing Regions",
+      "author": "Wueller, L. et al. Data: Zenodo, doi:10.5281/zenodo.17084058. Paper: JGR Planets 131, e2025JE009434 (2026), doi:10.1029/2025JE009434",
+      "source": "https://doi.org/10.5281/zenodo.17084058",
+      "license": "CC BY 4.0",
+      "usedIn": {
+        "en": "Candidate landing sites in the Artemis regions (machine learning labels and map points). Changed: region centres computed from the points, points placed on the 1 km pole grid. Region names and the 2024 list from NASA.",
+        "uk": "Місця-кандидати для посадки в регіонах Artemis (мітки машинного навчання і точки на карті). Змінено: центри регіонів пораховано з точок, точки перенесено на сітку полюса 1 км. Назви регіонів і список 2024 року від NASA."
+      },
+      "kind": "data"
+    },
+    {
+      "id": "landing-times",
+      "title": "Landing times",
+      "author": "NASA NSSDCA mission pages; NASA and LROC news for IM-1, SLIM, Chang'e 4 to 6 and Blue Ghost M1; press reports for Chandrayaan-3 and IM-2",
+      "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C",
+      "license": "NASA open data, facts from public reports",
+      "usedIn": {
+        "en": "Landing-day replay for Apollo 11-17, Chang'e 4 to 6, SLIM, Chandrayaan-3, IM-1, IM-2 and Blue Ghost M1",
+        "uk": "Повтор дня посадки для Apollo 11-17, Чан'е-4...6, SLIM, Чандраян-3, IM-1, IM-2 і Blue Ghost M1"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "slim-nasa",
+      "title": "SLIM landing position",
+      "author": "NASA/GSFC/Arizona State University",
+      "source": "https://www.nasa.gov/missions/lro/nasas-lro-spots-japans-moon-lander",
+      "license": "NASA open data",
+      "usedIn": {
+        "en": "SLIM position (13.3160 S, 25.2510 E)",
+        "uk": "Положення SLIM (13.3160° пд. ш., 25.2510° сх. д.)"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "planned-targets",
+      "title": "Planned landing targets (approximate)",
+      "author": "Public mission reports: Chang'e 7 near 88.8 S, 123.4 E (Shackleton rim); Blue Moon MK1 at the Shackleton connecting ridge; IM-3 at Reiner Gamma (7.5 N, 59.0 W)",
+      "source": "https://www.nasa.gov/event/clps-flight-blue-origins-blue-moon-mark-1/",
+      "license": "Facts from public reports",
+      "usedIn": {
+        "en": "Approximate targets of planned missions, marked with ≈",
+        "uk": "Приблизні цілі запланованих місій, позначені ≈"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "incident-reports",
+      "title": "Mission reports of SLIM, IM-1, IM-2 and Blue Ghost M1",
+      "author": "JAXA, Intuitive Machines, Firefly Aerospace, NASA, as quoted by the sources listed in incidents.json",
+      "source": "https://global.jaxa.jp/press/2024/01/20240125-1_e.html",
+      "license": "Facts cited with links",
+      "usedIn": {
+        "en": "Landing times, attitudes and power events on the tipped landers page",
+        "uk": "Час посадки, орієнтація і події живлення на сторінці перекинутих апаратів"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "jaxa-stations",
+      "title": "JAXA ground station coordinates (ITRF2014)",
+      "author": "JAXA ISAS",
+      "source": "https://ddor.nav.isas.jaxa.jp/station_coordinates",
+      "license": "Facts cited with link",
+      "usedIn": {
+        "en": "Moon elevation over Misasa, Usuda and Uchinoura for the SLIM contacts",
+        "uk": "Висота Місяця над станціями Місаса, Усуда і Утіноура для сеансів зв'язку SLIM"
+      },
+      "kind": "data"
+    },
+    {
+      "id": "pike1977",
+      "title": "Size-dependence in the shape of fresh impact craters on the Moon",
+      "author": "Pike, R. J., in Impact and Explosion Cratering, University of Arizona Press (1977), 489-509",
+      "source": "https://ui.adsabs.harvard.edu/abs/1977iecp.symp..489P/abstract",
+      "license": "Cited",
+      "usedIn": {
+        "en": "Rim of the 20 m crater around IM-2",
+        "uk": "Вал кратера 20 м навколо IM-2"
+      },
+      "kind": "research"
+    },
+    {
+      "id": "stopar2017",
+      "title": "Relative depths of simple craters and the nature of the lunar regolith",
+      "author": "Stopar, J. D. et al., Icarus 298, 34-48 (2017), doi:10.1016/j.icarus.2017.05.022",
+      "source": "https://doi.org/10.1016/j.icarus.2017.05.022",
+      "license": "Cited",
+      "usedIn": {
+        "en": "Depth of small craters around IM-2",
+        "uk": "Глибина малих кратерів навколо IM-2"
+      },
+      "kind": "research"
+    },
+    {
+      "id": "glaser2014",
+      "title": "Connecting Ridge: a landing site at the lunar south pole with extended illumination",
+      "author": "Gläser, P. et al., EPSC Abstracts 9, EPSC2014-136 (2014)",
+      "source": "https://elib.dlr.de/94242/1/EPSC2014-136-1.pdf",
+      "license": "Cited",
+      "usedIn": {
+        "en": "External check of the polar horizons on the Shackleton to de Gerlache ridge",
+        "uk": "Зовнішня перевірка полярних горизонтів на хребті між Шеклтоном і де Жерлашем"
+      },
+      "kind": "research"
+    },
+    {
+      "id": "dotnet",
+      "title": ".NET 10 and ASP.NET Core Blazor WebAssembly",
+      "author": ".NET Foundation and contributors",
+      "source": "https://github.com/dotnet/aspnetcore",
+      "license": "MIT",
+      "usedIn": {
+        "en": "Runtime of the web application, all calculations in the browser",
+        "uk": "Середовище виконання вебзастосунку, усі обчислення в браузері"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "xunit",
+      "title": "xUnit.net 2.9",
+      "author": ".NET Foundation and contributors",
+      "source": "https://xunit.net",
+      "license": "Apache-2.0",
+      "usedIn": {
+        "en": "Automated tests of the calculations and data readers",
+        "uk": "Автоматичні тести обчислень і читачів даних"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "python",
+      "title": "Python 3",
+      "author": "Python Software Foundation",
+      "source": "https://www.python.org",
+      "license": "PSF License 2.0",
+      "usedIn": {
+        "en": "Offline data preparation tools in tools/",
+        "uk": "Інструменти офлайн-підготовки даних у tools/"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "numpy",
+      "title": "NumPy",
+      "author": "Harris, C. R. et al., Nature 585, 357-362 (2020), doi:10.1038/s41586-020-2649-2",
+      "source": "https://numpy.org",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: array computation",
+        "uk": "Офлайн-підготовка даних: обчислення з масивами"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "scipy",
+      "title": "SciPy",
+      "author": "Virtanen, P. et al., Nature Methods 17, 261-272 (2020), doi:10.1038/s41592-019-0686-2",
+      "source": "https://scipy.org",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: distance transforms and filters for the Finder grid",
+        "uk": "Офлайн-підготовка даних: перетворення відстаней і фільтри для сітки пошуку"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "scikit-learn",
+      "title": "scikit-learn",
+      "author": "Pedregosa, F. et al., JMLR 12, 2825-2830 (2011)",
+      "source": "https://scikit-learn.org",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: gradient boosting models for the Artemis similarity and thermal checks",
+        "uk": "Офлайн-підготовка даних: моделі градієнтного бустингу для подібності Artemis і теплових перевірок"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "rasterio",
+      "title": "rasterio",
+      "author": "Gillies, S. et al., Mapbox and contributors",
+      "source": "https://github.com/rasterio/rasterio",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: reading LOLA and Diviner rasters",
+        "uk": "Офлайн-підготовка даних: читання растрів LOLA і Diviner"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "gdal",
+      "title": "GDAL",
+      "author": "GDAL/OGR contributors, Open Source Geospatial Foundation, doi:10.5281/zenodo.5884351",
+      "source": "https://gdal.org",
+      "license": "MIT",
+      "usedIn": {
+        "en": "Offline data preparation: raster input and output under rasterio",
+        "uk": "Офлайн-підготовка даних: введення і виведення растрів під rasterio"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "pyproj",
+      "title": "pyproj and PROJ",
+      "author": "Snow, A. D. et al.; PROJ contributors, doi:10.5281/zenodo.5884394",
+      "source": "https://pyproj4.github.io/pyproj",
+      "license": "MIT",
+      "usedIn": {
+        "en": "Offline data preparation: polar stereographic and lunar coordinate transforms",
+        "uk": "Офлайн-підготовка даних: полярна стереографічна проєкція і перетворення місячних координат"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "spiceypy",
+      "title": "SpiceyPy and the NAIF SPICE Toolkit",
+      "author": "Annex, A. M. et al., JOSS 5(50), 2050 (2020), doi:10.21105/joss.02050; NAIF/JPL",
+      "source": "https://github.com/AndrewAnnex/SpiceyPy",
+      "license": "MIT; SPICE Toolkit NAIF rules",
+      "usedIn": {
+        "en": "Offline data preparation: Sun and Earth vectors and lunar frames from the kernels",
+        "uk": "Офлайн-підготовка даних: вектори Сонця і Землі та місячні системи координат з ядер SPICE"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "jplephem",
+      "title": "jplephem",
+      "author": "Rhodes, B.",
+      "source": "https://github.com/brandon-rhodes/python-jplephem",
+      "license": "MIT",
+      "usedIn": {
+        "en": "Offline data preparation: reading DE440 segments for the landing replays",
+        "uk": "Офлайн-підготовка даних: читання сегментів DE440 для відтворення посадок"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "astropy",
+      "title": "Astropy",
+      "author": "Astropy Collaboration, ApJ 935, 167 (2022), doi:10.3847/1538-4357/ac7c74",
+      "source": "https://www.astropy.org",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: time scales of the historical landings",
+        "uk": "Офлайн-підготовка даних: шкали часу історичних посадок"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "opencv",
+      "title": "OpenCV",
+      "author": "Bradski, G., Dr. Dobb's Journal of Software Tools (2000); OpenCV contributors",
+      "source": "https://opencv.org",
+      "license": "Apache-2.0",
+      "usedIn": {
+        "en": "Offline data preparation: raster resampling of the light and Finder maps",
+        "uk": "Офлайн-підготовка даних: передискретизація растрів карт освітлення і пошуку"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "pillow",
+      "title": "Pillow",
+      "author": "Clark, A. and contributors",
+      "source": "https://python-pillow.org",
+      "license": "MIT-CMU (HPND)",
+      "usedIn": {
+        "en": "Offline data preparation: map textures and images",
+        "uk": "Офлайн-підготовка даних: текстури карт і зображення"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "openexr",
+      "title": "OpenEXR",
+      "author": "Academy Software Foundation",
+      "source": "https://openexr.com",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: reading the Moon Kit displacement map",
+        "uk": "Офлайн-підготовка даних: читання карти зміщень Moon Kit"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "pyshp",
+      "title": "pyshp",
+      "author": "Lawhead, J. and contributors",
+      "source": "https://github.com/GeospatialPython/pyshp",
+      "license": "MIT",
+      "usedIn": {
+        "en": "Offline data preparation: reading the Artemis region shapefiles",
+        "uk": "Офлайн-підготовка даних: читання shapefile регіонів Artemis"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "tifffile",
+      "title": "tifffile",
+      "author": "Gohlke, C.",
+      "source": "https://github.com/cgohlke/tifffile",
+      "license": "BSD-3-Clause",
+      "usedIn": {
+        "en": "Offline data preparation: reading GeoTIFF tiles for the Finder",
+        "uk": "Офлайн-підготовка даних: читання тайлів GeoTIFF для пошуку"
+      },
+      "kind": "software"
+    },
+    {
+      "id": "quickmap",
+      "title": "LROC QuickMap",
+      "author": "Applied Coherent Technology and the LROC team, Arizona State University; hosted by Intuitive Machines",
+      "source": "https://quickmap.lroc.im-ldi.com/",
+      "license": "Linked web application",
+      "usedIn": {
+        "en": "Link from every site card to the same point; layer search that led to the NAC terrain models and the Diviner rock abundance map",
+        "uk": "Посилання з картки кожного місця на ту саму точку; пошук шарів, через який знайдено моделі рельєфу NAC і карту кам'янистості Diviner"
+      },
+      "kind": "software"
+    }
+  ]
+}

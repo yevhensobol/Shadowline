@@ -1,0 +1,370 @@
+{
+  "formatVersion": 1,
+  "incidents": [
+    {
+      "id": "slim",
+      "site": "slim",
+      "kind": "tipped",
+      "agency": "JAXA",
+      "landingUtc": "2024-01-19T15:20:00Z",
+      "gridStartUtc": "2024-01-15T00:00:00Z",
+      "gridDays": 140,
+      "vehicle": {
+        "dryMassKg": 200,
+        "sizeM": [
+          2.4,
+          1.7,
+          2.7
+        ],
+        "panels": "thin-film triple-junction solar cell sheets by Sharp on the curved upper body",
+        "battery": "SUS laminate lithium-ion battery cells",
+        "sources": [
+          "jaxa-mediakit2023",
+          "jaxa20241226"
+        ],
+        "wetMassKg": [
+          700,
+          730
+        ]
+      },
+      "attitude": {
+        "summary": "nose down, about 90 degrees from the planned attitude, solar cells facing west",
+        "tiltDeg": 90,
+        "panelAzimuthDeg": 270,
+        "sources": [
+          "jaxa20240125",
+          "wiki-slim"
+        ]
+      },
+      "observations": [
+        {
+          "type": "noPower",
+          "fromUtc": "2024-01-19T15:20:00Z",
+          "toUtc": "2024-01-19T17:57:00Z",
+          "use": "fit",
+          "note": "cells not generating after landing, shut down at 02:57 JST with 12% battery",
+          "noteUk": "Після посадки елементи не дають енергії, вимкнено о 02:57 JST з 12% заряду",
+          "sources": [
+            "jaxa20240125",
+            "nsf2024slim"
+          ]
+        },
+        {
+          "type": "power",
+          "fromUtc": "2024-01-28T09:00:00Z",
+          "toUtc": "2024-01-28T15:00:00Z",
+          "use": "fit",
+          "note": "contact on the night of 28 January JST after sunlight reached the cells; power started at or before this",
+          "noteUk": "Зв'язок уночі 28 січня JST, коли світло дійшло до елементів; живлення з'явилось у цей час або раніше",
+          "sources": [
+            "spacenews2024slimfeb"
+          ]
+        },
+        {
+          "type": "powerLost",
+          "fromUtc": "2024-01-31T00:00:00Z",
+          "toUtc": "2024-02-01T00:00:00Z",
+          "use": "check",
+          "note": "power lost late on 31 January when the Sun set on SLIM",
+          "noteUk": "Живлення зникло пізно 31 січня, коли над SLIM зайшло Сонце",
+          "sources": [
+            "nsf2024slim"
+          ]
+        },
+        {
+          "type": "power",
+          "fromUtc": "2024-02-25T09:00:00Z",
+          "toUtc": "2024-02-25T11:00:00Z",
+          "use": "check",
+          "note": "telemetry received at about 10:00 UTC on 25 February, second lunar day",
+          "noteUk": "Телеметрія близько 10:00 UTC 25 лютого, другий місячний день",
+          "sources": [
+            "spacenews2024slimfeb"
+          ]
+        },
+        {
+          "type": "thermal",
+          "fromUtc": "2024-02-25T09:00:00Z",
+          "toUtc": "2024-02-25T11:00:00Z",
+          "use": "none",
+          "note": "contact ended after a short time because the communication equipment was extremely hot, Sun high",
+          "noteUk": "Зв'язок обірвався за короткий час, бо обладнання зв'язку дуже нагрілось, Сонце високо",
+          "sources": [
+            "spacenews2024slimfeb"
+          ]
+        },
+        {
+          "type": "power",
+          "fromUtc": "2024-03-27T09:00:00Z",
+          "toUtc": "2024-03-27T15:00:00Z",
+          "use": "check",
+          "note": "response on the night of 27 March JST, third lunar day, Sun still high",
+          "noteUk": "Відповідь уночі 27 березня JST, третій місячний день, Сонце ще високо",
+          "sources": [
+            "spacecom2024slimmar"
+          ]
+        },
+        {
+          "type": "power",
+          "fromUtc": "2024-04-23T09:00:00Z",
+          "toUtc": "2024-04-23T15:00:00Z",
+          "use": "check",
+          "note": "response on the night of 23 April JST, fourth lunar day",
+          "noteUk": "Відповідь уночі 23 квітня JST, четвертий місячний день",
+          "sources": [
+            "spacecom2024slimapr"
+          ]
+        },
+        {
+          "type": "operations",
+          "fromUtc": "2024-04-22T15:00:00Z",
+          "toUtc": "2024-04-28T15:00:00Z",
+          "use": "none",
+          "note": "operations 23 to 29 April JST, last contact; end set by the team, not counted",
+          "noteUk": "Робота 23-29 квітня JST, останній зв'язок; кінець визначила команда, не враховується",
+          "sources": [
+            "jaxa20241226"
+          ]
+        },
+        {
+          "type": "hardware",
+          "fromUtc": "2024-05-24T00:00:00Z",
+          "toUtc": "2024-05-27T15:00:00Z",
+          "use": "none",
+          "note": "no response in the fifth lunar day; cause under investigation, not a lighting event",
+          "noteUk": "Немає відповіді в п'ятий місячний день; причина досліджується, це не подія освітлення",
+          "sources": [
+            "jaxa20241226"
+          ]
+        }
+      ],
+      "notes": "LRO laser ranging on 24 May 2024 (reported by NASA in July 2024) used the passive retroreflector and is not evidence of power, so it is not used"
+    },
+    {
+      "id": "im1",
+      "site": "im1-odysseus",
+      "kind": "tipped",
+      "agency": "Intuitive Machines, NASA CLPS",
+      "landingUtc": "2024-02-22T23:23:53Z",
+      "gridStartUtc": "2024-02-22T00:00:00Z",
+      "gridDays": 12,
+      "vehicle": {
+        "launchMassKg": 1908,
+        "heightM": 3.938,
+        "diameterM": 2.0,
+        "panels": "three panels, one on the top deck and two on the body, 200 W combined maximum on the surface",
+        "battery": "25 Ah battery on a 28 V bus",
+        "sources": [
+          "wiki-novac",
+          "eoportal-novac"
+        ]
+      },
+      "attitude": {
+        "summary": "on its side about 30 degrees above the horizontal after landing on a 12 degree slope; one rectangular array meant to be vertical ended on top at 30 degrees to the horizontal",
+        "tiltDeg": 60,
+        "panelTiltDeg": 30,
+        "sources": [
+          "wiki-im1",
+          "wiki-novac",
+          "spacenews2024im1"
+        ]
+      },
+      "observations": [
+        {
+          "type": "powerThroughout",
+          "fromUtc": "2024-02-23T00:00:00Z",
+          "toUtc": "2024-02-27T12:00:00Z",
+          "use": "fit",
+          "note": "lander powered and returning payload data from 23 to 27 February; read as solar power because the 25 Ah battery alone could not last that long",
+          "noteUk": "Апарат живиться і передає дані 23-27 лютого; вважаємо це сонячним живленням, бо батареї 25 А·год самої на стільки б не вистачило",
+          "sources": [
+            "wiki-im1",
+            "spacenews2024im1"
+          ],
+          "derived": true
+        },
+        {
+          "type": "powerLost",
+          "fromUtc": "2024-02-28T12:00:00Z",
+          "toUtc": "2024-03-01T00:00:00Z",
+          "use": "check",
+          "note": "sunlight leaving the one lit panel on 28 February, power lost and last contact on 29 February",
+          "noteUk": "28 лютого світло сходить з єдиної освітленої панелі, 29 лютого живлення зникло, останній зв'язок",
+          "sources": [
+            "spacenews2024im1",
+            "wiki-im1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "im2",
+      "site": "im2-athena",
+      "kind": "tipped",
+      "agency": "Intuitive Machines, NASA CLPS",
+      "landingUtc": "2025-03-06T17:28:50Z",
+      "gridStartUtc": "2025-03-06T00:00:00Z",
+      "gridDays": 6,
+      "vehicle": {
+        "heightM": 3.938,
+        "diameterM": 2.0,
+        "panels": "Nova-C: three panels, 200 W combined maximum on the surface; coated with dust at impact",
+        "battery": "25 Ah battery on a 28 V bus",
+        "sources": [
+          "wiki-novac",
+          "eoportal-novac",
+          "wiki-im2"
+        ]
+      },
+      "attitude": {
+        "summary": "on its side in the middle of a 20 m crater, solar panels not facing the Sun",
+        "tiltDeg": 90,
+        "craterDiameterM": 20,
+        "sources": [
+          "spaceflightnow2025im2",
+          "wiki-im2",
+          "spacepolicy2025im2",
+          "stopar2017",
+          "pike1977"
+        ]
+      },
+      "observations": [
+        {
+          "type": "powerLow",
+          "fromUtc": "2025-03-06T17:28:50Z",
+          "toUtc": "2025-03-07T06:15:00Z",
+          "use": "none",
+          "note": "solar cells generating power after landing but less than requested",
+          "noteUk": "Після посадки елементи дають енергію, але менше, ніж потрібно",
+          "sources": [
+            "spaceflightnow2025im2"
+          ]
+        },
+        {
+          "type": "end",
+          "fromUtc": "2025-03-07T06:15:00Z",
+          "toUtc": "2025-03-07T06:15:00Z",
+          "use": "none",
+          "note": "operations ended 12:15 a.m. CST on 7 March, about 13 hours after landing",
+          "noteUk": "Роботу завершено о 00:15 CST 7 березня, приблизно через 13 годин після посадки",
+          "sources": [
+            "spacepolicy2025im2"
+          ]
+        }
+      ],
+      "landingNote": "Touchdown 12:28:50 p.m. EST (17:28:50 UTC) per Spaceflight Now; other press reports give about 12:30 p.m. EST"
+    },
+    {
+      "id": "blueghost1",
+      "site": "blueghost1",
+      "kind": "control",
+      "agency": "Firefly Aerospace, NASA CLPS",
+      "landingUtc": "2025-03-02T08:34:00Z",
+      "gridStartUtc": "2025-03-01T00:00:00Z",
+      "gridDays": 17,
+      "vehicle": null,
+      "attitude": {
+        "summary": "upright, nominal landing",
+        "tiltDeg": 0,
+        "sources": [
+          "spacecom2025bg"
+        ]
+      },
+      "observations": [
+        {
+          "type": "end",
+          "fromUtc": "2025-03-16T23:15:00Z",
+          "toUtc": "2025-03-16T23:15:00Z",
+          "use": "check",
+          "note": "went dark at about 23:15 UTC on 16 March after operating about 5 hours into the lunar night",
+          "sources": [
+            "spacecom2025bg"
+          ],
+          "noteUk": "Зник зв'язок близько 23:15 UTC 16 березня, після приблизно 5 годин роботи в місячній ночі"
+        }
+      ]
+    }
+  ],
+  "sources": {
+    "jaxa20240125": {
+      "title": "JAXA press release: SLIM landing results, 25 January 2024",
+      "url": "https://global.jaxa.jp/press/2024/01/20240125-1_e.html"
+    },
+    "jaxa20241226": {
+      "title": "JAXA ISAS, SLIM project review press briefing, 26 December 2024",
+      "url": "https://www.isas.jaxa.jp/en/topics/files/SLIM-press-briefing-20241226.pdf"
+    },
+    "nsf2024slim": {
+      "title": "NASASpaceFlight: Japan's SLIM lands on the Moon upside down, overcomes power issues",
+      "url": "https://www.nasaspaceflight.com/2024/01/slim-landing/"
+    },
+    "spacenews2024slimfeb": {
+      "title": "SpaceNews: Japan's SLIM moon lander stages unexpected revival after lunar night",
+      "url": "https://spacenews.com/japans-slim-moon-lander-stages-unexpected-revival-after-lunar-night/"
+    },
+    "spacecom2024slimmar": {
+      "title": "Space.com: Japan's SLIM moon lander survives its 2nd lunar night",
+      "url": "https://www.space.com/japan-slim-moon-lander-survives-second-lunar-night"
+    },
+    "spacecom2024slimapr": {
+      "title": "Space.com: Japan's SLIM moon lander survives 3rd lunar night",
+      "url": "https://www.space.com/japan-slim-moon-lander-survives-3rd-lunar-night"
+    },
+    "wiki-im1": {
+      "title": "Wikipedia: IM-1 (citing NASA, Intuitive Machines and LROC)",
+      "url": "https://en.wikipedia.org/wiki/IM-1"
+    },
+    "spacenews2024im1": {
+      "title": "SpaceNews: Intuitive Machines and NASA call IM-1 lunar lander a success as mission winds down",
+      "url": "https://spacenews.com/intuitive-machines-and-nasa-call-im-1-lunar-lander-a-success-as-mission-winds-down/"
+    },
+    "wiki-novac": {
+      "title": "Wikipedia: Intuitive Machines Nova-C",
+      "url": "https://en.wikipedia.org/wiki/Intuitive_Machines_Nova-C"
+    },
+    "eoportal-novac": {
+      "title": "eoPortal: Intuitive Machines Nova-C",
+      "url": "https://www.eoportal.org/satellite-missions/intuitive-machines"
+    },
+    "wiki-im2": {
+      "title": "Wikipedia: IM-2 (citing LROC, CNN, Ars Technica)",
+      "url": "https://en.wikipedia.org/wiki/IM-2"
+    },
+    "spacepolicy2025im2": {
+      "title": "SpacePolicyOnline: IM-2 mission ends less than a day after lunar landing",
+      "url": "https://spacepolicyonline.com/news/im-2-mission-ends-one-day-after-lunar-landing/"
+    },
+    "spacecom2025bg": {
+      "title": "Space.com: Farewell, Blue Ghost",
+      "url": "https://space.com/the-universe/moon/farewell-blue-ghost-private-moon-lander-goes-dark-to-end-record-breaking-commercial-lunar-mission"
+    },
+    "wiki-slim": {
+      "title": "Wikipedia: Smart Lander for Investigating Moon (citing JAXA press conferences)",
+      "url": "https://en.wikipedia.org/wiki/Smart_Lander_for_Investigating_Moon"
+    },
+    "pike1977": {
+      "title": "Pike, R. J. (1977). Size-dependence in the shape of fresh impact craters on the Moon. In Impact and Explosion Cratering, eds. Roddy, Pepin, Merrill, University of Arizona Press, 489-509. Fresh simple craters: depth = 0.196 D^1.01",
+      "url": "https://ui.adsabs.harvard.edu/abs/1977iecp.symp..489P/abstract"
+    },
+    "spaceflightnow2025im2": {
+      "title": "Spaceflight Now: Intuitive Machines lunar lander healthy, but apparently on its side (quotes S. Altemus, IM CEO)",
+      "url": "https://spaceflightnow.com/2025/03/07/intuitive-machines-lunar-lander-healthy-but-apparently-on-its-side/"
+    },
+    "stopar2017": {
+      "title": "Stopar, J. D. et al. (2017). Relative depths of simple craters and the nature of the lunar regolith. Icarus 298, 34-48. Extremely fresh craters under 400 m: depth/diameter 0.11 to 0.17; older craters are shallower",
+      "url": "https://doi.org/10.1016/j.icarus.2017.05.022"
+    },
+    "nasa2024slimlaser": {
+      "title": "NASA Science: NASA, JAXA bounce laser beam between Moon's surface and lunar orbit (SLIM retroreflector is passive)",
+      "url": "https://science.nasa.gov/solar-system/nasa-jaxa-bounce-laser-beam-between-moons-surface-and-lunar-orbit"
+    },
+    "jaxaStations": {
+      "title": "JAXA ISAS, station coordinates of Usuda 64 m, Misasa 54 m and Uchinoura 34 m (ITRF2014, GRS80)",
+      "url": "https://ddor.nav.isas.jaxa.jp/station_coordinates"
+    },
+    "jaxa-mediakit2023": {
+      "title": "JAXA SLIM media kit, August 2023: size 2.4 x 1.7 x 2.7 m, mass 200 kg dry, 700 to 730 kg wet",
+      "url": "https://global.jaxa.jp/countdown/slim/SLIM-mediakit-EN_2308.pdf"
+    }
+  }
+}

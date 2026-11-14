@@ -1,0 +1,450 @@
+@page "/windows"
+@page "/plan/when"
+@using System.Globalization
+@using Shadowline.Core.Ephemeris
+@using Shadowline.Core.Geometry
+@using Shadowline.Core.Sites
+@using Shadowline.Core.Tracks
+@using Shadowline.Core.Windows
+@using Shadowline.Data
+@inherits LocalizedComponent
+@using Shadowline.Web.Components
+@inject DataStore Store
+@inject SiteViewCache Views
+@inject CommsCache Comms
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+@inject MissionStore Missions
+
+<PageTitle>@L["windows.title"] - Shadowline</PageTitle>
+
+<Shadowline.Web.Components.PlanTabs Tab="when" ShowMission="true" />
+
+<h1 class="page-title">@L["windows.title"]</h1>
+<p class="lede">@L["windows.lede"]</p>
+
+@if (error is not null)
+{
+    <p class="error">@error</p>
+}
+else if (Store.Catalog is null || Store.Years?.Years is null)
+{
+    <p class="muted">@L["common.loading"]</p>
+}
+else
+{
+    <div class="replan">
+        <form class="panel replan-form" @onsubmit:preventDefault>
+            <fieldset>
+                <legend>@L["replan.groupSite"]</legend>
+                <label class="full">
+                    <span>@L["replan.site"]</span>
+                    <select value="@siteId" @onchange="OnSite">
+                        @if (siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal))
+                        {
+                            <option value="@siteId">@L["explore.custom"] @siteId[CustomSite.Prefix.Length..]</option>
+                        }
+                        @foreach (var site in Store.Catalog.Sites.Where(site => !site.Id.StartsWith("syn-", StringComparison.Ordinal)))
+                        {
+                            <option value="@site.Id">@L.Name(site)</option>
+                        }
+                    </select>
+                </label>
+            </fieldset>
+            <fieldset>
+                <legend class="sun">@L["replan.groupPower"]</legend>
+                <label>
+                    <span>@L["windows.landingSun"] <output>@minEl.ToString("F1", CultureInfo.InvariantCulture)°</output></span>
+                    <input type="range" min="0" max="15" step="0.5" value="@minEl.ToString(CultureInfo.InvariantCulture)" @oninput="OnElevation" class="sun" />
+                </label>
+            </fieldset>
+            <fieldset>
+                <legend class="earth">@L["replan.groupComms"]</legend>
+                <label class="check">
+                    <input type="checkbox" checked="@useDsn" @onchange="OnDsn" />
+                    <span>@L["windows.dsn"]</span>
+                </label>
+            </fieldset>
+            <p class="muted small">@L["windows.note"]</p>
+        </form>
+
+        <div class="windows-results">
+            <div class="windows-head">
+                @if (busy)
+                {
+                    <p class="windows-summary">@L["windows.searching"]</p>
+                }
+                else
+                {
+                    <p class="windows-summary">@L.Format("windows.summary", results.Count, L.Span(TimeSpan.FromMinutes(results.Sum(r => (r.Window.Last - r.Window.First + 1) * r.Year.GridStepMinutes))))</p>
+                }
+                <button type="button" @onclick="DownloadCsv" disabled="@(busy || results.Count == 0)">@L["windows.csv"]</button>
+            </div>
+
+            <div class="windows-years">
+                @foreach (var year in Store.Years.Years)
+                {
+                    var grid = year.Grid;
+                    <div class="windows-year">
+                        <span class="hud-label">@DataStore.YearLabel(year.Id)</span>
+                        <svg viewBox="0 0 @StripWidth 22" preserveAspectRatio="none" role="img" aria-label="@DataStore.YearLabel(year.Id)">
+                            <rect x="0" y="0" width="@StripWidth" height="22" rx="4" class="lane" />
+                            @if (sunTracks.TryGetValue(year.Id, out var sun))
+                            {
+                                @foreach (var run in sun.Runs(true))
+                                {
+                                    <rect x="@X(run.Start, grid.Count)" y="0" width="@W(run.Length, grid.Count)" height="22" class="strip-sun" />
+                                }
+                            }
+                            @foreach (var item in results.Where(r => r.Year.Id == year.Id))
+                            {
+                                var index = results.IndexOf(item);
+                                <rect x="@X(item.Window.First, grid.Count)" y="3" width="@W(Math.Max(2, item.Window.Last - item.Window.First + 1), grid.Count)" height="16" rx="2" class="@(index == selected ? "strip-window on" : "strip-window")" @onclick="() => Select(index)" />
+                            }
+                            @for (var m = 1; m < 12; m++)
+                            {
+                                var tick = new DateTimeOffset(grid.Start.Year, grid.Start.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(m);
+                                <line x1="@X(grid.IndexOf(tick), grid.Count)" x2="@X(grid.IndexOf(tick), grid.Count)" y1="18" y2="22" class="lane-tick" />
+                            }
+                        </svg>
+                    </div>
+                }
+                <div class="windows-months" aria-hidden="true">
+                    @foreach (var month in Months())
+                    {
+                        <span>@month</span>
+                    }
+                </div>
+                <p class="muted small">@L["windows.stripKey"] @L["windows.mergeNote"]</p>
+            </div>
+
+            @if (!busy && Selected is { } chosen && cache.TryGetValue(chosen.Year.Id, out var chosenData))
+            {
+                var grid = chosen.Year.Grid;
+                var w = chosen.Window;
+                var missionSteps = MissionSteps(chosen.Year);
+                var from = Math.Max(0, w.First - Pad(chosen.Year));
+                var to = Math.Min(grid.Count, w.Last + missionSteps + Pad(chosen.Year));
+                var link = useDsn ? chosenData.Earth.And(chosenData.Dsn) : chosenData.Earth;
+                <section class="window-pick">
+                    <header>
+                        <p class="report-kicker">@L.Format("windows.pick", selected + 1, results.Count)</p>
+                        <h2>@Day(grid.At(w.Best))</h2>
+                        <p class="cover-meta"><span>@L["windows.best"] @Time(grid.At(w.Best))</span><span>@L.Format("windows.open", L.Span(TimeSpan.FromMinutes((w.Last - w.First + 1) * chosen.Year.GridStepMinutes)))@(w.Breaks > 0 ? L.Format("windows.breaks", w.Breaks) : null)</span></p>
+                    </header>
+                    <svg class="pick-lanes" viewBox="0 0 @PickWidth 96" role="img" aria-label="@L["windows.pickAlt"]">
+                        <text x="0" y="10" class="lane-label">@L["report.lane.sun"]</text>
+                        <rect x="0" y="14" width="@PickWidth" height="12" rx="2" class="lane" />
+                        @foreach (var run in Clip(chosenData.Sun, from, to))
+                        {
+                            <rect x="@PX(run.Start, from, to)" y="14" width="@PW(run.Length, from, to)" height="12" class="lane-sun" />
+                        }
+                        <text x="0" y="42" class="lane-label">@L[useDsn ? "report.lane.link" : "report.lane.earth"]</text>
+                        <rect x="0" y="46" width="@PickWidth" height="12" rx="2" class="lane" />
+                        @foreach (var run in Clip(link, from, to))
+                        {
+                            <rect x="@PX(run.Start, from, to)" y="46" width="@PW(run.Length, from, to)" height="12" class="@(useDsn ? "lane-link" : "lane-earth")" />
+                        }
+                        <text x="0" y="74" class="lane-label">@L["windows.lanePlan"]</text>
+                        <rect x="@PX(w.First, from, to)" y="78" width="@PW(w.Last - w.First + 1, from, to)" height="12" rx="2" class="strip-window" />
+                        <rect x="@PX(w.Best, from, to)" y="80" width="@PW(missionSteps, from, to)" height="8" rx="2" class="pick-mission" />
+                        <line x1="@PX(w.Best, from, to)" x2="@PX(w.Best, from, to)" y1="12" y2="92" class="pick-landing" />
+                    </svg>
+                    <p class="spark-caption"><span>@Day(grid.At(from))</span><span>@L["windows.pickKey"]</span><span>@Day(grid.At(Math.Max(from, to - 1)))</span></p>
+                    <div class="report-figures pick-figures">
+                        <div><strong>@Percent(w.SunShare)</strong><span>@L["metric.sun"]</span></div>
+                        <div><strong>@Percent(w.LinkShare)</strong><span>@L["windows.linkShort"]</span></div>
+                        <div><strong>@L.Span(TimeSpan.FromMinutes(w.SunStepsAfterLanding * chosen.Year.GridStepMinutes))</strong><span>@L["windows.sunAfter"]</span></div>
+                        <div><strong>@w.LandingSunDeg.ToString("F1", CultureInfo.InvariantCulture)°</strong><span>@L["windows.landingEl"]</span></div>
+                    </div>
+                    <div class="row">
+                        <a class="button primary" href="@Link("./", chosen, w.Best)">@L["replan.explore"]</a>
+                        <a class="button" href="@Link("planner", chosen, w.Best)">@L["replan.planner"]</a>
+                        <a class="button" href="@Link("report", chosen, w.Best)">@L["report.open"]</a>
+                    </div>
+                    @if (Store.Ephemeris is { } eph && eph.Grid.IndexOf(grid.At(w.Best)) is var bestIndex && bestIndex >= 0 && bestIndex < eph.Grid.Count)
+                    {
+                        <RobustnessCard SiteId="@siteId" Start="bestIndex" Compact="true" />
+                    }
+                    else
+                    {
+                        <p class="muted small">@L["windows.robustOtherYear"] <a href="@Link("report", chosen, w.Best)">@L["report.full"] ›</a></p>
+                    }
+                </section>
+            }
+
+            @if (!busy && results.Count > 0)
+            {
+                var longest = results.Max(r => r.Window.Last - r.Window.First + 1);
+                <table class="windows-table">
+                    <thead>
+                        <tr><th>#</th><th>@L["windows.col.opens"]</th><th>@L["windows.col.open"]</th><th>@L["metric.sun"]</th><th>@L["windows.linkShort"]</th><th>@L["windows.sunAfter"]</th><th>@L["windows.landingEl"]</th><th>@L["windows.col.slip"]</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in results.Take(shown))
+                        {
+                            var index = results.IndexOf(item);
+                            var grid = item.Year.Grid;
+                            var span = item.Window.Last - item.Window.First + 1;
+                            <tr class="@(index == selected ? "on" : null)" @onclick="() => Select(index)">
+                                <td class="muted">@(index + 1)</td>
+                                <td><button type="button" class="link-button" @onclick="() => Select(index)" @onclick:stopPropagation>@Day(grid.At(item.Window.First))</button><span class="muted small when">@Time(grid.At(item.Window.First))</span></td>
+                                <td class="bar-cell"><span class="span-bar" style="--w: @((100.0 * span / longest).ToString("F0", CultureInfo.InvariantCulture))"></span>@L.Span(TimeSpan.FromMinutes(span * item.Year.GridStepMinutes))</td>
+                                <td>@Percent(item.Window.SunShare)</td>
+                                <td>@Percent(item.Window.LinkShare)</td>
+                                <td>@L.Span(TimeSpan.FromMinutes(item.Window.SunStepsAfterLanding * item.Year.GridStepMinutes))</td>
+                                <td>@item.Window.LandingSunDeg.ToString("F1", CultureInfo.InvariantCulture)°</td>
+                                <td>@L.Span(TimeSpan.FromMinutes((item.Window.Last - item.Window.Best) * item.Year.GridStepMinutes))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (results.Count > shown)
+            {
+                <button type="button" @onclick="() => shown += 20">@L.Format("windows.more", results.Count - shown)</button>
+            }
+            @if (!busy && results.Count == 0)
+            {
+                <p class="notice">@L["windows.none"]</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private const int StripWidth = 1000;
+    private const int PickWidth = 800;
+
+    private sealed record Found(YearEntry Year, LandingWindow Window);
+
+    private sealed record YearData(BitTrack Sun, BitTrack Earth, BitTrack Dsn, Func<int, double> Elevation);
+
+    private readonly Dictionary<string, YearData> cache = [];
+    private readonly Dictionary<string, BitTrack> sunTracks = [];
+    private List<Found> results = [];
+    private string siteId = "im2-athena";
+    private string? cachedSite;
+    private int missionDays => Missions.Current.DurationDays;
+    private double minSun => Math.Round(Missions.Current.RequiredSunShare * 100, 1);
+    private double minLink => Math.Round(Missions.Current.MinEarthShare * 100, 1);
+    private double minEl = 0.5;
+    private bool useDsn = true;
+    private bool busy = true;
+    private int shown = 20;
+    private int selected;
+    private string? error;
+    private CancellationTokenSource? pending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+            await Views.EnsureLoadedAsync();
+            await Missions.EnsureLoadedAsync();
+            Missions.Changed += Schedule;
+        }
+        catch (Exception exception) when (exception is DataFormatException or HttpRequestException)
+        {
+            error = exception.Message;
+            return;
+        }
+
+        foreach (var pair in new Uri(Navigation.Uri).Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && parts[0] == "site" && Views.Resolve(Uri.UnescapeDataString(parts[1])) is not null)
+            {
+                siteId = Uri.UnescapeDataString(parts[1]);
+            }
+        }
+
+        await SearchAsync(CancellationToken.None);
+    }
+
+    private void OnElevation(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            minEl = value;
+            Schedule();
+        }
+    }
+
+    private void OnDsn(ChangeEventArgs args)
+    {
+        useDsn = args.Value is true;
+        Schedule();
+    }
+
+    private void OnSite(ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() is { } id && Views.Resolve(id) is not null)
+        {
+            siteId = id;
+            Schedule();
+        }
+    }
+
+    private void Schedule()
+    {
+        pending?.Cancel();
+        pending = new CancellationTokenSource();
+        var token = pending.Token;
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(250, token);
+                await SearchAsync(token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    private async Task SearchAsync(CancellationToken token)
+    {
+        busy = true;
+        StateHasChanged();
+        if (siteId.StartsWith(CustomSite.Prefix, StringComparison.Ordinal) && Views.TerrainFor(siteId) is null)
+        {
+            await Views.PrepareAsync(siteId, token);
+        }
+
+        if (cachedSite != siteId)
+        {
+            cache.Clear();
+            sunTracks.Clear();
+            cachedSite = siteId;
+        }
+
+        var site = Views.Resolve(siteId)!;
+        var horizon = Views.Get(siteId).Horizon;
+        var found = new List<Found>();
+        foreach (var year in Store.Years!.Years!)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!cache.TryGetValue(year.Id, out var data))
+            {
+                if (await Store.LoadYearAsync(year, token) is not { } ephemeris)
+                {
+                    continue;
+                }
+
+                await Task.Yield();
+                var tracks = SkyTracks.Build(site, ephemeris, horizon);
+                var frame = new SiteFrame(site);
+                data = new YearData(tracks.SunVisible, tracks.EarthVisible, Comms.Dsn(ephemeris), i => frame.Observe(ephemeris.Sun(i)).ElevationDeg);
+                cache[year.Id] = data;
+                sunTracks[year.Id] = tracks.SunVisible;
+            }
+
+            var link = useDsn ? data.Earth.And(data.Dsn) : data.Earth;
+            var steps = Math.Max(1, (int)(TimeSpan.FromDays(missionDays) / year.Grid.Step));
+            var criteria = new WindowCriteria(steps, Missions.Current.RequiredSunShare, Missions.Current.MinEarthShare, minEl);
+            var gap = (int)(TimeSpan.FromHours(6) / year.Grid.Step);
+            found.AddRange(LandingWindowFinder.Merge(LandingWindowFinder.Find(data.Sun, link, data.Elevation, criteria), gap).Select(window => new Found(year, window)));
+            await Task.Yield();
+        }
+
+        results = found;
+        shown = 20;
+        selected = 0;
+        busy = false;
+        StateHasChanged();
+    }
+
+    private string Link(string page, Found item, int index)
+    {
+        var year = Store.Years?.Years is { Count: > 0 } list && item.Year.Id != list[0].Id ? "&y=" + item.Year.Id : string.Empty;
+        var window = page switch
+        {
+            "planner" => $"&w={Math.Clamp(missionDays * 24, 24, 336)}",
+            "report" => $"&w={missionDays * 24}",
+            _ => string.Empty,
+        };
+        return $"{page}?site={Uri.EscapeDataString(siteId)}&t={index}{window}{year}";
+    }
+
+    private Found? Selected => selected >= 0 && selected < results.Count ? results[selected] : null;
+
+    private void Select(int index)
+    {
+        selected = index;
+        while (index >= shown)
+        {
+            shown += 20;
+        }
+    }
+
+    private int MissionSteps(YearEntry year) => Math.Max(1, (int)(TimeSpan.FromDays(missionDays) / year.Grid.Step));
+
+    private static int Pad(YearEntry year) => (int)(TimeSpan.FromDays(2) / year.Grid.Step);
+
+    private static IEnumerable<Run> Clip(BitTrack track, int from, int to)
+    {
+        foreach (var run in track.Runs(true))
+        {
+            var a = Math.Max(run.Start, from);
+            var b = Math.Min(run.Start + run.Length, to);
+            if (b > a)
+            {
+                yield return new Run(a, b - a);
+            }
+        }
+    }
+
+    private static string PX(int index, int from, int to) => ((double)(index - from) / Math.Max(1, to - from) * PickWidth).ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string PW(int steps, int from, int to) => Math.Max(1.5, (double)steps / Math.Max(1, to - from) * PickWidth).ToString("F1", CultureInfo.InvariantCulture);
+
+    private IEnumerable<string> Months()
+    {
+        var names = L["windows.months"].Split(',');
+        var first = Store.Years!.Years![0].Grid.Start;
+        for (var m = 0; m < 12; m++)
+        {
+            yield return names[(first.Month - 1 + m) % 12];
+        }
+    }
+
+    private async Task DownloadCsv()
+    {
+        var csv = new System.Text.StringBuilder("window_start_utc,window_end_utc,best_landing_utc,open_hours,short_breaks,sun_share,link_share,sun_stays_up_hours,landing_sun_deg,site,mission_days,min_sun_share,min_link_share,min_landing_sun_deg,dsn_link\n");
+        foreach (var item in results)
+        {
+            var grid = item.Year.Grid;
+            var w = item.Window;
+            var hours = item.Year.GridStepMinutes / 60.0;
+            csv.Append(CultureInfo.InvariantCulture, $"{Iso(grid.At(w.First))},{Iso(grid.At(w.Last))},{Iso(grid.At(w.Best))},{((w.Last - w.First + 1) * hours).ToString("F1", CultureInfo.InvariantCulture)},{w.Breaks},{w.SunShare.ToString("F4", CultureInfo.InvariantCulture)},{w.LinkShare.ToString("F4", CultureInfo.InvariantCulture)},{(w.SunStepsAfterLanding * hours).ToString("F1", CultureInfo.InvariantCulture)},{w.LandingSunDeg.ToString("F3", CultureInfo.InvariantCulture)},{siteId},{missionDays},{minSun / 100.0},{minLink / 100.0},{minEl.ToString(CultureInfo.InvariantCulture)},{(useDsn ? 1 : 0)}\n");
+        }
+
+        await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        var id = new string(siteId.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+        await module.InvokeVoidAsync("download", $"shadowline-windows-{id}.csv", csv.ToString(), "text/csv");
+    }
+
+    private static string Iso(DateTimeOffset moment) => moment.UtcDateTime.ToString("yyyy-MM-ddTHH:mmZ", CultureInfo.InvariantCulture);
+
+    private static string Day(DateTimeOffset moment) => moment.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static string Time(DateTimeOffset moment) => moment.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture) + " UTC";
+
+    private static string X(int index, int count) => ((double)index / count * StripWidth).ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string W(int steps, int count) => Math.Max(1.5, (double)steps / count * StripWidth).ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string Stamp(DateTimeOffset moment) => moment.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + " UTC";
+
+    private static string Percent(double fraction) => (fraction * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    public override void Dispose()
+    {
+        pending?.Cancel();
+        Missions.Changed -= Schedule;
+        base.Dispose();
+    }
+}
