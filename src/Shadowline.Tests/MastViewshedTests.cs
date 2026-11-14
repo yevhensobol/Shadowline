@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Text.Json;
 using Shadowline.Core.Radio;
 using Shadowline.Core.Terrain;
@@ -59,5 +59,27 @@ public class MastViewshedTests(ITestOutputHelper output)
             Assert.InRange(viewshed.NearFraction - reference.Los10, -0.02, 0.02);
             Assert.InRange(viewshed.AreaKm2 - reference.AreaKm2, -0.05 * reference.AreaKm2 - 1, 0.05 * reference.AreaKm2 + 1);
         }
+    }
+
+    [Fact]
+    public void Raster_is_north_up()
+    {
+        var viewshed = MastViewshed.Compute(0, -100000, (x, y) => y < -100000 - 1000 && Math.Abs(x) < 3000 ? 500.0 : 0.0)!;
+        var raster = viewshed.Raster(110);
+
+        Assert.Equal(1, raster[10 * 110 + 55]);
+        Assert.Equal(2, raster[60 * 110 + 55]);
+    }
+
+    [Fact]
+    public void Shaded_map_marks_visible_hidden_and_outside()
+    {
+        double? Sample(double x, double y) => y < -100000 - 1000 && Math.Abs(x) < 3000 ? 500.0 : 0.0;
+        var viewshed = MastViewshed.Compute(0, -100000, Sample)!;
+        var map = viewshed.ShadedMap(Sample, 110);
+
+        Assert.Equal(MastViewshed.Outside, map[0]);
+        Assert.True(map[60 * 110 + 55] >= MastViewshed.ShadeLevels);
+        Assert.True(map[10 * 110 + 55] < MastViewshed.ShadeLevels);
     }
 }
