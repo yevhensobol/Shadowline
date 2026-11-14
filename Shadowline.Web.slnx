@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="src/Shadowline.Core/Shadowline.Core.csproj" Id="7c5396e9-4ede-42ee-a182-ef885cf6f1fb" />
+  <Project Path="src/Shadowline.Data/Shadowline.Data.csproj" Id="a12145f7-817c-45f9-986c-5ef05aa6d865" />
+  <Project Path="src/Shadowline.Tests/Shadowline.Tests.csproj" Id="a25c804f-66d5-4ecd-9fa3-b0ad2ccc53cc" />
   <Project Path="src/Shadowline.Web/Shadowline.Web.csproj" />
 </Solution>
