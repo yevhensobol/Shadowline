@@ -1,4 +1,5 @@
 ﻿using Shadowline.Core.Geometry;
+using Shadowline.Core.Power;
 
 namespace Shadowline.Core.Incidents;
 

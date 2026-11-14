@@ -1,6 +1,7 @@
 ﻿using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Geometry;
 using Shadowline.Core.Horizon;
+using Shadowline.Core.Power;
 
 namespace Shadowline.Core.Thermal;
 

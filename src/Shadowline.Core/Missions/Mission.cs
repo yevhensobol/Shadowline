@@ -4,6 +4,7 @@ using Shadowline.Core.Incidents;
 using LanderSpec = Shadowline.Core.Finder.LanderSpec;
 using Shadowline.Core.Replan;
 using Shadowline.Core.Windows;
+using Shadowline.Core.Power;
 
 namespace Shadowline.Core.Missions;
 

@@ -13,7 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Services\" />
+    <ProjectReference Include="..\Shadowline.Core\Shadowline.Core.csproj" />
+    <ProjectReference Include="..\Shadowline.Data\Shadowline.Data.csproj" />
   </ItemGroup>
 
 </Project>

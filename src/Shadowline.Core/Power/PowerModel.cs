@@ -4,7 +4,7 @@ using Shadowline.Core.Horizon;
 using Shadowline.Core.Thermal;
 using Shadowline.Core.Time;
 
-namespace Shadowline.Core;
+namespace Shadowline.Core.Power;
 
 public enum PanelMount
 {
