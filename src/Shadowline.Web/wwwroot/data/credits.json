@@ -50,16 +50,16 @@
       "kind": "data"
     },
     {
-      "id": "sdem-a3clr",
-      "title": "Enhanced Topography Models for selected Lunar South Pole regions with Shape-from-Shading (SDEM)",
-      "author": "Bertone, S., McKenna, T. E., Barker, M. K., Mazarico, E., Beyer, R. A., Petro, N. (2025), NASA GSFC PGDA, doi:10.5281/zenodo.17954508",
-      "source": "https://doi.org/10.5281/zenodo.17954508",
-      "license": "CC BY 4.0",
-      "usedIn": {
-        "en": "5 m elevation of the 13 Artemis III candidate regions in the 3D relief view, with 20 m and 80 m levels for distant views, and LROC NAC orthomosaic crops in the site report. Display only, not used in the calculations",
-        "uk": "Висоти з кроком 5 м для 13 кандидатних регіонів Artemis III у режимі рельєфу 3D-сцени, з рівнями 20 м і 80 м для дальніх видів, і фрагменти ортомозаїк LROC NAC у звіті про місце. Лише відображення, у розрахунках не використовується"
-      },
-      "kind": "data"
+        "id": "lola-5m-87s",
+        "title": "South Pole LOLA DEM Mosaic, 5 m/px, 87-90 S (ldem_87s_5mpp)",
+        "author": "Barker, M. K. et al. (2021), Improved LOLA Elevation Maps for South Pole Landing Sites: Error Estimates and Their Impact on Illumination Conditions, Planetary and Space Science 203, 105119, doi:10.1016/j.pss.2020.105119. NASA GSFC PGDA",
+        "source": "https://pgda.gsfc.nasa.gov/products/81",
+        "license": "NASA open data",
+        "usedIn": {
+            "en": "3D relief view within 87-90 S: 5 m heights near the camera, with 20 m and 80 m levels for distant views. Display only, not used in the calculations",
+            "uk": "Режим рельєфу 3D-сцени в межах 87-90 пд. ш.: висоти 5 м біля камери, з рівнями 20 м і 80 м для дальніх видів. Лише відображення, у розрахунках не використовується"
+        },
+        "kind": "data"
     },
     {
       "id": "diviner-prp",
@@ -104,8 +104,8 @@
         "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_NAC_AvgMosaic_SPole855_1mp",
         "license": "NASA open data",
         "usedIn": {
-            "en": "Photo view of the south pole in 3D, 85.5-90 S, loaded in more detail as the camera gets closer",
-            "uk": "Режим фото південного полюса в 3D, 85,5-90 пд. ш., деталізація зростає з наближенням камери"
+            "en": "Photo view of the south pole in 3D, 85.5-90 S, loaded in more detail as the camera gets closer, and the orbital image in the site report",
+            "uk": "Режим фото південного полюса в 3D, 85,5-90 пд. ш., деталізація зростає з наближенням камери, і знімок з орбіти у звіті про місце"
         },
         "kind": "data"
     },

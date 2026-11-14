@@ -95,7 +95,7 @@ else
         {
             <figure class="site-photo report-photo">
                 <img src="@shot.Url" alt="@L["report.orbital.title"]" />
-                <figcaption><strong>@L["report.orbital.title"]</strong> @L.Format("report.orbital.caption", Num(shot.PhotoM), Num(shot.NativeM), Num(shot.SizeKm), shot.Region) <span class="muted">@L["report.orbital.credit"]</span></figcaption>
+                <figcaption><strong>@L["report.orbital.title"]</strong> @L.Format("report.orbital.caption", Num(shot.PhotoM), Num(shot.SizeKm)) <span class="muted">@L["report.orbital.credit"]</span></figcaption>
             </figure>
         }
 
@@ -651,7 +651,7 @@ else
     private SiteReport? report;
     private OrbitalPhoto? orbital;
 
-    private sealed record OrbitalPhoto(string Url, string Region, double PhotoM, double NativeM, double SizeKm);
+    private sealed record OrbitalPhoto(string Url, double PhotoM, double SizeKm);
 
     private static string Num(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
     private int start;
@@ -724,7 +724,7 @@ else
         try
         {
             await Task.Delay(50, token);
-            if (view is not null && view.Site.LatitudeDeg <= -78)
+            if (view is not null && view.Site.LatitudeDeg <= -85.5)
             {
                 try
                 {

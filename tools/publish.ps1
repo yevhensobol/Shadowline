@@ -40,6 +40,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $site = Join-Path $target "wwwroot"
+
+$terrain = Join-Path $root "deploy\ldem\out"
+if (Test-Path -LiteralPath (Join-Path $terrain "index.json")) {
+    $terrainTarget = Join-Path $site "data\ldem"
+    New-Item -ItemType Directory -Path $terrainTarget -Force | Out-Null
+    Copy-Item -Path (Join-Path $terrain "*") -Destination $terrainTarget -Force
+}
+else {
+    Write-Warning "No terrain pack in $terrain, the 5 m relief will be missing (run tools\ldem\pack_ldem.py)"
+}
 foreach ($required in @("index.html", "_framework", "data\finder.bin.gz", "js\moonscene.js")) {
     if (-not (Test-Path -LiteralPath (Join-Path $site $required))) {
         throw "missing $required in $site"

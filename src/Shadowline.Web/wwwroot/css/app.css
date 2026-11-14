@@ -1960,7 +1960,22 @@ body {
     text-shadow: 0 1px 3px #000000, 0 0 6px #000000;
 }
 
-.scene-sdem {
+.scene-zone {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 11;
+    padding: 2px 8px;
+    border: 1px solid rgba(255, 163, 58, 0.55);
+    border-radius: 4px;
+    background: rgba(13, 18, 27, 0.78);
+    color: #ffb14a;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.scene-view {
     position: absolute;
     top: 124px;
     left: 50%;
@@ -1974,7 +1989,7 @@ body {
     pointer-events: auto;
 }
 
-.scene-sdem button {
+.scene-view button {
     padding: 5px 14px;
     border: 0;
     border-radius: 0;
@@ -1987,21 +2002,21 @@ body {
     cursor: pointer;
 }
 
-.scene-sdem button + button {
+.scene-view button + button {
     border-left: 1px solid var(--line);
 }
 
-.scene-sdem button[aria-pressed="true"] {
+.scene-view button[aria-pressed="true"] {
     background: rgba(242, 163, 58, 0.18);
     color: var(--sun);
 }
 
-.globe.embed .scene-sdem {
+.globe.embed .scene-view {
     top: 12px;
 }
 
 @media (max-width: 800px) {
-    .scene-sdem {
+    .scene-view {
         top: 150px;
     }
 }

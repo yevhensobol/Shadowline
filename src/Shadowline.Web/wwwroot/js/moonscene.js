@@ -11,8 +11,8 @@ const POLE_LAT = -76;
 const MIN_RANGE = 6;
 const MAX_RANGE = 40000;
 const RELIEF_RANGE = 3000;
-const SDEM_TILES = 24;
-const SDEM_MIN_RANGE = 0.4;
+const TERRAIN_TILES = 24;
+const TERRAIN_MIN_RANGE = 0.4;
 const WAC_TILES = "https://trek.nasa.gov/tiles/Moon/SP/LRO_WAC_Mosaic_SPole60_100m_v02/1.0.0/default/default028mm/";
 const WAC_ORIGIN_M = 1095930;
 const WAC_LEVEL = 5;
@@ -23,10 +23,11 @@ const NAC_EDGE_M = 136500;
 const NAC_BASE_LEVEL = 6;
 const NAC_MAX_LEVEL = 11;
 const NAC_SPAN = 9;
+const ZONES = [{ lat: -87, key: "poleZoneInner" }, { lat: -84, key: "poleZoneOuter" }];
 
-const sdemDiscard = (uv) => `    for (int i = 0; i < ${SDEM_TILES}; i++) {
-        if (i >= sdemCount) break;
-        vec4 sr = sdemRects[i];
+const terrainDiscard = (uv) => `    for (int i = 0; i < ${TERRAIN_TILES}; i++) {
+        if (i >= terrainCount) break;
+        vec4 sr = terrainRects[i];
         if (${uv}.x > sr.x && ${uv}.x < sr.z && ${uv}.y > sr.y && ${uv}.y < sr.w) discard;
     }`;
 
@@ -242,7 +243,7 @@ class MoonScene {
 
         this.polePromise = this.loadPole();
         this.loadRelief();
-        this.loadSdem();
+        this.loadTerrain();
         this.loadEarthTextures();
         this.loadStarMap();
     }
@@ -365,24 +366,43 @@ class MoonScene {
         }
     }
 
-    async loadSdem() {
+    async loadTerrain() {
         try {
-            const module = await import(new URL("./sdem.js" + new URL(import.meta.url).search, import.meta.url).href);
+            const module = await import(new URL("./terrain.js" + new URL(import.meta.url).search, import.meta.url).href);
             if (this.polePromise) await this.polePromise;
             if (this.disposed || !this.poleGrid) return;
-            const sdem = new module.Sdem({ base: this.options.base + "../../data/sdem/", radius: R, scene: this.scene, poleHalf: this.poleGrid.half, albedo: this.pole ? this.pole.material.map : null, count: this.layerUniforms.sdemCount, rects: this.layerUniforms.sdemRects.value, anisotropy: Math.min(8, this.renderer.capabilities.getMaxAnisotropy()), onChange: () => { this.dirty = true; } });
-            await sdem.init();
-            if (this.disposed) { sdem.dispose(); return; }
-            this.sdem = sdem;
+            const terrain = new module.Terrain({ decorate: (material) => this.decorateTerrain(material), base: this.options.base + "../../data/ldem/", radius: R, scene: this.scene, poleHalf: this.poleGrid.half, albedo: this.pole ? this.pole.material.map : null, count: this.layerUniforms.terrainCount, rects: this.layerUniforms.terrainRects.value, onChange: () => { this.dirty = true; } });
+            await terrain.init();
+            if (this.disposed) { terrain.dispose(); return; }
+            this.terrain = terrain;
             this.dirty = true;
         } catch (error) {
-            console.warn("sdem", error);
+            console.warn("terrain", error);
         }
+    }
+
+    decorateTerrain(material) {
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.zoneOn = this.layerUniforms.zoneOn;
+            shader.uniforms.zoneR = this.layerUniforms.zoneR;
+            shader.fragmentShader = shader.fragmentShader
+                .replace("#include <common>", "#include <common>\nuniform float zoneOn;\nuniform vec2 zoneR;")
+                .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+if (zoneOn > 0.5) {
+    float zd = length(vMapUv - 0.5);
+    float zw = max(fwidth(zd), 1e-7);
+    float inner = 1.0 - smoothstep(zw * 1.2, zw * 2.8, abs(zd - zoneR.x));
+    float dash = step(0.45, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 11.459156));
+    float outer = (1.0 - smoothstep(zw * 0.7, zw * 2.0, abs(zd - zoneR.y))) * dash;
+    float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.03 + (1.0 - smoothstep(zoneR.y - zw, zoneR.y + zw, zd)) * 0.015;
+    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 1.3 + fill);
+}`);
+        };
     }
 
     hideRelief() {
         if (this.relief) this.relief.group.visible = false;
-        if (this.sdem && this.sdem.hide()) this.dirty = true;
+        if (this.terrain && this.terrain.hide()) this.dirty = true;
         if (this.poleDetail) {
             this.poleDetail.update(this.camera, 1, false);
             this.layerUniforms.detailOn.value = 0;
@@ -496,21 +516,21 @@ class MoonScene {
         mask.magFilter = THREE.NearestFilter;
         mask.minFilter = THREE.NearestFilter;
         mask.needsUpdate = true;
-        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, photoOn: this.photoUniform, nacMap: { value: blank }, nacRect: { value: new THREE.Vector4() }, nacScale: { value: 1 }, focusMap: { value: blank }, focusRect: { value: new THREE.Vector4() }, focusOn: { value: 0 }, sdemCount: { value: 0 }, sdemRects: { value: Array.from({ length: SDEM_TILES }, () => new THREE.Vector4()) } };
+        this.layerUniforms = { detailMask: { value: mask }, detailOn: { value: 0 }, detailScale: { value: 1 }, layerMode: { value: 0 }, lightMap: { value: blank }, slopeMap: { value: blank }, mlMap: { value: blank }, divMap: { value: blank }, nowMap: { value: blank }, nowOn: { value: 0 }, nowScale: { value: 1 }, gridOn: { value: 0 }, gridCells: { value: 608 }, photoOn: this.photoUniform, nacMap: { value: blank }, nacRect: { value: new THREE.Vector4() }, nacScale: { value: 1 }, focusMap: { value: blank }, focusRect: { value: new THREE.Vector4() }, focusOn: { value: 0 }, zoneOn: { value: 0 }, zoneR: { value: new THREE.Vector2() }, terrainCount: { value: 0 }, terrainRects: { value: Array.from({ length: TERRAIN_TILES }, () => new THREE.Vector4()) } };
         this.poleDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
         this.poleDepth.onBeforeCompile = (shader) => {
-            shader.uniforms.sdemCount = this.layerUniforms.sdemCount;
-            shader.uniforms.sdemRects = this.layerUniforms.sdemRects;
+            shader.uniforms.terrainCount = this.layerUniforms.terrainCount;
+            shader.uniforms.terrainRects = this.layerUniforms.terrainRects;
             shader.vertexShader = shader.vertexShader
-                .replace("#include <common>", "#include <common>\nvarying vec2 vSdemUv;")
-                .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSdemUv = uv;");
+                .replace("#include <common>", "#include <common>\nvarying vec2 vTerrainUv;")
+                .replace("#include <begin_vertex>", "#include <begin_vertex>\nvTerrainUv = uv;");
             shader.fragmentShader = shader.fragmentShader
                 .replace("#include <common>", `#include <common>
-varying vec2 vSdemUv;
-uniform int sdemCount;
-uniform vec4 sdemRects[${SDEM_TILES}];`)
+varying vec2 vTerrainUv;
+uniform int terrainCount;
+uniform vec4 terrainRects[${TERRAIN_TILES}];`)
                 .replace("void main() {", `void main() {
-${sdemDiscard("vSdemUv")}`);
+${terrainDiscard("vTerrainUv")}`);
         };
         material.onBeforeCompile = (shader) => {
             Object.assign(shader.uniforms, this.layerUniforms);
@@ -536,8 +556,10 @@ uniform float nacScale;
 uniform sampler2D focusMap;
 uniform vec4 focusRect;
 uniform float focusOn;
-uniform int sdemCount;
-uniform vec4 sdemRects[${SDEM_TILES}];
+uniform float zoneOn;
+uniform vec2 zoneR;
+uniform int terrainCount;
+uniform vec4 terrainRects[${TERRAIN_TILES}];
 vec4 rectSample(sampler2D tex, vec4 rect, vec2 uv) {
     vec2 t = (uv - rect.xy) / max(rect.zw - rect.xy, vec2(1e-9));
     vec2 e = min(t, 1.0 - t);
@@ -558,7 +580,7 @@ vec3 ramp5(float v, float a, float b, float c, float d, float e, vec3 ca, vec3 c
 #ifndef POLE_DETAIL
     if (detailOn > 0.5 && texture2D(detailMask, vec2(vMapUv.x, 1.0 - vMapUv.y) * detailScale).r > 0.5) discard;
 #endif
-${sdemDiscard("vMapUv")}`)
+${terrainDiscard("vMapUv")}`)
                 .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
 if (layerMode > 0.5) {
     vec3 layer;
@@ -604,6 +626,15 @@ if (gridOn > 0.5) {
     float a = max(max(fine * 0.6, major * 0.8), wide);
     totalEmissiveRadiance += vec3(0.3, 0.5, 0.68) * a * 0.45;
     diffuseColor.rgb *= 1.0 - 0.3 * a;
+}
+if (zoneOn > 0.5) {
+    float zd = length(vMapUv - 0.5);
+    float zw = max(fwidth(zd), 1e-7);
+    float inner = 1.0 - smoothstep(zw * 1.2, zw * 2.8, abs(zd - zoneR.x));
+    float dash = step(0.45, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 11.459156));
+    float outer = (1.0 - smoothstep(zw * 0.7, zw * 2.0, abs(zd - zoneR.y))) * dash;
+    float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.03 + (1.0 - smoothstep(zoneR.y - zw, zoneR.y + zw, zd)) * 0.015;
+    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 1.3 + fill);
 }`)
                 .replace("#include <opaque_fragment>", `if (photoOn > 0.5 && layerMode < 0.5) {
     vec3 pc = diffuseColor.rgb;
@@ -1122,9 +1153,9 @@ if (gridOn > 0.5) {
     updateCamera() {
         const v = this.view;
         const { up, east, north } = localFrame(v.lat, v.lon);
-        const fine = !!this.sdem && this.sdem.covers(v.lat, v.lon);
+        const fine = !!this.terrain && this.terrain.covers(v.lat, v.lon);
         if (v.range < MIN_RANGE && !fine) v.range = MIN_RANGE;
-        const ground = fine ? this.sdem.heightAt(v.lat, v.lon) ?? (this.poleHeightAt(v.lat, v.lon)?.meters ?? 0) / 1000 : 0;
+        const ground = fine ? this.terrain.heightAt(v.lat, v.lon) ?? (this.poleHeightAt(v.lat, v.lon)?.meters ?? 0) / 1000 : 0;
         const target = up.clone().multiplyScalar(R + ground);
         const h = v.heading * DEG, tilt = v.tilt * DEG;
         const forward = north.clone().multiplyScalar(Math.cos(h)).addScaledVector(east, Math.sin(h));
@@ -1144,7 +1175,7 @@ if (gridOn > 0.5) {
         }
         if (fine) {
             const ll = toLatLon(position);
-            const floor = this.sdem.heightAt(ll.lat, ll.lon);
+            const floor = this.terrain.heightAt(ll.lat, ll.lon);
             if (floor !== null) minRadius = R + floor + 0.03;
         }
         if (position.length() < minRadius) position.setLength(minRadius);
@@ -1163,9 +1194,9 @@ if (gridOn > 0.5) {
             if (this.poleDetail.update(this.camera, this.height || 800, v.lat < -70 && v.range < 1500)) this.dirty = true;
             this.layerUniforms.detailOn.value = this.poleDetail.maskOn ? 1 : 0;
         }
-        if (this.sdem) {
+        if (this.terrain) {
             const active = !this.surface && (!this.layerMode || this.layerMode === "none") && !this.gridOn && this.poleMode !== "photo";
-            if (this.sdem.update(this.camera, this.height || 800, v.lat, v.lon, target, active)) this.dirty = true;
+            if (this.terrain.update(this.camera, this.height || 800, v.lat, v.lon, target, active)) this.dirty = true;
         }
         if (this.poleMode === "photo" && this.photoUniform.value > 0.5 && !this.surface) this.updatePhotoFocus(target, v.range);
         const shrink = reliefOn ? (R - 10) / R : 1;
@@ -1175,7 +1206,7 @@ if (gridOn > 0.5) {
             this.moonMaterial.needsUpdate = true;
         }
         const polarShadow = this.poleReady && v.lat < -55 && v.range < 5000;
-        const reliefShadow = (reliefOn && !polarShadow && v.range < 1500) || (!!this.sdem && this.sdem.shown.length > 0);
+        const reliefShadow = (reliefOn && !polarShadow && v.range < 1500) || (!!this.terrain && this.terrain.shown.length > 0);
         if (reliefShadow) this.setReliefShadow(target, v.range);
         else if (this.shadowMode === "relief") this.setPoleShadow();
         const useShadows = polarShadow || reliefShadow;
@@ -1327,7 +1358,7 @@ if (gridOn > 0.5) {
 
     zoom(factor) {
         const before = this.view.range;
-        const min = this.sdem && this.sdem.covers(this.view.lat, this.view.lon) ? SDEM_MIN_RANGE : MIN_RANGE;
+        const min = this.terrain && this.terrain.covers(this.view.lat, this.view.lon) ? TERRAIN_MIN_RANGE : MIN_RANGE;
         this.view.range = Math.max(min, Math.min(MAX_RANGE, before * factor));
         if (!this.manualTilt) this.view.tilt = this.autoTilt(this.view.range);
         this.dirty = true;
@@ -1338,7 +1369,7 @@ if (gridOn > 0.5) {
         const ndc = new THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(ndc, this.camera);
-        const fine = this.sdem ? raycaster.intersectObjects(this.sdem.meshes(), false) : [];
+        const fine = this.terrain ? raycaster.intersectObjects(this.terrain.meshes(), false) : [];
         const targets = this.pole ? [this.pole] : [];
         const hits = fine.length ? fine : targets.length ? raycaster.intersectObjects(targets, false) : [];
         let point = hits.length ? hits[0].point : null;
@@ -1480,7 +1511,7 @@ if (gridOn > 0.5) {
     setUnits(units) {
         this.units = Object.assign({ m: "m", km: "km" }, units || {});
         this.scaleKey = null;
-        this.sdemKey = null;
+        this.viewKey = null;
         this.dirty = true;
     }
 
@@ -1519,43 +1550,81 @@ if (gridOn > 0.5) {
         this.scaleEl.querySelector(".scale-bar").style.width = width.toFixed(0) + "px";
     }
 
-    updateSdemControl() {
-        if (!this.sdem) return;
-        if (!this.sdemEl) {
+    updateViewControl() {
+        if (!this.poleGrid) return;
+        if (!this.viewEl) {
             const el = document.createElement("div");
-            el.className = "scene-sdem";
+            el.className = "scene-view";
             el.setAttribute("role", "group");
-            for (const mode of ["relief", "photo"]) {
+            for (const mode of ["relief", "photo", "zone"]) {
                 const button = document.createElement("button");
                 button.type = "button";
                 button.dataset.mode = mode;
                 button.addEventListener("pointerdown", (event) => event.stopPropagation());
                 button.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    this.setPoleMode(mode);
-                    this.sdemKey = null;
+                    if (mode === "zone") this.setZone(!this.zoneOn);
+                    else this.setPoleMode(mode);
+                    this.viewKey = null;
                     this.dirty = true;
                 });
                 el.appendChild(button);
             }
             this.overlay.appendChild(el);
-            this.sdemEl = el;
+            this.viewEl = el;
         }
         const show = !this.surface && this.poleReady && this.view.lat < -60 && this.view.range < 6000;
-        this.sdemEl.style.display = show ? "" : "none";
+        this.viewEl.style.display = show ? "" : "none";
+        this.updateZoneLabels(show && this.zoneOn);
         if (!show) return;
         const u = this.units || {};
         const mode = this.poleMode || "relief";
-        const key = mode + "|" + (u.sdemPhoto || "");
-        if (key === this.sdemKey) return;
-        this.sdemKey = key;
-        this.sdemEl.setAttribute("aria-label", u.sdemTitle || "SDEM");
-        for (const button of this.sdemEl.querySelectorAll("button")) {
-            const photo = button.dataset.mode === "photo";
-            button.textContent = photo ? (u.sdemPhoto || "Photo") : (u.sdemRelief || "Relief");
-            button.title = photo ? (u.sdemPhotoHint || "") : (u.sdemReliefHint || "");
-            button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+        const key = mode + "|" + !!this.zoneOn + "|" + (u.polePhoto || "");
+        if (key === this.viewKey) return;
+        this.viewKey = key;
+        this.viewEl.setAttribute("aria-label", u.poleTitle || "Surface view");
+        const text = { relief: [u.poleRelief || "Relief", u.poleReliefHint || ""], photo: [u.polePhoto || "Photo", u.polePhotoHint || ""], zone: [u.poleZone || "Zone", u.poleZoneHint || ""] };
+        for (const button of this.viewEl.querySelectorAll("button")) {
+            const m = button.dataset.mode;
+            button.textContent = text[m][0];
+            button.title = text[m][1];
+            button.setAttribute("aria-pressed", String(m === "zone" ? !!this.zoneOn : m === mode));
         }
+    }
+
+    setZone(on) {
+        this.zoneOn = !!on;
+        if (this.poleGrid) {
+            const radius = (lat) => 2 * R * 1000 * Math.tan((90 + lat) * DEG / 2) / (2 * this.poleGrid.half);
+            this.layerUniforms.zoneR.value.set(radius(ZONES[0].lat), radius(ZONES[1].lat));
+        }
+        this.layerUniforms.zoneOn.value = this.zoneOn ? 1 : 0;
+        this.dirty = true;
+    }
+
+    updateZoneLabels(show) {
+        if (!this.zoneEls) {
+            this.zoneEls = ZONES.map((zone) => {
+                const el = document.createElement("div");
+                el.className = "scene-zone";
+                el.style.display = "none";
+                this.overlay.appendChild(el);
+                return el;
+            });
+        }
+        const u = this.units || {};
+        const lon = toLatLon(this.camera.position).lon;
+        ZONES.forEach((zone, i) => {
+            const el = this.zoneEls[i];
+            const position = fromLatLon(zone.lat, lon, R + 0.5);
+            const p = this.project(position);
+            const visible = show && this.visible(position) && p.z < 1 && p.x > 0 && p.x < this.width && p.y > 0 && p.y < this.height;
+            el.style.display = visible ? "" : "none";
+            if (!visible) return;
+            const label = u[zone.key] || `${-zone.lat}° S`;
+            if (el.textContent !== label) el.textContent = label;
+            el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -130%)`;
+        });
     }
 
     async wacTexture(level, half, size) {
@@ -1707,7 +1776,7 @@ if (gridOn > 0.5) {
 
     updateOverlay() {
         this.updateScale();
-        this.updateSdemControl();
+        this.updateViewControl();
         const placed = [];
         const sorted = [...this.sites].sort((a, b) => (this.selected && b.id === this.selected.id) - (this.selected && a.id === this.selected.id));
         for (const site of sorted) {
@@ -2353,9 +2422,9 @@ if (gridOn > 0.5) {
         this.resizeObserver && this.resizeObserver.disconnect();
         if (this.relief) this.relief.dispose();
         if (this.poleDetail) this.poleDetail.dispose();
-        if (this.sdem) this.sdem.dispose();
+        if (this.terrain) this.terrain.dispose();
         if (this.renderer) { this.renderer.dispose(); this.renderer.forceContextLoss(); }
-        this.overlay.querySelectorAll(".scene-site, .scene-custom, .scene-probe, .scene-route, .scene-sdem").forEach((el) => el.remove());
+        this.overlay.querySelectorAll(".scene-site, .scene-custom, .scene-probe, .scene-route, .scene-view, .scene-zone").forEach((el) => el.remove());
     }
 }
 
