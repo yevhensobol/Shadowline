@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Finder;
+using Shadowline.Core.Finder;
 using Shadowline.Core.Missions;
 using Shadowline.Core.Power;
 
@@ -73,5 +73,14 @@ public class MissionTests
     public void Five_value_links_keep_the_default_safe_load()
     {
         Assert.Equal(Mission.Default.SafeLoadW, Mission.ParseQueryValue("400,150,10,14,50")!.SafeLoadW);
+    }
+
+    [Fact]
+    public void Parsed_values_are_clamped()
+    {
+        var parsed = Mission.ParseQueryValue("400,150,10,500,250");
+
+        Assert.Equal(60, parsed!.DurationDays);
+        Assert.Equal(1, parsed.MinEarthShare);
     }
 }
