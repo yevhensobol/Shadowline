@@ -1,0 +1,463 @@
+{
+  "formatVersion": 1,
+  "steps": [
+    {
+      "id": "pole-intro",
+      "site": "geo:-89.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "The lunar south pole",
+        "uk": "Південний полюс Місяця"
+      },
+      "text": {
+        "en": "The Moon's spin axis is tilted only about 1.5° to the plane of Earth's orbit, so near the poles the Sun always skims the horizon. High ridges can stay lit for most of the year, while the floors of deep craters never see sunlight. That mix of light, cold and possible water ice makes the south pole the main target of NASA's Artemis program. The solid ring is 87° S (Ø 182 km), where this site shows 5 m relief; the dashed ring is 84° S (Ø 364 km), the zone where NASA looks for crewed landing regions.",
+        "uk": "Вісь обертання Місяця нахилена до площини орбіти Землі лише приблизно на 1,5°, тому біля полюсів Сонце завжди ковзає над горизонтом. Високі хребти можуть бути освітлені більшу частину року, а дно глибоких кратерів не бачить Сонця ніколи. Поєднання світла, холоду й можливого водяного льоду робить південний полюс головною ціллю програми NASA Artemis. Суцільне кільце — 87° пд. ш. (Ø 182 км), де сайт показує рельєф 5 м; пунктир — 84° пд. ш. (Ø 364 км), зона, де NASA шукає місця для висадки людей."
+      },
+      "scene": "orbit",
+      "layer": "none",
+      "rangeKm": 900,
+      "tiltDeg": 0,
+      "poleView": "relief",
+      "zone": true,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: Lunar south pole",
+            "uk": "Вікіпедія: Південний полюс Місяця"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Lunar_south_pole",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9F%D1%96%D0%B2%D0%B4%D0%B5%D0%BD%D0%BD%D0%B8%D0%B9_%D0%BF%D0%BE%D0%BB%D1%8E%D1%81_%D0%9C%D1%96%D1%81%D1%8F%D1%86%D1%8F"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: Artemis program",
+            "uk": "Вікіпедія: Артеміда (космічна програма)"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Artemis_program",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D1%80%D1%82%D0%B5%D0%BC%D1%96%D0%B4%D0%B0_(%D0%BA%D0%BE%D1%81%D0%BC%D1%96%D1%87%D0%BD%D0%B0_%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%B0)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-shadow",
+      "site": "geo:-89.67,129.8",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Permanent shadow",
+        "uk": "Вічна тінь"
+      },
+      "text": {
+        "en": "Shackleton crater, about 21 km across, sits almost on the pole. Its floor, like the floors of many polar craters, has not seen the Sun for a very long time. The sunlight map shows how much of the year each point is lit: the brighter the colour, the more sunlight; the darkest areas are permanently shadowed. LRO's Diviner radiometer measured about 38 K (−235 °C) inside the nearby crater Cabeus, so ice there can survive for billions of years.",
+        "uk": "Кратер Шеклтон діаметром близько 21 км лежить майже на полюсі. Його дно, як і дно багатьох полярних кратерів, дуже давно не бачило Сонця. Карта освітлення показує, яку частину року освітлена кожна точка: що світліший колір, то більше Сонця; найтемніші ділянки — у вічній тіні. Радіометр Diviner на LRO виміряв близько 38 K (−235 °C) у сусідньому кратері Кабео, тож лід там може зберігатися мільярди років."
+      },
+      "scene": "orbit",
+      "layer": "sun",
+      "rangeKm": 70,
+      "tiltDeg": 45,
+      "poleView": "relief",
+      "zone": false,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: Permanently shadowed crater",
+            "uk": "Вікіпедія: Кратер вічної тіні"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Permanently_shadowed_crater",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9A%D1%80%D0%B0%D1%82%D0%B5%D1%80_%D0%B2%D1%96%D1%87%D0%BD%D0%BE%D1%97_%D1%82%D1%96%D0%BD%D1%96"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: Shackleton (crater)",
+            "uk": "Вікіпедія: Шеклтон (кратер)"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Shackleton_(crater)",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A8%D0%B5%D0%BA%D0%BB%D1%82%D0%BE%D0%BD_(%D0%BA%D1%80%D0%B0%D1%82%D0%B5%D1%80)"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA PGDA: lunar polar illumination maps",
+            "uk": "NASA PGDA: карти освітлення полюсів Місяця"
+          },
+          "url": {
+            "en": "https://pgda.gsfc.nasa.gov/products/69"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-water",
+      "site": "geo:-84.7,-48.7",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Water ice",
+        "uk": "Водяний лід"
+      },
+      "text": {
+        "en": "On 9 October 2009 NASA's LCROSS mission crashed a spent Centaur rocket stage into the permanently shadowed floor of Cabeus crater, here. Instruments that flew through the plume found water: about 5.6 ± 2.9% of the ejected soil by mass. Water can give astronauts drinking water, oxygen and rocket fuel, which is why the regions around these cold traps matter so much.",
+        "uk": "9 жовтня 2009 року місія NASA LCROSS скинула відпрацьований ступінь ракети Centaur на вічно затінене дно кратера Кабео, ось сюди. Прилади, що пролетіли крізь хмару викиду, знайшли воду: близько 5,6 ± 2,9% маси викинутого ґрунту. Вода — це питво, кисень і ракетне пальне для астронавтів, тому місця біля таких холодних пасток такі важливі."
+      },
+      "scene": "orbit",
+      "layer": "none",
+      "rangeKm": 120,
+      "tiltDeg": 40,
+      "poleView": "photo",
+      "zone": false,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: LCROSS",
+            "uk": "Вікіпедія: LCROSS"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/LCROSS",
+            "uk": "https://uk.wikipedia.org/wiki/LCROSS"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: Lunar water",
+            "uk": "Вікіпедія: Вода на Місяці"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Lunar_water",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%92%D0%BE%D0%B4%D0%B0_%D0%BD%D0%B0_%D0%9C%D1%96%D1%81%D1%8F%D1%86%D1%96"
+          }
+        },
+        {
+          "title": {
+            "en": "Colaprete et al. 2010, Science: water in the LCROSS plume",
+            "uk": "Colaprete та ін. 2010, Science: вода в хмарі LCROSS"
+          },
+          "url": {
+            "en": "https://doi.org/10.1126/science.1186986"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-light",
+      "site": "geo:-89.45,-137.3",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Peaks of near-eternal light",
+        "uk": "Вершини майже вічного світла"
+      },
+      "text": {
+        "en": "The ridge that connects Shackleton and de Gerlache craters is one of the best-lit places on the Moon: some points see the Sun for most of the year, which is ideal for solar power next to the cold traps. Brighter colours on the map mean more sunlight. Click any point to see its sunlit share, the longest night and the energy a solar panel would collect.",
+        "uk": "Хребет, що з'єднує кратери Шеклтон і де Жерлаш, — одне з найосвітленіших місць на Місяці: деякі точки бачать Сонце більшу частину року, і це ідеально для сонячної енергії поруч із холодними пастками. Світліші кольори на карті означають більше Сонця. Натисніть будь-яку точку, щоб побачити частку освітлення, найдовшу ніч і енергію сонячної панелі."
+      },
+      "scene": "orbit",
+      "layer": "sun",
+      "rangeKm": 45,
+      "tiltDeg": 55,
+      "poleView": "relief",
+      "zone": false,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: Peak of eternal light",
+            "uk": "Вікіпедія: Вершина вічного світла"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Peak_of_eternal_light",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%92%D0%B5%D1%80%D1%88%D0%B8%D0%BD%D0%B0_%D0%B2%D1%96%D1%87%D0%BD%D0%BE%D0%B3%D0%BE_%D1%81%D0%B2%D1%96%D1%82%D0%BB%D0%B0"
+          }
+        },
+        {
+          "title": {
+            "en": "Mazarico et al. 2011, Icarus: illumination of the lunar poles",
+            "uk": "Mazarico та ін. 2011, Icarus: освітлення полюсів Місяця"
+          },
+          "url": {
+            "en": "https://doi.org/10.1016/j.icarus.2010.10.030"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-earth",
+      "site": "geo:-89.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Talking to Earth",
+        "uk": "Зв'язок із Землею"
+      },
+      "text": {
+        "en": "From the pole, Earth always hangs low over the horizon and wobbles up and down by several degrees as the Moon librates. Behind a hill or crater rim it can be out of sight for days. The brighter the blue on the map, the more often Earth is in view; where it is not, a lander needs a relay satellite or a tall mast.",
+        "uk": "З полюса Земля завжди низько над горизонтом і через лібрацію Місяця піднімається й опускається на кілька градусів. За пагорбом чи валом кратера її може не бути видно цілими днями. Що світліший синій на карті, то частіше Земля в полі зору; де її не видно, апарату потрібен супутник-ретранслятор або висока щогла."
+      },
+      "scene": "orbit",
+      "layer": "earth",
+      "rangeKm": 600,
+      "tiltDeg": 20,
+      "poleView": "relief",
+      "zone": false,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: Libration",
+            "uk": "Вікіпедія: Лібрація"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Libration",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9B%D1%96%D0%B1%D1%80%D0%B0%D1%86%D1%96%D1%8F"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-slopes",
+      "site": "im2-athena",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Steep and rough ground",
+        "uk": "Круті схили"
+      },
+      "text": {
+        "en": "Low sun, long shadows and steep slopes make polar landings hard. Intuitive Machines' Odysseus (2024) and Athena (2025) both landed near the pole and both ended up on their sides. Orange and red on the map mark slopes steeper than about 15°. Click the lander labels on the map to read their stories.",
+        "uk": "Низьке Сонце, довгі тіні й круті схили роблять посадку біля полюса складною. Апарати Intuitive Machines Odysseus (2024) і Athena (2025) сіли біля полюса, і обидва опинилися на боці. Помаранчевим і червоним на карті позначено схили, крутіші за приблизно 15°. Натисніть підписи апаратів на карті, щоб прочитати їхні історії."
+      },
+      "scene": "orbit",
+      "layer": "slope",
+      "rangeKm": 40,
+      "tiltDeg": 50,
+      "poleView": "relief",
+      "zone": false,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: IM-1",
+            "uk": "Вікіпедія: IM-1"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/IM-1",
+            "uk": "https://uk.wikipedia.org/wiki/IM-1"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: IM-2",
+            "uk": "Вікіпедія: IM-2"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/IM-2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-regions",
+      "site": "geo:-85.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Where astronauts may land",
+        "uk": "Де можуть висадитися астронавти"
+      },
+      "text": {
+        "en": "In 2022 NASA named 13 candidate landing regions, all within 6° of the pole (inside the dashed ring). In October 2024 it narrowed them to nine: Peak near Cabeus B, Haworth, Malapert Massif, Mons Mouton Plateau, Mons Mouton, Nobile Rim 1, Nobile Rim 2, de Gerlache Rim 2 and Slater Plain. Turn on \"Artemis regions\" in the left panel to see them on the map.",
+        "uk": "У 2022 році NASA назвало 13 регіонів-кандидатів для посадки, усі в межах 6° від полюса (всередині пунктирного кільця). У жовтні 2024 року їх звузили до дев'яти: Peak near Cabeus B, Haworth, Malapert Massif, Mons Mouton Plateau, Mons Mouton, Nobile Rim 1, Nobile Rim 2, de Gerlache Rim 2 і Slater Plain. Увімкніть «Регіони Artemis» на лівій панелі, щоб побачити їх на карті."
+      },
+      "scene": "orbit",
+      "layer": "none",
+      "rangeKm": 1100,
+      "tiltDeg": 0,
+      "poleView": "relief",
+      "zone": true,
+      "links": [
+        {
+          "title": {
+            "en": "NASA: update on the Artemis landing regions (2024)",
+            "uk": "NASA: оновлення регіонів посадки Artemis (2024)"
+          },
+          "url": {
+            "en": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NTRS: down-selection from 13 to 9 regions",
+            "uk": "NASA NTRS: відбір з 13 до 9 регіонів"
+          },
+          "url": {
+            "en": "https://ntrs.nasa.gov/citations/20250011660"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-artemis",
+      "site": "geo:-84.5,0",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Artemis today",
+        "uk": "Artemis сьогодні"
+      },
+      "text": {
+        "en": "Artemis II flew four astronauts around the Moon from 1 to 10 April 2026, including Canadian Space Agency astronaut Jeremy Hansen, the first people beyond low Earth orbit since 1972. After NASA reorganised the program in February 2026, Artemis III (planned for mid-2027) will test docking with the commercial landers in Earth orbit, and Artemis IV (planned for early 2028) is to be the first crewed landing, with two astronauts spending about a week near the south pole.",
+        "uk": "Artemis II облетіла Місяць із чотирма астронавтами з 1 по 10 квітня 2026 року, серед них астронавт Канадського космічного агентства Джеремі Гансен; це перші люди за межами низької навколоземної орбіти з 1972 року. Після реорганізації програми в лютому 2026 року Artemis III (запланована на середину 2027) перевірить стикування з комерційними посадковими апаратами на орбіті Землі, а Artemis IV (запланована на початок 2028) має стати першою висадкою людей: двоє астронавтів проведуть близько тижня біля південного полюса."
+      },
+      "scene": "orbit",
+      "layer": "none",
+      "rangeKm": 2600,
+      "tiltDeg": 0,
+      "poleView": "relief",
+      "zone": true,
+      "links": [
+        {
+          "title": {
+            "en": "NASA: Artemis II crew back on Earth",
+            "uk": "NASA: екіпаж Artemis II повернувся на Землю"
+          },
+          "url": {
+            "en": "https://www.nasa.gov/news-release/nasa-welcomes-record-setting-artemis-ii-moonfarers-back-to-earth/"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA: Artemis IV mission",
+            "uk": "NASA: місія Artemis IV"
+          },
+          "url": {
+            "en": "https://www.nasa.gov/mission/artemis-iv/"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: Artemis II",
+            "uk": "Вікіпедія: Артеміда-2"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Artemis_II",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D1%80%D1%82%D0%B5%D0%BC%D1%96%D0%B4%D0%B0-2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-others",
+      "site": "plan-change7",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "Other nations at the pole",
+        "uk": "Інші країни на полюсі"
+      },
+      "text": {
+        "en": "India's Chandrayaan-3 landed at 69° S in 2023, four days after Russia's Luna 25 crashed on its way to a south polar site. China's Chang'e 7, with an orbiter, lander, rover and a hopping probe, aims for the sunlit rim of Shackleton crater; its launch, planned for August 2026, was postponed. In photo mode you see the LROC NAC mosaic of the area.",
+        "uk": "Індійський Chandrayaan-3 сів на 69° пд. ш. у 2023 році, через чотири дні після того, як російська Луна-25 розбилася дорогою до південного полюса. Китайська Чан'е-7 з орбітальним, посадковим апаратом, місяцеходом і апаратом-стрибуном націлена на освітлений вал кратера Шеклтон; її запуск, запланований на серпень 2026 року, відклали. У режимі фото видно мозаїку LROC NAC цієї місцевості."
+      },
+      "scene": "orbit",
+      "layer": "none",
+      "rangeKm": 60,
+      "tiltDeg": 45,
+      "poleView": "photo",
+      "zone": false,
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia: Chang'e 7",
+            "uk": "Вікіпедія: Chang'e 7"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chang'e_7"
+          }
+        },
+        {
+          "title": {
+            "en": "The Planetary Society: Chang'e-7",
+            "uk": "The Planetary Society: Чан'е-7"
+          },
+          "url": {
+            "en": "https://www.planetary.org/space-missions/change-7"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: Chandrayaan-3",
+            "uk": "Вікіпедія: Чандраян-3"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chandrayaan-3",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A7%D0%B0%D0%BD%D0%B4%D1%80%D0%B0%D1%8F%D0%BD-3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pole-data",
+      "site": "geo:-89.45,-137.3",
+      "time": "2026-11-10T00:00:00Z",
+      "windowHours": 336,
+      "focus": "map",
+      "title": {
+        "en": "How we see the pole",
+        "uk": "Як ми бачимо полюс"
+      },
+      "text": {
+        "en": "The relief here is the LOLA laser altimeter map with 5 m pixels (Barker et al. 2021); the photo mode uses the LROC NAC south pole mosaic. Both come from NASA's Lunar Reconnaissance Orbiter, in orbit since 2009. Lighting, Earth visibility and power on the panel are computed from LOLA terrain for the time on the timeline. Now pick a spot and press \"Plan a landing\".",
+        "uk": "Рельєф тут — карта лазерного висотоміра LOLA з пікселем 5 м (Barker та ін. 2021); режим фото використовує мозаїку LROC NAC південного полюса. Обидва набори даних — з орбітального апарата NASA Lunar Reconnaissance Orbiter, що працює на орбіті з 2009 року. Освітлення, видимість Землі й енергія на панелі розраховуються з рельєфу LOLA на час, вибраний на шкалі. Тепер виберіть місце й натисніть «Планувати посадку»."
+      },
+      "scene": "orbit",
+      "layer": "none",
+      "rangeKm": 20,
+      "tiltDeg": 60,
+      "poleView": "relief",
+      "zone": true,
+      "links": [
+        {
+          "title": {
+            "en": "NASA PGDA: LOLA 5 m south pole DEM",
+            "uk": "NASA PGDA: рельєф LOLA 5 м південного полюса"
+          },
+          "url": {
+            "en": "https://pgda.gsfc.nasa.gov/products/81"
+          }
+        },
+        {
+          "title": {
+            "en": "Wikipedia: Lunar Reconnaissance Orbiter",
+            "uk": "Вікіпедія: Lunar Reconnaissance Orbiter"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Lunar_Reconnaissance_Orbiter",
+            "uk": "https://uk.wikipedia.org/wiki/Lunar_Reconnaissance_Orbiter"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA Moon Trek",
+            "uk": "NASA Moon Trek"
+          },
+          "url": {
+            "en": "https://trek.nasa.gov/moon/"
+          }
+        }
+      ]
+    }
+  ]
+}

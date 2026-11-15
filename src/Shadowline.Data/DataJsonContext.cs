@@ -14,4 +14,5 @@ namespace Shadowline.Data;
 [JsonSerializable(typeof(HistoryDocument))]
 [JsonSerializable(typeof(YearsDocument))]
 [JsonSerializable(typeof(IncidentsDocument))]
+[JsonSerializable(typeof(MissionsDocument))]
 internal sealed partial class DataJsonContext : JsonSerializerContext;
