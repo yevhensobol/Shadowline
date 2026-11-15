@@ -1,0 +1,989 @@
+{
+  "formatVersion": 1,
+  "missions": [
+    {
+      "site": "apollo11-lm",
+      "agency": "NASA",
+      "date": {
+        "en": "20 July 1969",
+        "uk": "20 липня 1969"
+      },
+      "summary": {
+        "en": "First crewed landing on the Moon. Neil Armstrong and Buzz Aldrin spent about two and a half hours outside in the Sea of Tranquility and brought back 21.5 kg of samples.",
+        "uk": "Перша висадка людей на Місяць. Ніл Армстронг і Базз Олдрін працювали на поверхні Моря Спокою близько двох з половиною годин і привезли 21,5 кг зразків."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Apollo_11",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD-11"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NSSDC: landing site coordinates",
+            "uk": "NASA NSSDC: координати місця посадки"
+          },
+          "url": {
+            "en": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+          }
+        }
+      ]
+    },
+    {
+      "site": "apollo12-lm",
+      "agency": "NASA",
+      "date": {
+        "en": "19 November 1969",
+        "uk": "19 листопада 1969"
+      },
+      "summary": {
+        "en": "Pete Conrad and Alan Bean made a precision landing in the Ocean of Storms, close enough to walk to Surveyor 3 and bring parts of it back to Earth.",
+        "uk": "Піт Конрад і Алан Бін здійснили точну посадку в Океані Бур, так близько до Сервеєра-3, що дійшли до нього пішки й привезли його деталі на Землю."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Apollo_12",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD-12"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NSSDC: landing site coordinates",
+            "uk": "NASA NSSDC: координати місця посадки"
+          },
+          "url": {
+            "en": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+          }
+        }
+      ]
+    },
+    {
+      "site": "apollo14-lm",
+      "agency": "NASA",
+      "date": {
+        "en": "5 February 1971",
+        "uk": "5 лютого 1971"
+      },
+      "summary": {
+        "en": "Alan Shepard and Edgar Mitchell landed in the Fra Mauro highlands, the target first planned for the aborted Apollo 13.",
+        "uk": "Алан Шепард і Едгар Мітчелл сіли у високогір'ї Фра Мауро, яке спершу планували для Аполлона-13, що не долетів."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Apollo_14",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD-14"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NSSDC: landing site coordinates",
+            "uk": "NASA NSSDC: координати місця посадки"
+          },
+          "url": {
+            "en": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+          }
+        }
+      ]
+    },
+    {
+      "site": "apollo15-lm",
+      "agency": "NASA",
+      "date": {
+        "en": "30 July 1971",
+        "uk": "30 липня 1971"
+      },
+      "summary": {
+        "en": "David Scott and James Irwin landed at Hadley Rille near the Apennine mountains and were the first to drive the Lunar Roving Vehicle.",
+        "uk": "Девід Скотт і Джеймс Ірвін сіли біля борозни Хедлі під Апеннінами й першими їздили на місячному автомобілі."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Apollo_15",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD-15"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NSSDC: landing site coordinates",
+            "uk": "NASA NSSDC: координати місця посадки"
+          },
+          "url": {
+            "en": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+          }
+        }
+      ]
+    },
+    {
+      "site": "apollo16-lm",
+      "agency": "NASA",
+      "date": {
+        "en": "21 April 1972",
+        "uk": "21 квітня 1972"
+      },
+      "summary": {
+        "en": "John Young and Charles Duke explored the Descartes highlands, the first Apollo landing in the lunar highlands.",
+        "uk": "Джон Янг і Чарльз Дюк досліджували височину Декарта, це була перша посадка Аполлона в місячних високогір'ях."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Apollo_16",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD-16"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NSSDC: landing site coordinates",
+            "uk": "NASA NSSDC: координати місця посадки"
+          },
+          "url": {
+            "en": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+          }
+        }
+      ]
+    },
+    {
+      "site": "apollo17-lm",
+      "agency": "NASA",
+      "date": {
+        "en": "11 December 1972",
+        "uk": "11 грудня 1972"
+      },
+      "summary": {
+        "en": "Eugene Cernan and geologist Harrison Schmitt worked three days in the Taurus-Littrow valley. It is still the last time people walked on the Moon.",
+        "uk": "Юджин Сернан і геолог Гаррісон Шмітт три дні працювали в долині Тавр-Літтров. Це досі остання висадка людей на Місяць."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Apollo_17",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD-17"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA NSSDC: landing site coordinates",
+            "uk": "NASA NSSDC: координати місця посадки"
+          },
+          "url": {
+            "en": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"
+          }
+        }
+      ]
+    },
+    {
+      "site": "surveyor1",
+      "agency": "NASA",
+      "date": {
+        "en": "2 June 1966",
+        "uk": "2 червня 1966"
+      },
+      "summary": {
+        "en": "First American soft landing on another world. Its photos and measurements of the soil helped prepare the Apollo landings.",
+        "uk": "Перша американська м'яка посадка на інше небесне тіло. Її знімки й вимірювання ґрунту допомогли підготувати висадки Аполлонів."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Surveyor_1",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A1%D0%B5%D1%80%D0%B2%D0%B5%D1%94%D1%80-1"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "surveyor3",
+      "agency": "NASA",
+      "date": {
+        "en": "20 April 1967",
+        "uk": "20 квітня 1967"
+      },
+      "summary": {
+        "en": "The first lander to carry a soil scoop. Apollo 12 astronauts visited it in 1969; it is the only probe people have visited on another world.",
+        "uk": "Перший апарат із ковшем для ґрунту. Астронавти Аполлона-12 відвідали його в 1969 році; це єдиний зонд, до якого люди підходили на іншому небесному тілі."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Surveyor_3",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A1%D0%B5%D1%80%D0%B2%D0%B5%D1%94%D1%80-3"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "surveyor5",
+      "agency": "NASA",
+      "date": {
+        "en": "11 September 1967",
+        "uk": "11 вересня 1967"
+      },
+      "summary": {
+        "en": "Landed in the Sea of Tranquility and made the first chemical analysis of lunar soil with an alpha-scattering instrument.",
+        "uk": "Сів у Морі Спокою й уперше визначив хімічний склад місячного ґрунту приладом альфа-розсіювання."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Surveyor_5",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A1%D0%B5%D1%80%D0%B2%D0%B5%D1%94%D1%80-5"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "surveyor6",
+      "agency": "NASA",
+      "date": {
+        "en": "10 November 1967",
+        "uk": "10 листопада 1967"
+      },
+      "summary": {
+        "en": "Landed in Sinus Medii and briefly fired its engines to hop a few metres, the first lift-off from the lunar surface.",
+        "uk": "Сів у Центральній затоці й коротко ввімкнув двигуни, щоб перестрибнути на кілька метрів, це був перший зліт із поверхні Місяця."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Surveyor_6",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A1%D0%B5%D1%80%D0%B2%D0%B5%D1%94%D1%80-6"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "surveyor7",
+      "agency": "NASA",
+      "date": {
+        "en": "10 January 1968",
+        "uk": "10 січня 1968"
+      },
+      "summary": {
+        "en": "The last Surveyor, sent to the rough highlands north of Tycho crater for science rather than Apollo site scouting.",
+        "uk": "Останній Сервеєр, відправлений у нерівне високогір'я на північ від кратера Тихо для науки, а не для розвідки місць Аполлонів."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Surveyor_7",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A1%D0%B5%D1%80%D0%B2%D0%B5%D1%94%D1%80-7"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "luna16",
+      "agency": "USSR",
+      "date": {
+        "en": "20 September 1970",
+        "uk": "20 вересня 1970"
+      },
+      "summary": {
+        "en": "First robotic probe to land on the Moon and return soil to Earth: 101 g from the Sea of Fertility.",
+        "uk": "Перший автоматичний апарат, що сів на Місяць і повернув ґрунт на Землю: 101 г з Моря Достатку."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_16",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9B%D1%83%D0%BD%D0%B0-16"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "luna17",
+      "agency": "USSR",
+      "date": {
+        "en": "17 November 1970",
+        "uk": "17 листопада 1970"
+      },
+      "summary": {
+        "en": "Delivered Lunokhod 1, the first robotic rover on another world, to the Sea of Rains. It drove about 10 km over 11 lunar days.",
+        "uk": "Доставила Луноход-1, перший планетохід на іншому небесному тілі, у Море Дощів. Він проїхав близько 10 км за 11 місячних діб."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_17"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "luna20",
+      "agency": "USSR",
+      "date": {
+        "en": "21 February 1972",
+        "uk": "21 лютого 1972"
+      },
+      "summary": {
+        "en": "Second Soviet sample return, from highlands near the Sea of Fertility.",
+        "uk": "Друге радянське повернення зразків, з високогір'я біля Моря Достатку."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_20",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9B%D1%83%D0%BD%D0%B0-20"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "luna21",
+      "agency": "USSR",
+      "date": {
+        "en": "15 January 1973",
+        "uk": "15 січня 1973"
+      },
+      "summary": {
+        "en": "Delivered the Lunokhod 2 rover into Le Monnier crater; it drove about 39 km, a distance record that stood for decades.",
+        "uk": "Доставила Луноход-2 у кратер Лемоньє; він проїхав близько 39 км, і цей рекорд тримався десятиліттями."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_21"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "luna23",
+      "agency": "USSR",
+      "date": {
+        "en": "6 November 1974",
+        "uk": "6 листопада 1974"
+      },
+      "summary": {
+        "en": "Landed in the Sea of Crises but was damaged on touchdown, so its drill could not collect samples.",
+        "uk": "Сіла в Морі Криз, але пошкодилася під час посадки, тож бур не зміг узяти зразки."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_23"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "luna24",
+      "agency": "USSR",
+      "date": {
+        "en": "18 August 1976",
+        "uk": "18 серпня 1976"
+      },
+      "summary": {
+        "en": "Drilled about 2 m deep and returned 170 g of Sea of Crises soil. The last lunar landing for 37 years.",
+        "uk": "Пробурила близько 2 м углиб і повернула 170 г ґрунту з Моря Криз. Остання посадка на Місяць на 37 років."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_24",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9B%D1%83%D0%BD%D0%B0-24"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "change3",
+      "agency": "CNSA",
+      "date": {
+        "en": "14 December 2013",
+        "uk": "14 грудня 2013"
+      },
+      "summary": {
+        "en": "China's first lunar landing, in the Sea of Rains, with the Yutu rover; the first soft landing on the Moon since 1976.",
+        "uk": "Перша китайська посадка на Місяць, у Море Дощів, з місяцеходом Юйту; перша м'яка посадка з 1976 року."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chang'e_3",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A7%D0%B0%D0%BD'%D0%B5-3"
+          }
+        },
+        {
+          "title": {
+            "en": "LROC: coordinates of landers",
+            "uk": "LROC: координати апаратів"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+          }
+        }
+      ]
+    },
+    {
+      "site": "change4",
+      "agency": "CNSA",
+      "date": {
+        "en": "3 January 2019",
+        "uk": "3 січня 2019"
+      },
+      "summary": {
+        "en": "First soft landing on the far side, in Von Kármán crater. It talks to Earth through the Queqiao relay satellite, because the far side never sees Earth.",
+        "uk": "Перша м'яка посадка на зворотному боці, у кратері фон Карман. Зв'язок із Землею йде через супутник-ретранслятор Цюецяо, бо зі зворотного боку Землю не видно."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chang'e_4",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A7%D0%B0%D0%BD'%D0%B5-4"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1087"
+          }
+        }
+      ]
+    },
+    {
+      "site": "change5",
+      "agency": "CNSA",
+      "date": {
+        "en": "1 December 2020",
+        "uk": "1 грудня 2020"
+      },
+      "summary": {
+        "en": "China's first sample return: about 1.7 kg from young volcanic plains near Mons Rümker, the first lunar samples since 1976.",
+        "uk": "Перше китайське повернення зразків: близько 1,7 кг з молодих вулканічних рівнин біля гори Рюмкер, перші місячні зразки з 1976 року."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chang'e_5",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A7%D0%B0%D0%BD'%D0%B5-5"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1172"
+          }
+        }
+      ]
+    },
+    {
+      "site": "change6",
+      "agency": "CNSA",
+      "date": {
+        "en": "1 June 2024",
+        "uk": "1 червня 2024"
+      },
+      "summary": {
+        "en": "First samples from the far side: about 1.9 kg from the Apollo basin inside the South Pole-Aitken basin.",
+        "uk": "Перші зразки зі зворотного боку: близько 1,9 кг з басейну Аполлон усередині басейну Південний полюс - Ейткен."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chang'e_6",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A7%D0%B0%D0%BD'%D0%B5-6"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1374"
+          }
+        }
+      ]
+    },
+    {
+      "site": "slim",
+      "agency": "JAXA",
+      "date": {
+        "en": "19 January 2024",
+        "uk": "19 січня 2024"
+      },
+      "summary": {
+        "en": "The \"Moon Sniper\" made Japan the fifth country to soft-land and showed pinpoint landing, but came to rest nose down with its solar cells facing west.",
+        "uk": "\"Місячний снайпер\" зробив Японію п'ятою країною з м'якою посадкою й показав надточну посадку, але опинився носом донизу із сонячними батареями на захід."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Smart_Lander_for_Investigating_Moon",
+            "uk": "https://uk.wikipedia.org/wiki/SLIM"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA: LRO image of the lander",
+            "uk": "NASA: знімок апарата з LRO"
+          },
+          "url": {
+            "en": "https://www.nasa.gov/missions/lro/nasas-lro-spots-japans-moon-lander"
+          }
+        }
+      ]
+    },
+    {
+      "site": "blueghost1",
+      "agency": "Firefly / NASA CLPS",
+      "date": {
+        "en": "2 March 2025",
+        "uk": "2 березня 2025"
+      },
+      "summary": {
+        "en": "First fully successful commercial landing, in Mare Crisium. It worked through a whole lunar day and filmed sunset from the surface.",
+        "uk": "Перша повністю успішна комерційна посадка, у Морі Криз. Апарат пропрацював цілий місячний день і зняв захід Сонця з поверхні."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Blue_Ghost_Mission_1",
+            "uk": "https://uk.wikipedia.org/wiki/Blue_Ghost_Mission_1"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1407"
+          }
+        }
+      ]
+    },
+    {
+      "site": "chandrayaan3-vikram",
+      "agency": "ISRO",
+      "date": {
+        "en": "23 August 2023",
+        "uk": "23 серпня 2023"
+      },
+      "summary": {
+        "en": "India's Vikram lander touched down at about 69° S, the farthest south at the time, and the Pragyan rover measured the soil, including sulphur.",
+        "uk": "Індійський апарат Вікрам сів біля 69° пд. ш., найпівденніше на той час, а місяцехід Прагьян вимірював ґрунт, зокрема знайшов сірку."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Chandrayaan-3",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%A7%D0%B0%D0%BD%D0%B4%D1%80%D0%B0%D1%8F%D0%BD-3"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1314"
+          }
+        }
+      ]
+    },
+    {
+      "site": "im1-odysseus",
+      "agency": "Intuitive Machines / NASA CLPS",
+      "date": {
+        "en": "22 February 2024",
+        "uk": "22 лютого 2024"
+      },
+      "summary": {
+        "en": "First commercial soft landing and first US landing since 1972, near Malapert A at 80° S. Odysseus tipped onto its side, which limited power and radio.",
+        "uk": "Перша комерційна м'яка посадка й перша американська з 1972 року, біля кратера Малаперт A на 80° пд. ш. Одіссей перекинувся на бік, що обмежило живлення й зв'язок."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/IM-1",
+            "uk": "https://uk.wikipedia.org/wiki/IM-1"
+          }
+        },
+        {
+          "title": {
+            "en": "NASA: LRO image of the lander",
+            "uk": "NASA: знімок апарата з LRO"
+          },
+          "url": {
+            "en": "https://www.nasa.gov/missions/lro/nasas-lro-images-intuitive-machines-odysseus-lander/"
+          }
+        }
+      ]
+    },
+    {
+      "site": "im2-athena",
+      "agency": "Intuitive Machines / NASA CLPS",
+      "date": {
+        "en": "6 March 2025",
+        "uk": "6 березня 2025"
+      },
+      "summary": {
+        "en": "Athena landed on Mons Mouton at 84.8° S, the southernmost landing so far, but ended up on its side in a small crater and could not charge its batteries.",
+        "uk": "Athena сіла на горі Мутон на 84,8° пд. ш., найпівденніше досі, але опинилася на боці в невеликому кратері й не змогла заряджати батареї."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/IM-2"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1408"
+          }
+        }
+      ]
+    },
+    {
+      "site": "impact-luna25",
+      "agency": "Roscosmos",
+      "date": {
+        "en": "19 August 2023",
+        "uk": "19 серпня 2023"
+      },
+      "summary": {
+        "en": "Russia's first lunar mission since 1976 aimed to land near the south pole, but an engine burn ran too long in lunar orbit and the probe crashed.",
+        "uk": "Перша російська місія до Місяця з 1976 року мала сісти біля південного полюса, але двигун у навколомісячній орбіті працював задовго, і апарат розбився."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Luna_25",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%9B%D1%83%D0%BD%D0%B0-25"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1311"
+          }
+        }
+      ]
+    },
+    {
+      "site": "impact-hakutor1",
+      "agency": "ispace",
+      "date": {
+        "en": "25 April 2023",
+        "uk": "25 квітня 2023"
+      },
+      "summary": {
+        "en": "Japanese private lander lost in the final seconds of descent into Atlas crater: its software misjudged altitude over a crater rim and it ran out of fuel.",
+        "uk": "Японський приватний апарат загубився в останні секунди спуску в кратер Атлас: програма неправильно оцінила висоту над валом кратера, і пальне закінчилося."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Hakuto-R_Mission_1"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1302"
+          }
+        }
+      ]
+    },
+    {
+      "site": "impact-resilience",
+      "agency": "ispace",
+      "date": {
+        "en": "5 June 2025",
+        "uk": "5 червня 2025"
+      },
+      "summary": {
+        "en": "Second ispace lander, RESILIENCE, crashed in Mare Frigoris after its laser rangefinder gave altitude data too late.",
+        "uk": "Другий апарат ispace, RESILIENCE, розбився в Морі Холоду, бо лазерний далекомір надто пізно дав дані про висоту."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Hakuto-R_Mission_2"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1456"
+          }
+        }
+      ]
+    },
+    {
+      "site": "impact-beresheet",
+      "agency": "SpaceIL / IAI",
+      "date": {
+        "en": "11 April 2019",
+        "uk": "11 квітня 2019"
+      },
+      "summary": {
+        "en": "Israel's privately built lander crashed in the Sea of Serenity after a gyroscope fault shut down its main engine during descent.",
+        "uk": "Ізраїльський приватний апарат розбився в Морі Ясності, бо збій гіроскопа вимкнув головний двигун під час спуску."
+      },
+      "links": [
+        {
+          "title": {
+            "en": "Wikipedia",
+            "uk": "Вікіпедія"
+          },
+          "url": {
+            "en": "https://en.wikipedia.org/wiki/Beresheet",
+            "uk": "https://uk.wikipedia.org/wiki/%D0%91%D0%B5%D1%80%D0%B5%D1%88%D0%B8%D1%82_(%D0%BA%D0%BE%D1%81%D0%BC%D1%96%D1%87%D0%BD%D0%B8%D0%B9_%D0%B0%D0%BF%D0%B0%D1%80%D0%B0%D1%82)"
+          }
+        },
+        {
+          "title": {
+            "en": "LRO image of the site",
+            "uk": "Знімок місця з LRO"
+          },
+          "url": {
+            "en": "https://lroc.im-ldi.com/images/1101"
+          }
+        }
+      ]
+    }
+  ]
+}

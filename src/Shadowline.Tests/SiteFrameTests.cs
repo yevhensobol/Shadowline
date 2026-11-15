@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Geometry;
+using Shadowline.Core.Geometry;
 using Shadowline.Core.Sites;
 
 namespace Shadowline.Tests;
@@ -51,5 +51,33 @@ public class SiteFrameTests
         Assert.True(Math.Abs(Vec3.Dot(frame.Up, frame.East)) < 1e-12);
         Assert.True(Math.Abs(Vec3.Dot(frame.Up, frame.North)) < 1e-12);
         Assert.True(Math.Abs(Vec3.Dot(frame.East, frame.North)) < 1e-12);
+    }
+
+    [Fact]
+    public void Pole_site_still_gives_finite_sky_position()
+    {
+        var sky = Frame(-90, 0).Observe(new Vec3(1e6, 0, -1e5));
+
+        Assert.True(double.IsFinite(sky.AzimuthDeg));
+        Assert.True(double.IsFinite(sky.ElevationDeg));
+    }
+
+    [Fact]
+    public void Angular_radius_of_the_sun_is_about_a_quarter_degree()
+    {
+        var sky = new SkyPosition(0, 10, 149_597_870.7);
+
+        var radius = sky.AngularRadiusDeg(Bodies.SunRadiusKm);
+
+        Assert.True(radius is > 0.26 and < 0.27);
+    }
+
+    [Fact]
+    public void Separation_between_opposite_azimuths_on_the_horizon_is_180()
+    {
+        var a = new SkyPosition(0, 0, 1);
+        var b = new SkyPosition(180, 0, 1);
+
+        Assert.True(Math.Abs(a.SeparationDeg(b) - 180.0) < 1e-9);
     }
 }

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Output = "publish",
+    [string]$Output = "deploy\publish",
     [string]$Configuration = "Release",
     [switch]$SkipTests
 )
@@ -16,18 +16,19 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 $target = if ([System.IO.Path]::IsPathRooted($Output)) { $Output } else { Join-Path $root $Output }
 $target = [System.IO.Path]::GetFullPath($target)
 
+$deploy = [System.IO.Path]::GetFullPath((Join-Path $root "deploy"))
+$inDeploy = $target.StartsWith($deploy + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 if (Test-Path -LiteralPath $target) {
     $entries = @(Get-ChildItem -LiteralPath $target -Force)
-    if ($entries.Count -gt 0) {
-        if (-not (Test-Path -LiteralPath (Join-Path $target "wwwroot\_framework"))) {
-            throw "$target is not empty and is not a previous publish output"
-        }
-        Remove-Item -LiteralPath $target -Recurse -Force
+    if (-not $inDeploy -and $entries.Count -gt 0 -and -not (Test-Path -LiteralPath (Join-Path $target "wwwroot\_framework"))) {
+        throw "$target is not empty and is not a previous publish output"
     }
+    Remove-Item -LiteralPath $target -Recurse -Force
 }
+New-Item -ItemType Directory -Path $target -Force | Out-Null
 
 if (-not $SkipTests) {
-    dotnet test tests/Shadowline.Tests -c $Configuration
+    dotnet test src/Shadowline.Tests -c $Configuration
     if ($LASTEXITCODE -ne 0) {
         throw "tests failed"
     }
@@ -39,6 +40,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $site = Join-Path $target "wwwroot"
+
+$terrain = Join-Path $root "deploy\ldem\out"
+if (Test-Path -LiteralPath (Join-Path $terrain "index.json")) {
+    $terrainTarget = Join-Path $site "data\ldem"
+    New-Item -ItemType Directory -Path $terrainTarget -Force | Out-Null
+    Copy-Item -Path (Join-Path $terrain "*") -Destination $terrainTarget -Force
+}
+else {
+    Write-Warning "No terrain pack in $terrain, the 5 m relief will be missing (run tools\ldem\pack_ldem.py)"
+}
+$index = Join-Path $site "index.html"
+$stamp = Get-Date -Format "yyyyMMddHHmm"
+$html = [System.IO.File]::ReadAllText($index) -replace 'href="css/(app|ui)\.css"', "href=`"css/`$1.css?v=$stamp`""
+[System.IO.File]::WriteAllText($index, $html, (New-Object System.Text.UTF8Encoding($false)))
+
 foreach ($required in @("index.html", "_framework", "data\finder.bin.gz", "js\moonscene.js")) {
     if (-not (Test-Path -LiteralPath (Join-Path $site $required))) {
         throw "missing $required in $site"

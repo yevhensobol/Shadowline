@@ -91,6 +91,14 @@ else
             </figure>
         }
 
+        @if (orbital is { } shot)
+        {
+            <figure class="site-photo report-photo">
+                <img src="@shot.Url" alt="@L["report.orbital.title"]" />
+                <figcaption><strong>@L["report.orbital.title"]</strong> @L.Format("report.orbital.caption", Num(shot.PhotoM), Num(shot.SizeKm)) <span class="muted">@L["report.orbital.credit"]</span></figcaption>
+            </figure>
+        }
+
         <section class="report-figures" aria-label="@L["report.figures"]">
             <div><strong>@Pct(report.Sun.SunlitShare)</strong><span>@L["metric.sun"]</span></div>
             <div><strong>@L.Duration(TimeSpan.FromHours(report.Sun.LongestDarknessHours))</strong><span>@L["metric.darkness"]</span></div>
@@ -641,6 +649,11 @@ else
     private string? error;
     private SiteView? view;
     private SiteReport? report;
+    private OrbitalPhoto? orbital;
+
+    private sealed record OrbitalPhoto(string Url, double PhotoM, double SizeKm);
+
+    private static string Num(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
     private int start;
     private ReportRobustness? robustness;
     private ReportRadio? radio;
@@ -711,6 +724,24 @@ else
         try
         {
             await Task.Delay(50, token);
+            if (view is not null && view.Site.LatitudeDeg <= -85.5)
+            {
+                try
+                {
+                    await using var photoModule = await Js.InvokeAsync<IJSObjectReference>("import", token, "./js/sitephoto.js");
+                    orbital = await photoModule.InvokeAsync<OrbitalPhoto?>("render", token, view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, "1 " + L["common.unit.km"]);
+                }
+                catch (JSException)
+                {
+                    orbital = null;
+                }
+
+                if (orbital is not null)
+                {
+                    StateHasChanged();
+                }
+            }
+
             try
             {
                 var map = PolarScoreMap.Parse(await Http.GetByteArrayAsync("data/pole_artemis.bin", token));

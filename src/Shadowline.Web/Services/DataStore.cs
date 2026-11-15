@@ -13,6 +13,10 @@ public sealed class DataStore(HttpClient http)
 
     public TourDocument? Tour { get; private set; }
 
+    public TourDocument? PolarTour { get; private set; }
+
+    public MissionsDocument? Missions { get; private set; }
+
     public CreditsDocument? Credits { get; private set; }
 
     public PhotosDocument? Photos { get; private set; }
@@ -167,7 +171,9 @@ public sealed class DataStore(HttpClient http)
         var ephemerisBytes = await http.GetByteArrayAsync("data/ephemeris.bin", cancellationToken);
         var ephemeris = EphemerisReader.Read(ephemerisBytes, manifest.Grid);
 
-        Tour = await TryLoadTourAsync(cancellationToken);
+        Tour = await TryLoadTourAsync("data/tour.json", cancellationToken);
+        PolarTour = await TryLoadTourAsync("data/polar-tour.json", cancellationToken);
+        Missions = await TryLoadMissionsAsync(cancellationToken);
         Photos = await TryLoadPhotosAsync(cancellationToken);
         Artemis = await TryLoadArtemisAsync(cancellationToken);
         History = await TryLoadHistoryAsync(cancellationToken);
@@ -234,12 +240,25 @@ public sealed class DataStore(HttpClient http)
         }
     }
 
-    private async Task<TourDocument?> TryLoadTourAsync(CancellationToken cancellationToken)
+    private async Task<TourDocument?> TryLoadTourAsync(string path, CancellationToken cancellationToken)
     {
         try
         {
-            await using var stream = await http.GetStreamAsync("data/tour.json", cancellationToken);
+            await using var stream = await http.GetStreamAsync(path, cancellationToken);
             return await TourReader.ReadAsync(stream, cancellationToken);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or DataFormatException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<MissionsDocument?> TryLoadMissionsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var stream = await http.GetStreamAsync("data/missions.json", cancellationToken);
+            return await MissionsReader.ReadAsync(stream, cancellationToken);
         }
         catch (Exception exception) when (exception is HttpRequestException or DataFormatException)
         {

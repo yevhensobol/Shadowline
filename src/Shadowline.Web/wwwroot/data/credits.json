@@ -50,6 +50,18 @@
       "kind": "data"
     },
     {
+        "id": "lola-5m-87s",
+        "title": "South Pole LOLA DEM Mosaic, 5 m/px, 87-90 S (ldem_87s_5mpp)",
+        "author": "Barker, M. K. et al. (2021), Improved LOLA Elevation Maps for South Pole Landing Sites: Error Estimates and Their Impact on Illumination Conditions, Planetary and Space Science 203, 105119, doi:10.1016/j.pss.2020.105119. NASA GSFC PGDA",
+        "source": "https://pgda.gsfc.nasa.gov/products/81",
+        "license": "NASA open data",
+        "usedIn": {
+            "en": "3D relief view within 87-90 S: 5 m heights near the camera, with 20 m and 80 m levels for distant views. Display only, not used in the calculations",
+            "uk": "Режим рельєфу 3D-сцени в межах 87-90 пд. ш.: висоти 5 м біля камери, з рівнями 20 м і 80 м для дальніх видів. Лише відображення, у розрахунках не використовується"
+        },
+        "kind": "data"
+    },
+    {
       "id": "diviner-prp",
       "title": "LRO Diviner Polar Resource Product, south (LRO-L-DLRE-5-PRP-V2.0)",
       "author": "Paige, D. A. et al., Science 330, 479-482 (2010), doi:10.1126/science.1187726. NASA PDS Geosciences Node",
@@ -80,10 +92,22 @@
       "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_WAC_Mosaic_SPole60_100m_v02",
       "license": "NASA open data",
       "usedIn": {
-        "en": "South polar 2D map, 60-90 S",
-        "uk": "Південна полярна 2D-карта, 60-90 пд. ш."
+        "en": "South polar 2D map, 60-90 S, and the photo view of the south pole in 3D",
+        "uk": "Південна полярна 2D-карта, 60-90 пд. ш., і режим фото південного полюса в 3D"
       },
       "kind": "data"
+    },
+    {
+        "id": "trek-nac-spole",
+        "title": "LRO LROC NAC Image Mosaic, S Pole, Avg Merge, Edition 1 (LRO_NAC_AvgMosaic_SPole855_1mp)",
+        "author": "USGS and the LMMP Team (2011), from LROC NAC images by the LROC Team, Arizona State University. Served by NASA Moon Trek, NASA/JPL",
+        "source": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_NAC_AvgMosaic_SPole855_1mp",
+        "license": "NASA open data",
+        "usedIn": {
+            "en": "Photo view of the south pole in 3D, 85.5-90 S, loaded in more detail as the camera gets closer, and the orbital image in the site report",
+            "uk": "Режим фото південного полюса в 3D, 85,5-90 пд. ш., деталізація зростає з наближенням камери, і знімок з орбіти у звіті про місце"
+        },
+        "kind": "data"
     },
     {
       "id": "trek-wac-global",

@@ -32,7 +32,7 @@
         Failed,
     }
 
-    public sealed record SceneSite(string Id, string Name, double Lat, double Lon, string Kind);
+    public sealed record SceneSite(string Id, string Name, double Lat, double Lon, string Kind, string? Hint = null);
 
     public sealed record StationMark(string Id, string Name, double Lat, double Lon, bool Up);
 
@@ -40,7 +40,7 @@
 
     public sealed record RouteData(int Count, double[] DistanceKm, double[] ElevationM, double[] SlopeDeg, double[] Sun, double[] Earth, bool[] Dark, bool[] Waypoint, double[][]? Points = null);
 
-    private const string EngineVersion = "31";
+    private const string EngineVersion = "47";
 
     public bool IsReady => state == State.Ready;
 
@@ -134,7 +134,7 @@
         await PushAsync();
     }
 
-    private object Units() => new { m = L["common.unit.m"], km = L["common.unit.km"] };
+    private object Units() => new { m = L["common.unit.m"], km = L["common.unit.km"], poleTitle = L["explore.poleTitle"], polePhoto = L["explore.polePhoto"], poleRelief = L["explore.poleRelief"], polePhotoHint = L["explore.polePhotoHint"], poleReliefHint = L["explore.poleReliefHint"], poleZone = L["explore.poleZone"], poleZoneHint = L["explore.poleZoneHint"], poleZoneInner = L["explore.poleZoneInner"], poleZoneOuter = L["explore.poleZoneOuter"] };
 
     private string? sentLanguage;
 
@@ -151,7 +151,7 @@
             await module.InvokeVoidAsync("setUnits", Units());
         }
 
-        var key = string.Join('|', Sites.Select(site => site.Id));
+        var key = string.Join('|', Sites.Select(site => site.Id + '~' + site.Name + '~' + site.Hint));
         if (key != sitesKey)
         {
             sitesKey = key;
@@ -204,6 +204,14 @@
         {
             stationsKey = stationKey;
             await scene!.InvokeVoidAsync("setStations", stations);
+        }
+    }
+
+    public async Task SetPoleViewAsync(string? view, bool? zone)
+    {
+        if (module is not null && state == State.Ready)
+        {
+            await scene!.InvokeVoidAsync("setPoleView", view, zone);
         }
     }
 

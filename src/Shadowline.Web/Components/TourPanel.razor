@@ -10,6 +10,15 @@
     {
         <p><a href="@link">@L["tour.open"]</a></p>
     }
+    @if (Current.Links is { Count: > 0 } links)
+    {
+        <ul class="tour-links">
+            @foreach (var item in links)
+            {
+                <li><a href="@item.UrlIn(L.Language)" target="_blank" rel="noopener noreferrer">@item.TitleIn(L.Language) ↗</a></li>
+            }
+        </ul>
+    }
     <p class="tour-buttons">
         <button type="button" @onclick="Previous" disabled="@(Index == 0)">@L["tour.previous"]</button>
         <button type="button" @onclick="Next" disabled="@(Index >= Steps.Count - 1)">@L["tour.next"]</button>
