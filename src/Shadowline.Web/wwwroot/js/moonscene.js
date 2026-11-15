@@ -391,11 +391,11 @@ class MoonScene {
 if (zoneOn > 0.5) {
     float zd = length(vMapUv - 0.5);
     float zw = max(fwidth(zd), 1e-7);
-    float inner = 1.0 - smoothstep(zw * 1.2, zw * 2.8, abs(zd - zoneR.x));
-    float dash = step(0.45, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 11.459156));
-    float outer = (1.0 - smoothstep(zw * 0.7, zw * 2.0, abs(zd - zoneR.y))) * dash;
-    float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.03 + (1.0 - smoothstep(zoneR.y - zw, zoneR.y + zw, zd)) * 0.015;
-    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 0.95 + fill);
+    float inner = 1.0 - smoothstep(zw * 0.4, zw * 1.4, abs(zd - zoneR.x));
+    float dash = step(0.5, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 28.647890));
+    float outer = (1.0 - smoothstep(zw * 0.3, zw * 1.2, abs(zd - zoneR.y))) * dash;
+    float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.012;
+    totalEmissiveRadiance += vec3(1.0, 0.72, 0.38) * (max(inner, outer * 0.8) * 0.5 + fill);
 }`);
         };
     }
@@ -630,11 +630,11 @@ if (gridOn > 0.5) {
 if (zoneOn > 0.5) {
     float zd = length(vMapUv - 0.5);
     float zw = max(fwidth(zd), 1e-7);
-    float inner = 1.0 - smoothstep(zw * 1.2, zw * 2.8, abs(zd - zoneR.x));
-    float dash = step(0.45, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 11.459156));
-    float outer = (1.0 - smoothstep(zw * 0.7, zw * 2.0, abs(zd - zoneR.y))) * dash;
-    float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.03 + (1.0 - smoothstep(zoneR.y - zw, zoneR.y + zw, zd)) * 0.015;
-    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 0.95 + fill);
+    float inner = 1.0 - smoothstep(zw * 0.4, zw * 1.4, abs(zd - zoneR.x));
+    float dash = step(0.5, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 28.647890));
+    float outer = (1.0 - smoothstep(zw * 0.3, zw * 1.2, abs(zd - zoneR.y))) * dash;
+    float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.012;
+    totalEmissiveRadiance += vec3(1.0, 0.72, 0.38) * (max(inner, outer * 0.8) * 0.5 + fill);
 }`)
                 .replace("#include <opaque_fragment>", `if (photoOn > 0.5 && layerMode < 0.5) {
     vec3 pc = diffuseColor.rgb;
@@ -1621,7 +1621,8 @@ if (zoneOn > 0.5) {
             const visible = show && this.visible(position) && p.z < 1 && p.x > 0 && p.x < this.width && p.y > 0 && p.y < this.height;
             el.style.display = visible ? "" : "none";
             if (!visible) return;
-            const label = u[zone.key] || `${-zone.lat}° S`;
+            const diameter = Math.round(2 * R * (90 + zone.lat) * DEG);
+            const label = (u[zone.key] || `${-zone.lat}° S · Ø {0} km`).replace("{0}", diameter);
             if (el.textContent !== label) el.textContent = label;
             el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -130%)`;
         });
