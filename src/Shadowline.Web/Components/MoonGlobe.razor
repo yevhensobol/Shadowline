@@ -40,7 +40,7 @@
 
     public sealed record RouteData(int Count, double[] DistanceKm, double[] ElevationM, double[] SlopeDeg, double[] Sun, double[] Earth, bool[] Dark, bool[] Waypoint, double[][]? Points = null);
 
-    private const string EngineVersion = "31";
+    private const string EngineVersion = "46";
 
     public bool IsReady => state == State.Ready;
 
@@ -134,7 +134,7 @@
         await PushAsync();
     }
 
-    private object Units() => new { m = L["common.unit.m"], km = L["common.unit.km"] };
+    private object Units() => new { m = L["common.unit.m"], km = L["common.unit.km"], poleTitle = L["explore.poleTitle"], polePhoto = L["explore.polePhoto"], poleRelief = L["explore.poleRelief"], polePhotoHint = L["explore.polePhotoHint"], poleReliefHint = L["explore.poleReliefHint"], poleZone = L["explore.poleZone"], poleZoneHint = L["explore.poleZoneHint"], poleZoneInner = L["explore.poleZoneInner"], poleZoneOuter = L["explore.poleZoneOuter"] };
 
     private string? sentLanguage;
 

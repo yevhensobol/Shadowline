@@ -1960,6 +1960,67 @@ body {
     text-shadow: 0 1px 3px #000000, 0 0 6px #000000;
 }
 
+.scene-zone {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 11;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(13, 18, 27, 0.55);
+    color: rgba(255, 205, 140, 0.92);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.scene-view {
+    position: absolute;
+    top: 124px;
+    left: 50%;
+    z-index: 12;
+    transform: translateX(-50%);
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(13, 18, 27, 0.78);
+    pointer-events: auto;
+}
+
+.scene-view button {
+    padding: 5px 14px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--fg-soft);
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.scene-view button + button {
+    border-left: 1px solid var(--line);
+}
+
+.scene-view button[aria-pressed="true"] {
+    background: rgba(242, 163, 58, 0.18);
+    color: var(--sun);
+}
+
+.globe.embed .scene-view {
+    top: 12px;
+}
+
+@media (max-width: 800px) {
+    .scene-view {
+        top: 150px;
+    }
+}
+
 .scene-scale .scale-bar {
     display: block;
     height: 6px;
