@@ -50,6 +50,11 @@ if (Test-Path -LiteralPath (Join-Path $terrain "index.json")) {
 else {
     Write-Warning "No terrain pack in $terrain, the 5 m relief will be missing (run tools\ldem\pack_ldem.py)"
 }
+$index = Join-Path $site "index.html"
+$stamp = Get-Date -Format "yyyyMMddHHmm"
+$html = [System.IO.File]::ReadAllText($index) -replace 'href="css/(app|ui)\.css"', "href=`"css/`$1.css?v=$stamp`""
+[System.IO.File]::WriteAllText($index, $html, (New-Object System.Text.UTF8Encoding($false)))
+
 foreach ($required in @("index.html", "_framework", "data\finder.bin.gz", "js\moonscene.js")) {
     if (-not (Test-Path -LiteralPath (Join-Path $site $required))) {
         throw "missing $required in $site"

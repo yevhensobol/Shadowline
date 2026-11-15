@@ -395,7 +395,7 @@ if (zoneOn > 0.5) {
     float dash = step(0.45, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 11.459156));
     float outer = (1.0 - smoothstep(zw * 0.7, zw * 2.0, abs(zd - zoneR.y))) * dash;
     float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.03 + (1.0 - smoothstep(zoneR.y - zw, zoneR.y + zw, zd)) * 0.015;
-    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 1.3 + fill);
+    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 0.95 + fill);
 }`);
         };
     }
@@ -634,7 +634,7 @@ if (zoneOn > 0.5) {
     float dash = step(0.45, fract(atan(vMapUv.y - 0.5, vMapUv.x - 0.5) * 11.459156));
     float outer = (1.0 - smoothstep(zw * 0.7, zw * 2.0, abs(zd - zoneR.y))) * dash;
     float fill = (1.0 - smoothstep(zoneR.x - zw, zoneR.x + zw, zd)) * 0.03 + (1.0 - smoothstep(zoneR.y - zw, zoneR.y + zw, zd)) * 0.015;
-    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 1.3 + fill);
+    totalEmissiveRadiance += vec3(1.0, 0.64, 0.23) * (max(inner, outer * 0.75) * 0.95 + fill);
 }`)
                 .replace("#include <opaque_fragment>", `if (photoOn > 0.5 && layerMode < 0.5) {
     vec3 pc = diffuseColor.rgb;

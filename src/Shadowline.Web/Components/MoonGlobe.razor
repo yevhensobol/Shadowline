@@ -40,7 +40,7 @@
 
     public sealed record RouteData(int Count, double[] DistanceKm, double[] ElevationM, double[] SlopeDeg, double[] Sun, double[] Earth, bool[] Dark, bool[] Waypoint, double[][]? Points = null);
 
-    private const string EngineVersion = "44";
+    private const string EngineVersion = "45";
 
     public bool IsReady => state == State.Ready;
 
