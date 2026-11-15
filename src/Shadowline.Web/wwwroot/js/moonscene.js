@@ -18,6 +18,7 @@ const WAC_ORIGIN_M = 1095930;
 const WAC_LEVEL = 5;
 const WAC_SIZE = 2048;
 const WAC_CAP_M = 931000;
+const WAC_OUTER_LEVEL = 3;
 const NAC_TILES = "https://trek.nasa.gov/tiles/Moon/SP/LRO_NAC_AvgMosaic_SPole855_1mp/1.0.0/default/default028mm/";
 const NAC_EDGE_M = 136500;
 const NAC_BASE_LEVEL = 6;
@@ -1576,6 +1577,12 @@ if (zoneOn > 0.5) {
         }
         const show = !this.surface && this.poleReady && this.view.lat < -60 && this.view.range < 6000;
         this.viewEl.style.display = show ? "" : "none";
+        if (show && !this.polePhotoJob && !this.photoPreload) {
+            this.photoPreload = true;
+            const start = () => this.loadPolePhoto().catch(() => {});
+            if (window.requestIdleCallback) window.requestIdleCallback(start, { timeout: 2000 });
+            else setTimeout(start, 500);
+        }
         this.updateZoneLabels(show && this.zoneOn);
         if (!show) return;
         const u = this.units || {};
@@ -1636,7 +1643,7 @@ if (zoneOn > 0.5) {
         });
     }
 
-    async wacTexture(level, half, size) {
+    async wacTexture(level, half, size, inner = 0) {
         const tileM = 2 * WAC_ORIGIN_M / 2 ** level, scale = size / (2 * half);
         const canvas = document.createElement("canvas");
         canvas.width = size;
@@ -1646,6 +1653,9 @@ if (zoneOn > 0.5) {
         const jobs = [];
         for (let row = first; row <= last; row++) {
             for (let col = first; col <= last; col++) {
+                const x0 = -WAC_ORIGIN_M + col * tileM, y1 = WAC_ORIGIN_M - row * tileM;
+                const near = Math.hypot(Math.max(0, x0, -(x0 + tileM)), Math.max(0, y1 - tileM, -y1));
+                if (inner > 0 && (near > half || (x0 >= -inner && x0 + tileM <= inner && y1 - tileM >= -inner && y1 <= inner))) continue;
                 jobs.push(new Promise((resolve) => {
                     const img = new Image();
                     img.crossOrigin = "anonymous";
@@ -1703,9 +1713,12 @@ if (zoneOn > 0.5) {
                 const first = Math.floor((WAC_ORIGIN_M - NAC_EDGE_M) / tileM), span = Math.floor((WAC_ORIGIN_M + NAC_EDGE_M) / tileM) - first + 1;
                 const [inner, outer, nac] = await Promise.all([
                     this.wacTexture(WAC_LEVEL, this.poleGrid.half, WAC_SIZE),
-                    this.wacTexture(WAC_LEVEL - 1, WAC_CAP_M, 2 * WAC_SIZE),
+                    this.wacTexture(WAC_OUTER_LEVEL, WAC_CAP_M, WAC_SIZE, this.poleGrid.half),
                     this.trekTexture(NAC_TILES, NAC_BASE_LEVEL, first, first, span).catch((error) => { console.warn("nac", error); return null; })
                 ]);
+                for (const texture of [inner, outer, nac && nac.texture]) {
+                    if (texture) this.renderer.initTexture(texture);
+                }
                 this.photoMap.value = outer;
                 if (nac) {
                     this.layerUniforms.nacMap.value = nac.texture;
