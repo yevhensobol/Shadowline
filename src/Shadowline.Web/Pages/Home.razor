@@ -47,7 +47,25 @@
 
         <div class="ribbon" role="status" aria-live="off"><span>@L["explore.simTime"]</span><time>@SimTime()</time></div>
 
-        @if (Store.Tour is { Steps: { Count: > 0 } tourSteps } && tourIndex is { } currentStep)
+        @if (missionSite is { } missionId && tourIndex is null && !surface && Store.Missions is not null
+             && Shadowline.Data.MissionsReader.Find(Store.Missions, missionId) is { } mission
+             && Store.Catalog?.Sites.FirstOrDefault(item => item.Id == missionId) is { } missionPlace)
+        {
+            <aside class="mission-card" role="dialog" aria-label="@L.Name(missionPlace)">
+                <button type="button" class="mission-close" aria-label="@L["missionCard.close"]" @onclick="() => missionSite = null">×</button>
+                <h3>@L.Name(missionPlace)</h3>
+                <p class="muted">@MissionMeta(mission)</p>
+                <p>@Local(mission.Summary)</p>
+                <p class="mission-links">
+                    @foreach (var link in mission.Links!)
+                    {
+                        <a href="@link.UrlIn(L.Language)" target="_blank" rel="noopener noreferrer">@link.TitleIn(L.Language) ↗</a>
+                    }
+                </p>
+            </aside>
+        }
+
+        @if (activeTour is { Steps: { Count: > 0 } tourSteps } && tourIndex is { } currentStep)
         {
             <div class="hud hud-tour">
                 <TourPanel Steps="tourSteps" Index="currentStep" IndexChanged="OnTourStep" Closed="CloseTour" />
@@ -254,9 +272,13 @@
                     {
                         <button type="button" class="link" aria-pressed="@(showRegions ? "true" : "false")" @onclick="() => showRegions = !showRegions">@L["artemis.toggle"]</button>
                     }
-                    @if (Store.Tour is not null)
+                    @if (Store.PolarTour is { } polarTour)
                     {
-                        <button type="button" class="link" @onclick="StartTour">@L["tour.start"] ›</button>
+                        <button type="button" class="link" @onclick="() => StartTour(polarTour)">@L["tour.polar"] ›</button>
+                    }
+                    @if (Store.Tour is { } guidedTour)
+                    {
+                        <button type="button" class="link" @onclick="() => StartTour(guidedTour)">@L["tour.start"] ›</button>
                     }
                 </div>
             </div>
@@ -1341,7 +1363,7 @@
     {
         var sites = Store.Catalog!.Sites
             .Where(site => !IsTest(site))
-            .Select(site => new MoonGlobe.SceneSite(site.Id, ShortName(site), site.LatitudeDeg, site.LongitudeEastDeg, IsTest(site) ? "test" : string.Empty))
+            .Select(site => new MoonGlobe.SceneSite(site.Id, ShortName(site), site.LatitudeDeg, site.LongitudeEastDeg, IsTest(site) ? "test" : string.Empty, SiteHint(site)))
             .ToList();
         sites.AddRange(RecZones().Select(zone => new MoonGlobe.SceneSite(RecId(zone), "Z" + zone.Rank.ToString(CultureInfo.InvariantCulture), zone.LatitudeDeg, zone.LongitudeEastDeg, "rec")));
         return sites;
@@ -1547,6 +1569,8 @@
     }
 
     private int? tourIndex;
+    private Shadowline.Data.TourDocument? activeTour;
+    private string? missionSite;
     private bool showRegions;
     private bool preparing;
     private string? customName;
@@ -1579,8 +1603,10 @@
         }
     }
 
-    private async Task StartTour()
+    private async Task StartTour(Shadowline.Data.TourDocument tour)
     {
+        activeTour = tour;
+        missionSite = null;
         EndReplay();
         if (!Store.IsBaseYear && Store.Years?.Years is { Count: > 0 } years)
         {
@@ -1604,6 +1630,11 @@
     private async Task CloseTour()
     {
         tourIndex = null;
+        if (activeTour?.Steps?.Any(step => step.PoleView is not null || step.Zone is not null) == true && globe is not null)
+        {
+            await globe.SetPoleViewAsync("relief", false);
+        }
+
         if (surface)
         {
             await Leave();
@@ -1612,7 +1643,7 @@
 
     private async Task ApplyTourStep()
     {
-        if (Store.Tour?.Steps is not { } steps || tourIndex is not { } index || index < 0 || index >= steps.Count || globe is null)
+        if (activeTour?.Steps is not { } steps || tourIndex is not { } index || index < 0 || index >= steps.Count || globe is null)
         {
             return;
         }
@@ -1650,7 +1681,12 @@
                 await Leave();
             }
 
-            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, view.Site.LatitudeDeg < -70 ? 2600 : 4600);
+            if (step.PoleView is not null || step.Zone is not null)
+            {
+                await globe.SetPoleViewAsync(step.PoleView, step.Zone);
+            }
+
+            await globe.FlyToAsync(view.Site.LatitudeDeg, view.Site.LongitudeEastDeg, step.RangeKm ?? (view.Site.LatitudeDeg < -70 ? 2600 : 4600), step.TiltDeg);
             return;
         }
 
@@ -1735,8 +1771,29 @@
         return SelectSite(site.Id, fly);
     }
 
-    private Task OnSitePicked(string id) =>
-        RecZones().FirstOrDefault(zone => RecId(zone) == id) is { } zone ? PickRec(zone) : SelectSite(id, true);
+    private Task OnSitePicked(string id)
+    {
+        if (RecZones().FirstOrDefault(zone => RecId(zone) == id) is { } zone)
+        {
+            return PickRec(zone);
+        }
+
+        missionSite = Shadowline.Data.MissionsReader.Find(Store.Missions, id) is null ? null : id;
+        return SelectSite(id, true);
+    }
+
+    private string Local(IReadOnlyDictionary<string, string>? values) =>
+        values is null ? string.Empty
+        : values.TryGetValue(L.Language, out var text) ? text
+        : values.GetValueOrDefault("en", string.Empty);
+
+    private string MissionMeta(Shadowline.Data.MissionInfo mission) =>
+        string.Join(" · ", new[] { mission.Agency, Local(mission.Date) }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private string? SiteHint(Site site) =>
+        Shadowline.Data.MissionsReader.Find(Store.Missions, site.Id) is { } mission
+            ? L.Name(site) + " · " + MissionMeta(mission) + ". " + L["missionCard.more"]
+            : null;
 
     private Task OnPointPicked((double Lat, double Lon) point) => SelectPoint(point.Lat, point.Lon, false);
 

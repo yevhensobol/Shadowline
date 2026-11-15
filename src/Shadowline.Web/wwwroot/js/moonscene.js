@@ -997,6 +997,7 @@ if (zoneOn > 0.5) {
             button.className = "scene-site" + (site.kind ? " " + site.kind : "");
             button.innerHTML = '<span class="dot"></span><span class="name"></span>';
             button.querySelector(".name").textContent = site.name;
+            if (site.hint) button.title = site.hint;
             button.addEventListener("click", (event) => { event.stopPropagation(); this.callbacks.site(site.id); });
             button.addEventListener("pointerdown", (event) => event.stopPropagation());
             this.overlay.appendChild(button);
@@ -1590,6 +1591,13 @@ if (zoneOn > 0.5) {
             button.title = text[m][1];
             button.setAttribute("aria-pressed", String(m === "zone" ? !!this.zoneOn : m === mode));
         }
+    }
+
+    setPoleView(view, zone) {
+        if (view) this.setPoleMode(view);
+        if (zone !== null && zone !== undefined) this.setZone(zone);
+        this.viewKey = null;
+        this.dirty = true;
     }
 
     setZone(on) {
@@ -2470,5 +2478,6 @@ export function record(title, lines, fileName, seconds) { return current ? curre
 export function stopRecording() { current && current.stopRecording(); }
 export function snapshot(title, lines, fileName) { return current ? current.snapshot(title, lines, fileName) : false; }
 export function setUnits(units) { current && current.setUnits(units); }
+export function setPoleView(view, zone) { current && current.setPoleView(view, zone); }
 export function dispose() { if (current) { current.dispose(); current = null; } }
 export const internals = { fromLatLon, toLatLon, moonFrameFromJ2000, gmstRad };

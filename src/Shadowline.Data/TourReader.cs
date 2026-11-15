@@ -10,7 +10,12 @@ public sealed record TourStep(
     IReadOnlyDictionary<string, string>? Title,
     IReadOnlyDictionary<string, string>? Text,
     string? Scene = null,
-    string? Layer = null);
+    string? Layer = null,
+    IReadOnlyList<ExternalLink>? Links = null,
+    double? RangeKm = null,
+    double? TiltDeg = null,
+    string? PoleView = null,
+    bool? Zone = null);
 
 public sealed record TourDocument(int FormatVersion, IReadOnlyList<TourStep>? Steps);
 
@@ -23,6 +28,8 @@ public static class TourReader
     public static readonly IReadOnlyList<string> Scenes = ["orbit", "stand", "earth", "sun", "eclipse"];
 
     public static readonly IReadOnlyList<string> Layers = ["none", "sun", "earth", "slope"];
+
+    public static readonly IReadOnlyList<string> PoleViews = ["relief", "photo"];
 
     public static async ValueTask<TourDocument> ReadAsync(Stream stream, CancellationToken cancellationToken = default)
     {
@@ -66,8 +73,19 @@ public static class TourReader
                 throw new DataFormatException($"Tour step '{step.Id}' has an unknown layer '{step.Layer}'");
             }
 
+            if (step.PoleView is not null && !PoleViews.Contains(step.PoleView))
+            {
+                throw new DataFormatException($"Tour step '{step.Id}' has an unknown pole view '{step.PoleView}'");
+            }
+
+            if (step.RangeKm is <= 0)
+            {
+                throw new DataFormatException($"Tour step '{step.Id}' has a non-positive range");
+            }
+
             RequireText(step.Id, "title", step.Title);
             RequireText(step.Id, "text", step.Text);
+            ExternalLink.Validate(step.Id, step.Links);
         }
 
         return document;
