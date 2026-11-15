@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Shadowline.Data;
 
 namespace Shadowline.Tests;
@@ -39,6 +39,26 @@ public class SiteCatalogReaderTests
         var json = Catalog(Site("a", -91.0, 10.0));
 
         await Assert.ThrowsAsync<DataFormatException>(() => SiteCatalogReader.ReadAsync(Json(json)).AsTask());
+    }
+
+    [Fact]
+    public async Task Rock_abundance_is_optional_and_checked()
+    {
+        var with = """{ "sites": [ { "id": "a", "name": "a", "latitudeDeg": 0.67, "longitudeEastDeg": 23.47, "elevationM": 0, "rockAbundance": 0.0043 } ] }""";
+        var bad = """{ "sites": [ { "id": "a", "name": "a", "latitudeDeg": 0.67, "longitudeEastDeg": 23.47, "elevationM": 0, "rockAbundance": 1.5 } ] }""";
+
+        var catalog = await SiteCatalogReader.ReadAsync(Json(with));
+        var plain = await SiteCatalogReader.ReadAsync(Json(Catalog(Site("b", -85.0, 10.0))));
+
+        Assert.Equal(0.0043, catalog.Find("a")!.RockAbundance);
+        Assert.Null(plain.Find("b")!.RockAbundance);
+        await Assert.ThrowsAsync<DataFormatException>(() => SiteCatalogReader.ReadAsync(Json(bad)).AsTask());
+    }
+
+    [Fact]
+    public async Task Missing_sites_are_rejected()
+    {
+        await Assert.ThrowsAsync<DataFormatException>(() => SiteCatalogReader.ReadAsync(Json("{}")).AsTask());
     }
 
     private static string Site(string id, double latitude, double longitude) => $$"""

@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Sites;
 using Shadowline.Core.Time;
 using Shadowline.Core.Validation;

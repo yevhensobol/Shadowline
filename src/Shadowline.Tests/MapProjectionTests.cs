@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Geometry;
+using Shadowline.Core.Geometry;
 
 namespace Shadowline.Tests;
 
@@ -39,5 +39,34 @@ public class MapProjectionTests
         var rim = projection.Project(-60, 0);
         Assert.Equal(500, rim.X, 6);
         Assert.Equal(0, rim.Y, 6);
+    }
+
+    [Fact]
+    public void South_polar_puts_east_longitude_to_the_right_and_round_trips()
+    {
+        var projection = new SouthPolarProjection(500, -60);
+
+        var east = projection.Project(-75, 90);
+        Assert.True(east.X > 500);
+        Assert.Equal(500, east.Y, 6);
+
+        var point = projection.Project(-83.2, 123.4);
+        var back = projection.Unproject(point.X, point.Y);
+        Assert.Equal(-83.2, back.LatitudeDeg, 6);
+        Assert.Equal(123.4, back.LongitudeEastDeg, 6);
+    }
+
+    [Fact]
+    public void Sub_point_of_a_direction_and_terminator_are_consistent()
+    {
+        var sun = SubPoint.Of(new Vec3(0, 1, 0));
+        Assert.Equal(0, sun.LatitudeDeg, 6);
+        Assert.Equal(90, sun.LongitudeEastDeg, 6);
+
+        var axis = sun.ToUnit();
+        foreach (var point in sun.Terminator(36))
+        {
+            Assert.Equal(0.0, Vec3.Dot(axis, point.ToUnit()), 6);
+        }
     }
 }

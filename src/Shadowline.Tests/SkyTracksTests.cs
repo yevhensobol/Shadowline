@@ -1,4 +1,4 @@
-﻿using Shadowline.Core.Ephemeris;
+using Shadowline.Core.Ephemeris;
 using Shadowline.Core.Horizon;
 using Shadowline.Core.Sites;
 using Shadowline.Core.Time;
@@ -66,5 +66,47 @@ public class SkyTracksTests
         Assert.False(tracks.SunVisible[1]);
         Assert.True(tracks.EarthVisible[0]);
         Assert.False(tracks.EarthVisible[1]);
+    }
+
+    [Fact]
+    public void Terrain_mask_hides_a_sun_just_above_the_flat_horizon()
+    {
+        var elevations = new float[HorizonProfile.SampleCount];
+        Array.Fill(elevations, 5f);
+        var mask = new HorizonProfile(elevations);
+        var angle = 2.0 * Math.PI / 180.0;
+        var ephemeris = Rows((SunKm * Math.Sin(angle), 0, SunKm * Math.Cos(angle), EarthKm, 0, 0));
+
+        var flat = SkyTracks.Build(Equator, ephemeris, HorizonProfile.Flat);
+        var masked = SkyTracks.Build(Equator, ephemeris, mask);
+
+        Assert.True(flat.SunVisible[0]);
+        Assert.False(masked.SunVisible[0]);
+    }
+
+    [Fact]
+    public void Earth_over_sun_requires_overlapping_discs()
+    {
+        var offset = 3.0 * Math.PI / 180.0;
+        var ephemeris = Rows(
+            (SunKm, 0, 0, EarthKm, 0, 0),
+            (SunKm, 0, 0, EarthKm * Math.Cos(offset), EarthKm * Math.Sin(offset), 0));
+
+        var tracks = SkyTracks.Build(Equator, ephemeris, HorizonProfile.Flat);
+
+        Assert.True(tracks.EarthOverSun[0]);
+        Assert.False(tracks.EarthOverSun[1]);
+    }
+
+    [Fact]
+    public void Tracks_have_the_length_of_the_grid()
+    {
+        var ephemeris = Rows((SunKm, 0, 0, EarthKm, 0, 0), (SunKm, 0, 0, EarthKm, 0, 0), (SunKm, 0, 0, EarthKm, 0, 0));
+
+        var tracks = SkyTracks.Build(Equator, ephemeris, HorizonProfile.Flat);
+
+        Assert.Equal(3, tracks.SunVisible.Length);
+        Assert.Equal(3, tracks.EarthVisible.Length);
+        Assert.Equal(3, tracks.EarthOverSun.Length);
     }
 }
